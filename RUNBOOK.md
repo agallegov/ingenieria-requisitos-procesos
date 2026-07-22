@@ -85,9 +85,10 @@ Cómo se trabaja:
    `validar.py` funciona igual en el mapa (valida el catálogo y sus
    dependencias) y en cada actividad.
 
-Cuándo NO hace falta mapa: si el encargo es una sola actividad (el almacén
-de Paco), el plano único de siempre basta. Si al cartografiar salen más de
-3 o 4 actividades, hay mapa.
+Cuándo NO hace falta mapa: solo si el encargo es UNA única actividad (el
+almacén de Paco). En cuanto al cartografiar salga más de una actividad, hay
+mapa: así la web enseña siempre el menú lateral y cada actividad tiene su
+carpeta y su spec propios.
 
 **El visor en proyectos con mapa**: sirve SIEMPRE el `planos.json` del mapa
 (no el de una actividad): la web enseña un menú a la izquierda con el mapa
@@ -181,7 +182,7 @@ son:
   estructura maestra.
 - `spec.md`: NO se escribe a mano. Se regenera cada vez que cambian los
   planos con:
-  `python3 visor/generar_spec.py --datos proyectos/<slug>/planos.json`
+  `python3 RUTA_HERRAMIENTA/visor/generar_spec.py --datos CARPETA_PROYECTO/planos.json`
 - `encargo.md`: el texto para la IA constructora o auditora (ver F5).
 - `mural.md`: notas de trabajo en bruto (transcripciones, respuestas,
   ejemplos). Registro interno tuyo: no viaja al agente.
