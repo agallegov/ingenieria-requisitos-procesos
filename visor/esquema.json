@@ -44,6 +44,22 @@
         "properties": { "termino": { "type": "string" }, "significado": { "type": "string" } }
       }
     },
+    "actividades": {
+      "type": "array",
+      "description": "Solo en el plano MAPA de una aplicación grande: el catálogo completo de actividades (cada una tendrá su propio planos.json en actividades/<id>/). El orden dentro de cada área es el orden de prioridad.",
+      "items": {
+        "type": "object", "required": ["id", "nombre", "area"], "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+          "nombre": { "type": "string", "description": "En verbo: 'hacer un pedido', 'emitir un certificado'." },
+          "area": { "type": "string", "description": "Zona del negocio que la agrupa: 'Pagos', 'Directos'..." },
+          "resumen": { "type": "string", "description": "Una línea: qué pasa en esta actividad." },
+          "estado": { "enum": ["sin empezar", "en entrevista", "especificada", "en obra", "entregada"] },
+          "depende_de": { "type": "array", "items": { "type": "string" }, "description": "Ids de actividades que tienen que existir antes." },
+          "carpeta": { "type": "string", "description": "actividades/<id>/ cuando su plano exista." }
+        }
+      }
+    },
     "flujos": {
       "type": "array",
       "items": {
@@ -138,7 +154,23 @@
               "type": "object", "required": ["nombre"], "additionalProperties": false,
               "properties": {
                 "nombre": { "type": "string" },
-                "acciones": { "type": "array", "items": { "type": "string" } }
+                "acciones": {
+                  "type": "array",
+                  "description": "Mejor como objetos: quién puede hacerla y a qué estado deja la cosa (pasa_a). Sin pasa_a, se queda en el mismo estado.",
+                  "items": {
+                    "anyOf": [
+                      { "type": "string" },
+                      {
+                        "type": "object", "required": ["accion"], "additionalProperties": false,
+                        "properties": {
+                          "accion": { "type": "string" },
+                          "quien": { "type": "string" },
+                          "pasa_a": { "type": "string" }
+                        }
+                      }
+                    ]
+                  }
+                }
               }
             }
           }

@@ -99,12 +99,13 @@
       "estado": "pendiente",
       "requisitos": [
         { "id": "R-1", "texto": "Cuando llegue un mensaje de pedido por WhatsApp de un cliente conocido, el sistema deberá montar un borrador de pedido con cliente, líneas y fecha, y guardar el mensaje original." },
-        { "id": "R-2", "texto": "Cuando María confirme un borrador con stock y sin necesidad de visto bueno (G-1), el sistema deberá generar la factura, apuntar su importe a la cuenta del cliente y avisar al almacén por WhatsApp." },
+        { "id": "R-2", "texto": "Cuando María confirme un borrador con stock y sin necesidad de visto bueno (G-1), el sistema deberá generar la factura, apuntar su importe a la cuenta del cliente y avisar al almacén por WhatsApp.", "regla": "G-1" },
         { "id": "R-3", "texto": "Cuando el almacén responda al aviso marcando el pedido como enviado, el sistema deberá registrar la hora del envío." }
       ],
       "criterios": [
-        { "id": "C-1", "dado": "que Paco no debe nada y hay 100 sacos de harina en stock", "cuando": "escribe \"40 sacos de harina de 25kg para el jueves\" y María confirma el borrador", "entonces": "se genera la factura, el almacén recibe el aviso por WhatsApp y el pedido queda como facturado" },
-        { "id": "C-2", "dado": "que llega un audio ininteligible desde un número desconocido", "cuando": "la app no consigue montar el borrador", "entonces": "queda como pendiente de revisión, María recibe aviso por WhatsApp y no se factura nada" }
+        { "id": "C-1", "dado": "que Paco no debe nada y hay 100 sacos de harina en stock", "cuando": "escribe \"40 sacos de harina de 25kg para el jueves\" y María confirma el borrador", "entonces": "se genera la factura, el almacén recibe el aviso por WhatsApp y el pedido queda como facturado", "cubre": "R-2" },
+        { "id": "C-2", "dado": "que llega un audio ininteligible desde un número desconocido", "cuando": "la app no consigue montar el borrador", "entonces": "queda como pendiente de revisión, María recibe aviso por WhatsApp y no se factura nada", "cubre": "R-1" },
+        { "id": "C-6", "dado": "un pedido de Paco facturado esta mañana", "cuando": "el almacén responde LISTO al aviso", "entonces": "el pedido queda como enviado, con su hora de llegada y su hora de envío guardadas", "cubre": "R-3" }
       ]
     },
     {
@@ -113,13 +114,13 @@
       "objetivo": "Que ningún pedido con deuda o de más de 1.000€ salga sin aprobación (regla G-1).",
       "estado": "pendiente",
       "requisitos": [
-        { "id": "R-4", "texto": "Cuando María confirme un borrador de un cliente con deuda pendiente o por importe mayor de 1.000€, el sistema deberá retenerlo y pedir aprobación al jefe por WhatsApp, enseñándole la deuda y el importe." },
+        { "id": "R-4", "texto": "Cuando María confirme un borrador de un cliente con deuda pendiente o por importe mayor de 1.000€, el sistema deberá retenerlo y pedir aprobación al jefe por WhatsApp, enseñándole la deuda y el importe.", "regla": "G-1" },
         { "id": "R-5", "texto": "Cuando el jefe apruebe, el sistema deberá continuar hacia la factura; cuando rechace con motivo, el sistema deberá dejar el pedido como anulado y avisar a María con el motivo." }
       ],
       "criterios": [
-        { "id": "C-3", "dado": "que Paco debe 300€", "cuando": "María confirma su pedido de 40 sacos", "entonces": "el pedido queda retenido y al jefe le llega la petición con la deuda visible" },
-        { "id": "C-4", "dado": "que Paco no debe nada", "cuando": "María confirma un pedido suyo de 60 sacos por 1.200€", "entonces": "el pedido queda retenido por pasar de 1.000€" },
-        { "id": "C-5", "dado": "un pedido retenido de Paco", "cuando": "el jefe lo rechaza escribiendo el motivo", "entonces": "el pedido queda anulado y María ve el motivo en su panel" }
+        { "id": "C-3", "dado": "que Paco debe 300€", "cuando": "María confirma su pedido de 40 sacos", "entonces": "el pedido queda retenido y al jefe le llega la petición con la deuda visible", "cubre": "R-4" },
+        { "id": "C-4", "dado": "que Paco no debe nada", "cuando": "María confirma un pedido suyo de 60 sacos por 1.200€", "entonces": "el pedido queda retenido por pasar de 1.000€", "cubre": "R-4" },
+        { "id": "C-5", "dado": "un pedido retenido de Paco", "cuando": "el jefe lo rechaza escribiendo el motivo", "entonces": "el pedido queda anulado y María ve el motivo en su panel", "cubre": "R-5" }
       ]
     }
   ],
@@ -141,10 +142,23 @@
     {
       "entidad": "pedido",
       "estados": [
-        { "nombre": "pendiente de revisión", "acciones": ["registrarlo a mano (María)", "descartarlo (María)"] },
-        { "nombre": "borrador", "acciones": ["editar líneas (María)", "confirmar (María)", "anular (María)"] },
-        { "nombre": "retenido", "acciones": ["aprobar (el jefe)", "rechazar con motivo (el jefe)"] },
-        { "nombre": "facturado", "acciones": ["marcar como enviado (el almacén)"] },
+        { "nombre": "pendiente de revisión", "acciones": [
+          { "accion": "registrarlo a mano", "quien": "María", "pasa_a": "borrador" },
+          { "accion": "descartarlo", "quien": "María", "pasa_a": "anulado" }
+        ] },
+        { "nombre": "borrador", "acciones": [
+          { "accion": "editar líneas", "quien": "María" },
+          { "accion": "confirmar, sin necesidad de visto bueno", "quien": "María", "pasa_a": "facturado" },
+          { "accion": "confirmar, con deuda o más de 1.000€", "quien": "María", "pasa_a": "retenido" },
+          { "accion": "anular", "quien": "María", "pasa_a": "anulado" }
+        ] },
+        { "nombre": "retenido", "acciones": [
+          { "accion": "aprobar", "quien": "el jefe", "pasa_a": "facturado" },
+          { "accion": "rechazar con motivo", "quien": "el jefe", "pasa_a": "anulado" }
+        ] },
+        { "nombre": "facturado", "acciones": [
+          { "accion": "marcar como enviado", "quien": "el almacén", "pasa_a": "enviado" }
+        ] },
         { "nombre": "enviado", "acciones": ["nada: solo consultar"] },
         { "nombre": "anulado", "acciones": ["nada: solo consultar"] }
       ]

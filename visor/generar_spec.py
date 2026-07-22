@@ -92,6 +92,31 @@ def main():
             p("- %s" % x)
     p()
 
+    if d.get("actividades"):
+        p("## El mapa de la aplicación")
+        p()
+        p("Catálogo completo de actividades por zona del negocio. Cada actividad "
+          "tiene (o tendrá) sus propios planos en `actividades/<id>/`.")
+        p()
+        areas = []
+        for a in d["actividades"]:
+            if a["area"] not in areas:
+                areas.append(a["area"])
+        for area in areas:
+            p("### %s" % area)
+            p()
+            for a in d["actividades"]:
+                if a["area"] != area:
+                    continue
+                extra = []
+                if a.get("resumen"):
+                    extra.append(a["resumen"])
+                if a.get("depende_de"):
+                    extra.append("necesita antes: %s" % ", ".join(a["depende_de"]))
+                p("- [%s] **%s** (`%s`)%s" % (a.get("estado", "sin empezar"), a["nombre"], a["id"],
+                                              (": " + "; ".join(extra)) if extra else ""))
+            p()
+
     p("## 2. Actores y vocabulario")
     p()
     for a in d.get("actores", []):
@@ -106,7 +131,7 @@ def main():
 
     p("## 3. El proceso (flujos)")
     p()
-    p("La versión gráfica vive en el visor (`python3 visor/servir.py --datos .../planos.json`).")
+    p("La versión gráfica vive en el visor local del paquete (visor/servir.py).")
     p()
     for f in d.get("flujos", []):
         p("### %s [%s]" % (f["titulo"], "hoy" if f["momento"] == "hoy" else "con la app"))
@@ -166,11 +191,21 @@ def main():
 
     p("## 6. Estados")
     p()
+    def accion_txt(a):
+        if isinstance(a, str):
+            return a
+        out = a["accion"]
+        if a.get("quien"):
+            out += " (%s)" % a["quien"]
+        if a.get("pasa_a"):
+            out += " → pasa a '%s'" % a["pasa_a"]
+        return out
+
     for e in d.get("estados", []):
         p("### %s" % e["entidad"])
         p()
-        tabla_md(["Estado", "Qué se puede hacer"],
-                 [[x["nombre"], " · ".join(x.get("acciones", []))] for x in e["estados"]])
+        tabla_md(["Estado", "Qué se puede hacer (quién, y a qué estado pasa)"],
+                 [[x["nombre"], " · ".join(accion_txt(a) for a in x.get("acciones", []))] for x in e["estados"]])
     if not d.get("estados"):
         p("(Pendiente.)")
         p()

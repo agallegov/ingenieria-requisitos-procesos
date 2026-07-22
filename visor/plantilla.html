@@ -59,6 +59,8 @@
   .chip-futuro { background: #f9e0d5; color: #a03c10; border: 1px solid #d95926; }
   .chip-neutro { background: #f0efec; color: #52514e; border: 1px solid #d8d7d0; }
   .chip-hecho { background: #383835; color: #ffffff; border: 1px solid #383835; }
+  .chip-obra { background: #cde2fb; color: #1c5cab; border: 1px solid #2a78d6; }
+  .chip-spec { background: #d6f1e7; color: #0e7a55; border: 1px solid #1baf7a; }
   .flujo .descripcion { font-size: 13.5px; color: #52514e; max-width: 65ch; }
   .lienzo { margin-top: 16px; }
 
@@ -336,6 +338,32 @@ function tabResumen(d, presentes) {
   return s;
 }
 
+const CHIP_ACTIVIDAD = { "sin empezar": "chip-neutro", "en entrevista": "chip-futuro", "especificada": "chip-spec", "en obra": "chip-obra", "entregada": "chip-hecho" };
+
+function tabMapa(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "El mapa de la aplicación"));
+  s.appendChild(el("div", "nota", "Una aplicación grande son muchas actividades (hacer un pedido, emitir una factura, dar un alta...). Este mapa las tiene todas, agrupadas por zonas del negocio, con su estado. Cada actividad se detalla en su propia sesión y tiene sus propios planos; este mapa es el panel de control del proyecto entero."));
+  const areas = [];
+  d.actividades.forEach(a => { if (!areas.includes(a.area)) areas.push(a.area); });
+  areas.forEach(area => {
+    const c = el("div", "tarjeta");
+    c.appendChild(el("div", "nombre", area));
+    d.actividades.filter(a => a.area === area).forEach(a => {
+      const fila = el("div", "req");
+      fila.appendChild(el("span", "chip " + (CHIP_ACTIVIDAD[a.estado] || "chip-neutro"), a.estado || "sin empezar"));
+      const cuerpo = el("span");
+      cuerpo.appendChild(document.createTextNode(a.nombre));
+      if (a.resumen) cuerpo.appendChild(el("span", "objetivo", " · " + a.resumen));
+      if (Array.isArray(a.depende_de) && a.depende_de.length) cuerpo.appendChild(el("span", "objetivo", " · necesita antes: " + a.depende_de.join(", ")));
+      fila.appendChild(cuerpo);
+      c.appendChild(fila);
+    });
+    s.appendChild(c);
+  });
+  return s;
+}
+
 function tabEpisodios(d) {
   const s = el("section", "seccion");
   s.appendChild(el("h2", null, "Casos reales"));
@@ -447,7 +475,9 @@ function tabEstados(d) {
   d.estados.forEach(e2 => {
     const c = el("div", "tarjeta");
     c.appendChild(el("div", "nombre", e2.entidad));
-    c.appendChild(tabla(["Estado", "Qué se puede hacer"], e2.estados.map(x => [x.nombre, (x.acciones || []).join(" · ")])));
+    c.appendChild(tabla(["Estado", "Qué se puede hacer (quién, y a qué estado pasa)"], e2.estados.map(x => [x.nombre,
+      (x.acciones || []).map(a => typeof a === "string" ? a
+        : a.accion + (a.quien ? " (" + a.quien + ")" : "") + (a.pasa_a ? " → " + a.pasa_a : "")).join(" · ")])));
     s.appendChild(c);
   });
   return s;
@@ -646,6 +676,7 @@ function pintar(d) {
   document.getElementById("proyecto").textContent = d.proyecto ? "Proyecto: " + d.proyecto : "";
 
   const defs = [
+    ["mapa", "El mapa", Array.isArray(d.actividades) && d.actividades.length > 0, tabMapa],
     ["flujos", "El proceso", Array.isArray(d.flujos) && d.flujos.length > 0, tabFlujos],
     ["actores", "Por persona", Array.isArray(d.actores) && d.actores.length > 0 && ((Array.isArray(d.flujos) && d.flujos.length > 0) || !!d.superficie), tabActores],
     ["recorridos", "Las entregas", Array.isArray(d.recorridos) && d.recorridos.length > 0, tabRecorridos],
@@ -670,6 +701,7 @@ function pintar(d) {
   const nReq = (d.recorridos || []).reduce((a, r) => a + (r.requisitos || []).length, 0);
   const nCri = (d.recorridos || []).reduce((a, r) => a + (r.criterios || []).length, 0);
   const cuentas = {
+    mapa: (d.actividades || []).length ? (d.actividades || []).length + " actividades, " + (d.actividades || []).filter(a => a.estado === "entregada").length + " entregadas" : "",
     flujos: (d.flujos || []).length ? nHoy + " de hoy, " + nFut + " con la app" : "",
     recorridos: (d.recorridos || []).length ? (d.recorridos || []).length + " entregas, " + nReq + " requisitos, " + nCri + " criterios" : "",
     reglas: (d.reglas || []).map(x => x.id).join(", "),

@@ -34,6 +34,58 @@ auditar, o cambios sobre unos planos que ya hicimos?"
 - Compuestos: arreglos tras una auditoría entran como C; una feature sobre
   código sin planos es B del tramo afectado y luego C.
 
+## Aplicaciones grandes: el mapa y las actividades
+
+"Hacer un pedido" es UNA actividad. Una aplicación de verdad tiene entre 12
+y 100 (vender, facturar, dar altas, emitir, soportar...). Un solo plano
+para todo eso sería una chapuza: el método se aplica a dos escalas, con el
+mismo esquema y el mismo visor.
+
+- **El mapa** (el plano general): `proyectos/<app>/planos.json` con la
+  visión global: descripción, frase de contrato de la aplicación, actores,
+  vocabulario y datos compartidos, integraciones, calidad global, fuera de
+  alcance... y el bloque `actividades`: el catálogo COMPLETO agrupado por
+  áreas del negocio, cada actividad con una línea de resumen, su estado y
+  sus dependencias. El mapa no detalla ninguna actividad: es el índice y el
+  panel de control.
+- **Cada actividad**: su propia carpeta
+  `proyectos/<app>/actividades/<id>/` con su `planos.json` COMPLETO de
+  siempre (flujos, reglas, estados, entregas, superficie), hecho con las
+  fases F1 a F5 normales, con alcance de UNA actividad.
+
+Cómo se trabaja:
+
+1. **Sesión de mapa** (la primera): volcado global, frase de contrato de la
+   aplicación, actores y vocabulario globales, y la cartografía: "cuéntame
+   todo lo que PASA en tu negocio, solo el nombre de cada cosa y una
+   línea". De ahí salen las actividades en verbo ("hacer un pedido",
+   "emitir un certificado"), agrupadas por áreas, con dependencias gordas.
+   No entres al detalle de ninguna: si el usuario se mete en una, apunta y
+   reconduce ("esa la abrimos en su sesión").
+2. **Una sesión por actividad**, en el orden del mapa: método completo
+   F1-F5 en su carpeta, con su propio visor. Abre cada sesión leyendo el
+   mapa: lo global NO se re-pregunta. Si en una actividad aparece algo
+   global nuevo (un actor, un término, una entidad, una integración), se
+   añade AL MAPA, no a la actividad.
+3. **El estado vive en el mapa**: sin empezar → en entrevista →
+   especificada → en obra → entregada. Lo actualizas tú al cerrar cada
+   sesión o cada entrega. Quien mira el mapa ve el proyecto entero de un
+   vistazo.
+4. **La obra va actividad a actividad**: cada una genera su spec y su
+   encargo; el constructor recibe el mapa (contexto y datos compartidos)
+   más la actividad que toca, y NADA más. El esqueleto global de la
+   aplicación es la primera tanda: el camino mínimo que cruza la app de
+   punta a punta (en una tienda: registrar pedido → cobrar → entregar),
+   una actividad fina de cada área imprescindible.
+5. **Coherencia**: al cerrar una actividad, comprueba contra el mapa que
+   sus actores y su vocabulario existen allí y significan lo mismo.
+   `validar.py` funciona igual en el mapa (valida el catálogo y sus
+   dependencias) y en cada actividad.
+
+Cuándo NO hace falta mapa: si el encargo es una sola actividad (el almacén
+de Paco), el plano único de siempre basta. Si al cartografiar salen más de
+3 o 4 actividades, hay mapa.
+
 ## Conducta
 
 - Modo Barrio Sésamo, SIEMPRE: habla muy claro y muy masticado, como a un
@@ -246,11 +298,19 @@ SOLO los que falten, de uno en uno:
    alguien se equivoca.
 2. **Concurrencia**: y si dos personas tocan lo mismo a la vez.
 3. **Estados**: en qué situaciones puede estar cada cosa importante (un
-   pedido, un cliente, una reserva) y qué se puede hacer en cada una.
+   pedido, un cliente, una reserva) y, en cada una, qué se puede hacer,
+   quién, y a qué situación pasa después (campo `pasa_a`): sin destino no
+   hay máquina, hay una lista.
 4. **Primer día**: cómo se ve todo vacío, sin datos, con el primer usuario.
 5. **Volumen**: cuántos usuarios, cuántos registros, con qué frecuencia.
 6. **Fuera de alcance**: qué NO hará esto, aunque parezca que debería.
 7. **Éxito**: qué número miraremos en un mes para saber que funcionó.
+8. **Plazos y esperas**: cuando alguien tiene que responder (aprobar,
+   confirmar, pagar), ¿y si no contesta en todo el día? ¿Cuánto se espera,
+   a quién se avisa, qué pasa mientras tanto?
+9. **Identidad donde hay dinero**: si un canal mueve pedidos o pagos
+   (WhatsApp, correo), ¿cómo se sabe que quien escribe es quien dice ser?
+   ¿Qué pasó la última vez que escribió un número desconocido?
 
 En cada punto caliente (reglas, excepciones, dinero), exige ejemplos con
 datos de verdad: 2 normales y 1 raro, con nombres y números reales. No
@@ -289,7 +349,12 @@ Primero la materia prima, preguntando solo lo que falte:
   `datos`).
 - **Integraciones**: con qué tiene que seguir hablando esto (bloque
   `integraciones`): el programa de facturación o el ERP (Holded, SAP), el
-  banco, el calendario, WhatsApp, la web del proveedor...
+  banco, el calendario, WhatsApp, la web del proveedor... Y para cada una,
+  el CÓMO de verdad: ¿WhatsApp es la API de empresa con sus plantillas y su
+  número, o un enlace que abre el chat? ¿El banco es un fichero que se sube
+  a su web, y con qué formato? Si el usuario no lo sabe, entrada obligatoria
+  en `preguntas` ("mecanismo de X sin decidir"): que quede como hueco
+  visible, nunca como invento del constructor.
 - **Obligaciones**: qué debe cumplir por ley o contrato: facturas legales,
   datos personales de clientes, lo que exija el gestor (al bloque `calidad`).
 
@@ -366,15 +431,42 @@ es de la obra.
 Cuando no queden huecos:
 
 1. Completa `planos.json`: los recorridos (bloque `recorridos`) con sus
-   requisitos en formato EARS ("Cuando [disparador], el sistema deberá
-   [respuesta]", ids R-n) y sus criterios de aceptación con los datos reales
-   de la fase 2 (Dado/Cuando/Entonces, ids C-n); la calidad como criterios
-   comprobables (ids Q-n) traducidos de las condiciones de uso; y el orden:
-   el primer recorrido es siempre el esqueleto que recorre el flujo entero
-   por el camino feliz. Para ordenar el resto pregunta una sola cosa: "si
-   mañana solo existiera un trozo, ¿cuál te quita más trabajo?"; él ordena
-   por valor, tú ajustas por dependencias.
-2. Genera el spec:
+   requisitos en EARS (ids R-n) y sus criterios de aceptación con los datos
+   reales de la fase 2 (Dado/Cuando/Entonces, ids C-n); la calidad como
+   criterios comprobables (ids Q-n) traducidos de las condiciones de uso; y
+   el orden: el primer recorrido es siempre el esqueleto que recorre el
+   flujo entero por el camino feliz. Para ordenar el resto pregunta una sola
+   cosa: "si mañana solo existiera un trozo, ¿cuál te quita más trabajo?";
+   él ordena por valor, tú ajustas por dependencias.
+
+   EARS completo, no solo el patrón de evento: "Cuando [disparador], el
+   sistema deberá..." (evento); "Mientras [estado], el sistema deberá..."
+   (estado); "Si [fallo o situación no deseada], entonces el sistema
+   deberá..." (protección); "El sistema deberá siempre..." (invariante).
+   Los requisitos de estado y de fallo son requisitos con su R-n, no notas
+   de calidad.
+
+   Rellena la trazabilidad SIEMPRE: cada requisito que implementa una regla
+   lleva su campo `regla` (G-n) y cada criterio lleva `cubre` (el R-n que
+   prueba). No es burocracia: es lo que permite detectar reglas huérfanas y
+   promesas sin prueba.
+
+2. Pasa el cierre de coherencia, con `validar.py` y a ojo, y arregla lo que
+   salga ANTES de enseñar nada:
+   - Toda regla G-n tiene al menos un requisito que la implementa y toda
+     fila de sus tablas al menos un criterio con datos reales.
+   - Todo requisito R-n tiene al menos una prueba C-n que lo cubre.
+   - Todo paso `ia` tiene al menos un requisito de fallo ("Si el modelo no
+     entiende o el remitente es desconocido, entonces...") con su criterio.
+   - Toda acción de las fichas de superficie está en la tabla de permisos,
+     y al revés.
+   - Todo estado es alcanzable y tiene salida (o es final a propósito), con
+     quién y `pasa_a` en cada acción.
+   - Todo dato que usan los requisitos existe en el bloque `datos` (si un
+     requisito manda un correo, el cliente guarda un correo).
+   - Cada número de `contrato.exito` se puede medir con los datos que la
+     app guarda: si no, añade el requisito y los campos que lo midan.
+3. Genera el spec:
    `python3 visor/generar_spec.py --datos proyectos/<slug>/planos.json`
 3. Escribe `encargo.md` según el modo (abajo): el texto del encargo y,
    debajo, la ruta de la carpeta de planos. Nada más.

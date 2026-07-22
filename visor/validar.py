@@ -16,9 +16,9 @@ import sys
 
 TIPOS_ACCION = ("humano", "estatico", "ia", "externo")
 BLOQUES = {"version", "proyecto", "titulo", "descripcion", "contrato", "actores",
-           "vocabulario", "flujos", "episodios", "recorridos", "reglas", "estados",
-           "datos", "volumen", "integraciones", "superficie", "calidad", "fuera",
-           "preguntas"}
+           "vocabulario", "actividades", "flujos", "episodios", "recorridos",
+           "reglas", "estados", "datos", "volumen", "integraciones", "superficie",
+           "calidad", "fuera", "preguntas"}
 CAMPOS_FICHA = ("quien", "llega", "cuando", "ve", "puede", "nunca")
 
 errores = []
@@ -94,6 +94,21 @@ def main():
         for m in a.get("miembros", []) or []:
             ids_quien.add(str(m).lower())
 
+    # actividades (plano mapa)
+    ids_act = set()
+    for i, a in enumerate(d.get("actividades", [])):
+        donde = "actividades[%d]" % i
+        if not a.get("id") or not a.get("nombre") or not a.get("area"):
+            err(donde, "actividad sin id/nombre/area")
+            continue
+        if a["id"] in ids_act:
+            err(donde, 'id de actividad duplicado: "%s"' % a["id"])
+        ids_act.add(a["id"])
+    for i, a in enumerate(d.get("actividades", [])):
+        for dep in a.get("depende_de", []) or []:
+            if dep not in ids_act:
+                err("actividades[%d] (%s)" % (i, a.get("id")), 'depende de "%s", que no existe en el mapa' % dep)
+
     # flujos
     vistos_flujo = set()
     for i, f in enumerate(d.get("flujos", [])):
@@ -146,6 +161,35 @@ def main():
                 err("%s %s" % (rec.get("id"), c.get("id")), 'dice cubrir el requisito inexistente "%s"' % c["cubre"])
     for q in d.get("calidad", []):
         registrar(q.get("id"), r"^Q-\d+$", "calidad")
+
+    # estados: acciones como texto u objeto; pasa_a debe apuntar a un estado real
+    for e in d.get("estados", []):
+        nombres = {x.get("nombre") for x in e.get("estados", [])}
+        for x in e.get("estados", []):
+            for a in x.get("acciones", []) or []:
+                if isinstance(a, dict):
+                    if not a.get("accion"):
+                        err("estados %s/%s" % (e.get("entidad"), x.get("nombre")), "acción sin texto")
+                    if a.get("pasa_a") and a["pasa_a"] not in nombres:
+                        aviso("estados %s/%s" % (e.get("entidad"), x.get("nombre")),
+                              'pasa_a "%s" no es un estado declarado de esta entidad' % a["pasa_a"])
+
+    # cobertura: reglas huérfanas y requisitos sin prueba
+    reglas_citadas = set()
+    requisitos_cubiertos = set()
+    for rec in d.get("recorridos", []):
+        for q in rec.get("requisitos", []) or []:
+            if q.get("regla"):
+                reglas_citadas.add(q["regla"])
+        for c in rec.get("criterios", []) or []:
+            if c.get("cubre"):
+                requisitos_cubiertos.add(c["cubre"])
+    for g in todas_g:
+        if g and g not in reglas_citadas:
+            aviso("reglas", '%s no la implementa ningún requisito (campo "regla"): regla huérfana o campo sin rellenar' % g)
+    for rid in sorted(todos_r):
+        if rid and rid not in requisitos_cubiertos:
+            aviso("recorridos", '%s no tiene ninguna prueba que lo cubra (campo "cubre" de los criterios)' % rid)
 
     # episodios: refs que existan
     for i, e in enumerate(d.get("episodios", [])):
