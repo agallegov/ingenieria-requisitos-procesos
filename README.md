@@ -44,6 +44,12 @@ En tu carpeta de proyecto (la tuya, fuera de la herramienta):
   regenerable: `01-constitution/` (las reglas y el mapa de toda la app) y
   `02-flows/` (un documento por actividad).
 
+## Qué hay en esta carpeta
+
+- `RUNBOOK.md`: el método completo que sigue tu IA.
+- `visor/`: la web local y las herramientas. No se tocan.
+- `docs/`: cómo está diseñado el método, por si te pica la curiosidad.
+
 ## Reglas de oro
 
 - Tú nunca redactas: cuentas y corriges leyendo.
