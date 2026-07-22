@@ -338,8 +338,8 @@ function tabResumen(d, presentes) {
 
 function tabEpisodios(d) {
   const s = el("section", "seccion");
-  s.appendChild(el("h2", null, "Episodios reales"));
-  s.appendChild(el("div", "nota", "Los hechos con nombres y números que salieron en la entrevista. Son la munición de los tests: viajan con los planos."));
+  s.appendChild(el("h2", null, "Casos reales"));
+  s.appendChild(el("div", "nota", "Cosas que pasaron de verdad en tu negocio, con sus nombres y sus números. Sirven para que el programador entienda el porqué de cada regla y para probar la app con casos de verdad, no inventados."));
   d.episodios.forEach(e2 => {
     const c = el("div", "tarjeta");
     c.appendChild(el("div", "objetivo", e2.texto));
@@ -351,8 +351,8 @@ function tabEpisodios(d) {
 
 function tabFlujos(d) {
   const s = el("section", "seccion");
-  s.appendChild(el("h2", null, "Los flujos"));
-  s.appendChild(el("div", "nota", "Cada bloque lleva su etiqueta: Persona (lo hace alguien), Automático código (la app, con reglas fijas) o Automático IA (la app, con inteligencia artificial)."));
+  s.appendChild(el("h2", null, "Cómo funciona el proceso"));
+  s.appendChild(el("div", "nota", "Primero verás cómo pasa HOY, sin la app; después el mismo proceso cuando la app exista. Cada bloque lleva su etiqueta: Persona (lo hace alguien de carne y hueso), Automático código (lo hace la app sola, con reglas fijas), Automático IA (lo hace la app usando inteligencia artificial) o Tercero externo (lo hace alguien de fuera, como el banco). Léelo de arriba abajo y busca mentiras: pasos que faltan, cosas que no pasan así."));
   const ley = el("div", "leyenda");
   [["m-humano", "Persona"], ["m-estatico", "Automático · código"],
    ["m-ia", "Automático · IA"], ["m-externo", "Tercero externo"], ["m-decision", "⚑ Regla / ⚠ Excepción"], ["m-terminal", "inicio y fin"]]
@@ -384,8 +384,8 @@ function tabFlujos(d) {
 
 function tabRecorridos(d) {
   const s = el("section", "seccion");
-  s.appendChild(el("h2", null, "Recorridos y requisitos"));
-  s.appendChild(el("div", "nota", "Cada recorrido es un trozo de la app que se puede probar de principio a fin. El orden es el orden de entrega; el primero es el esqueleto que recorre todo el camino feliz."));
+  s.appendChild(el("h2", null, "Las entregas: qué se construye y cómo lo comprobaremos"));
+  s.appendChild(el("div", "nota", "La app no se construye entera de golpe: se construye por trozos que puedes probar de principio a fin, en este orden. El primero es la versión mínima que recorre todo el camino normal, aunque sea en fino. Cada trozo lleva sus promesas (qué hará la app: cuando pase tal cosa, la app hará tal otra) y sus pruebas (ejemplos con nombres y números reales para comprobar que la promesa se cumple)."));
   d.recorridos.forEach((r, i) => {
     const c = el("div", "tarjeta");
     const cab = el("div", "tarjeta-cabecera");
@@ -396,7 +396,7 @@ function tabRecorridos(d) {
     c.appendChild(cab);
     if (r.objetivo) c.appendChild(el("div", "objetivo", r.objetivo));
     if (Array.isArray(r.requisitos) && r.requisitos.length) {
-      c.appendChild(el("div", "mini-titulo", "Requisitos"));
+      c.appendChild(el("div", "mini-titulo", "Qué hará la app (las promesas)"));
       r.requisitos.forEach(q => {
         const fila = el("div", "req");
         fila.appendChild(el("span", "idtag", q.id));
@@ -405,7 +405,7 @@ function tabRecorridos(d) {
       });
     }
     if (Array.isArray(r.criterios) && r.criterios.length) {
-      c.appendChild(el("div", "mini-titulo", "Criterios de aceptación"));
+      c.appendChild(el("div", "mini-titulo", "Cómo lo comprobaremos (las pruebas)"));
       r.criterios.forEach(cr => {
         const b = el("div", "criterio");
         b.appendChild(el("span", "idtag", cr.id));
@@ -425,7 +425,8 @@ function tabRecorridos(d) {
 
 function tabReglas(d) {
   const s = el("section", "seccion");
-  s.appendChild(el("h2", null, "Reglas de negocio"));
+  s.appendChild(el("h2", null, "Las reglas de tu negocio"));
+  s.appendChild(el("div", "nota", "Las normas que la app debe respetar siempre. Cuando una regla depende de varias cosas a la vez, va en tabla: cada fila es un caso y la última columna dice qué pasa."));
   d.reglas.forEach(g => {
     const c = el("div", "tarjeta");
     const cab = el("div", "tarjeta-cabecera");
@@ -441,8 +442,8 @@ function tabReglas(d) {
 
 function tabEstados(d) {
   const s = el("section", "seccion");
-  s.appendChild(el("h2", null, "Estados"));
-  s.appendChild(el("div", "nota", "En qué situaciones puede estar cada cosa y qué se puede hacer en cada una."));
+  s.appendChild(el("h2", null, "Estados: en qué situación puede estar cada cosa"));
+  s.appendChild(el("div", "nota", "Un pedido puede estar sin confirmar, aprobado, enviado o anulado, y en cada situación se pueden hacer unas cosas y otras no. Esta tabla lo deja cerrado para que la app nunca permita algo que no toca."));
   d.estados.forEach(e2 => {
     const c = el("div", "tarjeta");
     c.appendChild(el("div", "nombre", e2.entidad));
@@ -454,7 +455,8 @@ function tabEstados(d) {
 
 function tabDatos(d) {
   const s = el("section", "seccion");
-  s.appendChild(el("h2", null, "Datos e integraciones"));
+  s.appendChild(el("h2", null, "Los datos: qué guarda la app y de dónde sale"));
+  s.appendChild(el("div", "nota", "Qué información apunta la app de cada cosa, de dónde viene la que ya existe (tu Excel, tu programa de facturación, tu gestor, tus papeles) y con qué otros programas o servicios tiene que hablar (el banco, el ERP, WhatsApp, la web de un proveedor)."));
   if (Array.isArray(d.datos) && d.datos.length) {
     s.appendChild(el("div", "mini-titulo", "Qué se guarda"));
     s.appendChild(tabla(["Cosa", "Qué se guarda", "De dónde viene"], d.datos.map(x => [x.cosa, (x.guarda || []).join(", "), x.origen || ""])));
@@ -475,8 +477,8 @@ function tabDatos(d) {
 function tabSuperficie(d) {
   const sup = d.superficie;
   const s = el("section", "seccion");
-  s.appendChild(el("h2", null, "Superficie de uso"));
-  s.appendChild(el("div", "nota", "Por dónde se toca la aplicación, quién puede qué, y en qué condiciones se usa."));
+  s.appendChild(el("h2", null, "Por dónde se usa la app"));
+  s.appendChild(el("div", "nota", "Cada puerta de entrada a la app (un panel, un WhatsApp, un correo): quién entra por ella, qué ve, qué puede hacer y qué no debe poder hacer JAMÁS. Más abajo: quién puede hacer qué (la tabla de permisos), quién recibe avisos y por dónde, y las condiciones del día a día."));
   (sup.puntos || []).forEach(p => {
     const c = el("div", "tarjeta");
     c.appendChild(el("div", "nombre", p.nombre));
@@ -491,7 +493,7 @@ function tabSuperficie(d) {
     s.appendChild(c);
   });
   if (sup.permisos && Array.isArray(sup.permisos.acciones) && sup.permisos.acciones.length) {
-    s.appendChild(el("div", "mini-titulo", "Matriz de permisos"));
+    s.appendChild(el("div", "mini-titulo", "Quién puede hacer qué"));
     s.appendChild(tabla([""].concat(sup.permisos.acciones),
       (sup.permisos.roles || []).map(r => [r.rol].concat(sup.permisos.acciones.map(a => (r.permitidas || []).includes(a) ? "✓" : "")))));
   }
@@ -501,7 +503,7 @@ function tabSuperficie(d) {
       sup.avisos.map(a => [a.quien, a.que, a.canal || "", a.cuando || ""])));
   }
   if (Array.isArray(sup.condiciones) && sup.condiciones.length) {
-    s.appendChild(el("div", "mini-titulo", "Condiciones de uso"));
+    s.appendChild(el("div", "mini-titulo", "Condiciones del día a día"));
     const ul = el("ul", "lista");
     sup.condiciones.forEach(x => ul.appendChild(el("li", null, x)));
     s.appendChild(ul);
@@ -581,8 +583,8 @@ function tabActores(d) {
 
 function tabDocumentos() {
   const s = el("section", "seccion");
-  s.appendChild(el("h2", null, "Documentos de salida"));
-  s.appendChild(el("div", "nota", "Esto es lo que se entrega a la IA que construya o audite. Se generan desde los planos: no se editan a mano."));
+  s.appendChild(el("h2", null, "Para el programador"));
+  s.appendChild(el("div", "nota", "Estos dos documentos son lo que le darás a la IA que construya (o revise) tu aplicación: el encargo (las instrucciones) y el documento completo con todo lo acordado. Se generan solos a partir de tus planos; no hace falta que los leas enteros, pero son tuyos."));
   if (docEncargo) {
     s.appendChild(el("div", "mini-titulo", "encargo.md"));
     s.appendChild(el("pre", "doc", docEncargo));
@@ -596,7 +598,8 @@ function tabDocumentos() {
 
 function tabCalidad(d) {
   const s = el("section", "seccion");
-  s.appendChild(el("h2", null, "Calidad y límites"));
+  s.appendChild(el("h2", null, "Compromisos de funcionamiento"));
+  s.appendChild(el("div", "nota", "Promesas medibles sobre velocidad, aguante y seguridad: cuánto puede tardar algo, qué pasa si se corta internet, quién no debe ver según qué datos. Se pueden comprobar con un reloj o con una prueba, no son buenas intenciones."));
   d.calidad.forEach(q => {
     const fila = el("div", "req");
     fila.appendChild(el("span", "idtag", q.id));
@@ -608,8 +611,8 @@ function tabCalidad(d) {
 
 function tabFuera(d) {
   const s = el("section", "seccion");
-  s.appendChild(el("h2", null, "Fuera de alcance"));
-  s.appendChild(el("div", "nota", "Esto NO se construye, y está decidido a propósito."));
+  s.appendChild(el("h2", null, "Lo que esta app NO hará"));
+  s.appendChild(el("div", "nota", "Decidido a propósito, para que nadie lo espere ni nadie lo construya por su cuenta. Decir que no a algo también es una decisión de negocio."));
   const ul = el("ul", "lista");
   d.fuera.forEach(x => ul.appendChild(el("li", null, x)));
   s.appendChild(ul);
@@ -618,8 +621,8 @@ function tabFuera(d) {
 
 function tabPreguntas(d) {
   const s = el("section", "seccion");
-  s.appendChild(el("h2", null, "Preguntas abiertas"));
-  s.appendChild(el("div", "nota", "Lo que quedó sin decidir. También es el buzón del agente constructor."));
+  s.appendChild(el("h2", null, "Cosas sin decidir todavía"));
+  s.appendChild(el("div", "nota", "Lo que quedó pendiente de decidir. Nada de esta lista se construye hasta que tú lo decidas: el programador tiene prohibido inventarse las respuestas."));
   const c = el("div", "tarjeta aviso-preguntas");
   const ul = el("ul", "lista");
   d.preguntas.forEach(x => ul.appendChild(el("li", null, x)));
@@ -643,18 +646,18 @@ function pintar(d) {
   document.getElementById("proyecto").textContent = d.proyecto ? "Proyecto: " + d.proyecto : "";
 
   const defs = [
-    ["flujos", "Flujos", Array.isArray(d.flujos) && d.flujos.length > 0, tabFlujos],
-    ["actores", "Por actor", Array.isArray(d.actores) && d.actores.length > 0 && ((Array.isArray(d.flujos) && d.flujos.length > 0) || !!d.superficie), tabActores],
-    ["recorridos", "Recorridos", Array.isArray(d.recorridos) && d.recorridos.length > 0, tabRecorridos],
-    ["reglas", "Reglas", Array.isArray(d.reglas) && d.reglas.length > 0, tabReglas],
-    ["episodios", "Episodios", Array.isArray(d.episodios) && d.episodios.length > 0, tabEpisodios],
+    ["flujos", "El proceso", Array.isArray(d.flujos) && d.flujos.length > 0, tabFlujos],
+    ["actores", "Por persona", Array.isArray(d.actores) && d.actores.length > 0 && ((Array.isArray(d.flujos) && d.flujos.length > 0) || !!d.superficie), tabActores],
+    ["recorridos", "Las entregas", Array.isArray(d.recorridos) && d.recorridos.length > 0, tabRecorridos],
+    ["reglas", "Las reglas", Array.isArray(d.reglas) && d.reglas.length > 0, tabReglas],
+    ["episodios", "Casos reales", Array.isArray(d.episodios) && d.episodios.length > 0, tabEpisodios],
     ["estados", "Estados", Array.isArray(d.estados) && d.estados.length > 0, tabEstados],
-    ["datos", "Datos", (Array.isArray(d.datos) && d.datos.length > 0) || (Array.isArray(d.integraciones) && d.integraciones.length > 0) || (Array.isArray(d.volumen) && d.volumen.length > 0), tabDatos],
-    ["superficie", "Superficie", !!(d.superficie && ((d.superficie.puntos || []).length || d.superficie.permisos || (d.superficie.avisos || []).length || (d.superficie.condiciones || []).length)), tabSuperficie],
-    ["calidad", "Calidad", Array.isArray(d.calidad) && d.calidad.length > 0, tabCalidad],
-    ["fuera", "Fuera de alcance", Array.isArray(d.fuera) && d.fuera.length > 0, tabFuera],
-    ["preguntas", "Preguntas", Array.isArray(d.preguntas) && d.preguntas.length > 0, tabPreguntas],
-    ["documentos", "Documentos", !!(docSpec || docEncargo), tabDocumentos]
+    ["datos", "Los datos", (Array.isArray(d.datos) && d.datos.length > 0) || (Array.isArray(d.integraciones) && d.integraciones.length > 0) || (Array.isArray(d.volumen) && d.volumen.length > 0), tabDatos],
+    ["superficie", "Por dónde se usa", !!(d.superficie && ((d.superficie.puntos || []).length || d.superficie.permisos || (d.superficie.avisos || []).length || (d.superficie.condiciones || []).length)), tabSuperficie],
+    ["calidad", "Compromisos", Array.isArray(d.calidad) && d.calidad.length > 0, tabCalidad],
+    ["fuera", "Lo que NO hará", Array.isArray(d.fuera) && d.fuera.length > 0, tabFuera],
+    ["preguntas", "Sin decidir", Array.isArray(d.preguntas) && d.preguntas.length > 0, tabPreguntas],
+    ["documentos", "Para el programador", !!(docSpec || docEncargo), tabDocumentos]
   ];
 
   const cont = document.getElementById("contenido");

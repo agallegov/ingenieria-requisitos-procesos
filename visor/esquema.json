@@ -152,7 +152,7 @@
         "properties": {
           "cosa": { "type": "string" },
           "guarda": { "type": "array", "items": { "type": "string" } },
-          "origen": { "type": "string", "description": "De dónde viene lo existente (Excel actual, se empieza de cero...)." }
+          "origen": { "type": "string", "description": "De dónde viene lo existente: el sistema actual, sea el que sea (un Excel, SAP, Holded, el banco, un Drive, la app de un tercero), o 'se empieza de cero'." }
         }
       }
     },
