@@ -27,18 +27,21 @@ def tabla_md(columnas, filas):
     p()
 
 
+ETIQUETAS = {"humano": "persona", "estatico": "automático: código", "ia": "automático: IA"}
+
+
 def paso_texto(paso, sangria):
     pre = "    " * sangria
     if paso["tipo"] == "decision":
-        marca = "⚠" if paso["clase"] == "excepcion" else "⚑"
-        p("%s- %s ¿%s" % (pre, marca, paso["condicion"].lstrip("¿")))
+        marca = "⚠ Excepción" if paso["clase"] == "excepcion" else "⚑ Regla"
+        p("%s- %s: ¿%s" % (pre, marca, paso["condicion"].lstrip("¿")))
         p("%s    - si %s:" % (pre, paso["rama"]["etiqueta"]))
         for x in paso["rama"]["pasos"]:
             paso_texto(x, sangria + 2)
         p("%s    - …y vuelve al flujo%s" % (pre, (" (%s)" % paso["sigue"]) if paso.get("sigue") else ""))
     else:
         quien = (" · %s" % paso["quien"]) if paso.get("quien") else ""
-        p("%s- [%s] %s%s" % (pre, paso["tipo"], paso["texto"], quien))
+        p("%s- [%s] %s%s" % (pre, ETIQUETAS[paso["tipo"]], paso["texto"], quien))
 
 
 def main():

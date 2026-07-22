@@ -89,13 +89,16 @@ alcance y Preguntas. Las pestañas aparecen según se rellenan los bloques.
 
 Vocabulario cerrado de pasos en los flujos (el visor no dibuja nada más):
 
-| Tipo | Aspecto | Significado |
+| Tipo (en el JSON) | En pantalla | Significado |
 |---|---|---|
-| `humano` | redondeado naranja | lo hace una persona (con su `quien`) |
-| `estatico` | barras dobles azul | lo hace código normal, reglas fijas |
-| `ia` | hexágono aqua | lo hace un modelo de IA |
-| `decision` | rombo gris | regla ⚑ o excepción ⚠, con su rama de desvío |
+| `humano` | redondeado naranja, etiqueta "Persona" | lo hace una persona (con su `quien`) |
+| `estatico` | barras dobles azul, etiqueta "Automático · código" | lo hace la app con reglas fijas |
+| `ia` | hexágono aqua, etiqueta "Automático · IA" | lo hace la app con un modelo de IA |
+| `decision` | rombo gris, etiqueta "Regla" o "Excepción" | bifurcación con su rama de desvío |
 | inicio/fin | círculos oscuros | los pone el visor solo |
+
+Cada bloque lleva su etiqueta escrita encima: el usuario nunca tiene que
+recordar qué significa una forma o un color.
 
 Cómo se usa:
 

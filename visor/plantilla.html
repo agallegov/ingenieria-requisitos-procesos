@@ -63,6 +63,11 @@
 
   .paso { max-width: 460px; margin: 0 auto; text-align: center; font-size: 14.5px; line-height: 1.35; }
   .paso .quien { font-weight: bold; }
+  .etiqueta-tipo { display: block; font-size: 10px; font-weight: bold; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 3px; }
+  .humano .etiqueta-tipo { color: #a03c10; }
+  .estatico .etiqueta-tipo { color: #1c5cab; }
+  .ia .etiqueta-tipo { color: #0e7a55; }
+  .decision .etiqueta-tipo { color: #52514e; }
   .humano { background: #f9e0d5; border: 2px solid #d95926; border-radius: 14px; padding: 10px 18px; }
   .estatico { background: #cde2fb; border: 2px solid #2a78d6; padding: 10px 26px; box-shadow: inset 5px 0 0 -3px #2a78d6, inset -5px 0 0 -3px #2a78d6; }
   .ia-borde { max-width: 470px; margin: 0 auto; background: #1baf7a; clip-path: polygon(19px 0, calc(100% - 19px) 0, 100% 50%, calc(100% - 19px) 100%, 19px 100%, 0 50%); padding: 2px 3px; }
@@ -163,7 +168,10 @@ function validarPaso(p, flujo) {
   }
 }
 
+const ETIQUETAS = { humano: "Persona", estatico: "Automático · código", ia: "Automático · IA" };
+
 function ponerTexto(nodo, p) {
+  nodo.appendChild(el("span", "etiqueta-tipo", ETIQUETAS[p.tipo]));
   nodo.appendChild(document.createTextNode(p.texto));
   if (p.quien) {
     nodo.appendChild(document.createTextNode(" · "));
@@ -196,10 +204,13 @@ function pintarPasos(destino, pasos, dentroDeRama) {
     destino.appendChild(conector(!!dentroDeRama));
     if (p.tipo === "decision") {
       const borde = el("div", "decision-borde");
-      borde.appendChild(el("div", "paso decision", (p.clase === "excepcion" ? "⚠ " : "⚑ ") + p.condicion));
+      const rombo = el("div", "paso decision");
+      rombo.appendChild(el("span", "etiqueta-tipo", p.clase === "excepcion" ? "⚠ Excepción" : "⚑ Regla"));
+      rombo.appendChild(document.createTextNode(p.condicion));
+      borde.appendChild(rombo);
       destino.appendChild(borde);
       const rama = el("div", "rama");
-      rama.appendChild(el("div", "titulo-rama", (p.clase === "excepcion" ? "⚠ " : "⚑ ") + p.rama.etiqueta));
+      rama.appendChild(el("div", "titulo-rama", (p.clase === "excepcion" ? "⚠ Excepción: " : "⚑ Regla: ") + p.rama.etiqueta));
       pintarPasos(rama, p.rama.pasos, true);
       rama.appendChild(el("div", "vuelta", "…y vuelve al flujo"));
       destino.appendChild(rama);
@@ -272,10 +283,10 @@ function tabResumen(d, presentes) {
 function tabFlujos(d) {
   const s = el("section", "seccion");
   s.appendChild(el("h2", null, "Los flujos"));
-  s.appendChild(el("div", "nota", "Naranja lo hacen personas, azul lo hace código normal, verde lo hace un modelo de IA."));
+  s.appendChild(el("div", "nota", "Cada bloque lleva su etiqueta: Persona (lo hace alguien), Automático código (la app, con reglas fijas) o Automático IA (la app, con inteligencia artificial)."));
   const ley = el("div", "leyenda");
-  [["m-humano", "humano: lo hace una persona"], ["m-estatico", "estático: código normal"],
-   ["m-ia", "modelo IA"], ["m-decision", "⚑ regla / ⚠ excepción"], ["m-terminal", "inicio y fin"]]
+  [["m-humano", "Persona"], ["m-estatico", "Automático · código"],
+   ["m-ia", "Automático · IA"], ["m-decision", "⚑ Regla / ⚠ Excepción"], ["m-terminal", "inicio y fin"]]
     .forEach(([c, t]) => { const sp = el("span"); sp.appendChild(el("i", c)); sp.appendChild(document.createTextNode(t)); ley.appendChild(sp); });
   s.appendChild(ley);
   d.flujos.forEach(f => {
