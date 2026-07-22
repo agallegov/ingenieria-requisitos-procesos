@@ -109,6 +109,8 @@
   dl.vocab dd { display: inline; margin-left: 6px; color: #52514e; }
   .aviso-preguntas { border-left: 4px solid #d95926; }
 
+  pre.doc { white-space: pre-wrap; word-break: break-word; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background: #f9f9f7; border: 1px solid #e1e0d9; border-radius: 10px; padding: 14px 16px; overflow-x: auto; margin-bottom: 16px; }
+
   .error { margin-top: 30px; border: 2px solid #d03b3b; border-radius: 10px; padding: 16px 18px; background: #fdf1f1; color: #7c1f1f; font-size: 14px; }
   footer { margin-top: 60px; font-size: 12px; color: #898781; text-align: center; }
 </style>
@@ -137,6 +139,8 @@
 "use strict";
 const TIPOS_ACCION = ["humano", "estatico", "ia"];
 let ultimaFoto = "";
+let docSpec = null;
+let docEncargo = null;
 let pestanaActiva = (location.hash || "").replace("#", "") || "resumen";
 
 function el(tag, clase, texto) {
@@ -431,6 +435,89 @@ function tabSuperficie(d) {
   return s;
 }
 
+function recogerAcciones(pasos, fn) {
+  pasos.forEach(p => {
+    if (p.tipo === "decision") recogerAcciones(p.rama.pasos, fn);
+    else fn(p);
+  });
+}
+
+function tabActores(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Por actor"));
+  s.appendChild(el("div", "nota", "El proyecto visto desde cada persona: qué hace, por dónde toca la aplicación, qué puede y qué no, y de qué se entera."));
+  const sup = d.superficie || {};
+  d.actores.forEach(a => {
+    const clave = a.nombre.toLowerCase();
+    const c = el("div", "tarjeta");
+    const cab = el("div", "tarjeta-cabecera");
+    cab.appendChild(el("span", "nombre", a.nombre));
+    if (a.rol) cab.appendChild(el("span", "chip chip-neutro", a.rol));
+    c.appendChild(cab);
+
+    const tareas = [];
+    (d.flujos || []).forEach(f => recogerAcciones(f.pasos, p => {
+      if ((p.quien || "").toLowerCase() === clave) tareas.push([p.texto, f.momento]);
+    }));
+    if (tareas.length) {
+      c.appendChild(el("div", "mini-titulo", "Qué hace en los flujos"));
+      tareas.forEach(([t, m]) => {
+        const fila = el("div", "req");
+        fila.appendChild(el("span", "chip " + (m === "hoy" ? "chip-hoy" : "chip-futuro"), m === "hoy" ? "hoy" : "con la app"));
+        fila.appendChild(el("span", null, t));
+        c.appendChild(fila);
+      });
+    }
+
+    const puntos = (sup.puntos || []).filter(p => (p.quien || []).some(q => q.toLowerCase() === clave));
+    if (puntos.length) {
+      c.appendChild(el("div", "mini-titulo", "Por dónde toca la app"));
+      puntos.forEach(p => {
+        const fila = el("div", "req");
+        fila.appendChild(el("span", null, p.nombre + (p.llega ? " (" + p.llega + ")" : "")));
+        c.appendChild(fila);
+      });
+    }
+
+    const rol = ((sup.permisos || {}).roles || []).find(r => r.rol.toLowerCase() === clave);
+    if (rol) {
+      c.appendChild(el("div", "mini-titulo", "Qué puede hacer"));
+      c.appendChild(el("div", "objetivo", (rol.permitidas || []).join(" · ") || "nada"));
+    }
+    const nunca = puntos.reduce((acc, p) => acc.concat(p.nunca || []), []);
+    if (nunca.length) {
+      c.appendChild(el("div", "mini-titulo", "Qué NO debe poder jamás"));
+      c.appendChild(el("div", "objetivo", nunca.join(" · ")));
+    }
+    const avisos = (sup.avisos || []).filter(x => (x.quien || "").toLowerCase() === clave);
+    if (avisos.length) {
+      c.appendChild(el("div", "mini-titulo", "Avisos que recibe"));
+      avisos.forEach(x => {
+        const fila = el("div", "req");
+        fila.appendChild(el("span", null, x.que + (x.canal ? " · por " + x.canal : "") + (x.cuando ? " · " + x.cuando : "")));
+        c.appendChild(fila);
+      });
+    }
+    s.appendChild(c);
+  });
+  return s;
+}
+
+function tabDocumentos() {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Documentos de salida"));
+  s.appendChild(el("div", "nota", "Esto es lo que se entrega a la IA que construya o audite. Se generan desde los planos: no se editan a mano."));
+  if (docEncargo) {
+    s.appendChild(el("div", "mini-titulo", "encargo.md"));
+    s.appendChild(el("pre", "doc", docEncargo));
+  }
+  if (docSpec) {
+    s.appendChild(el("div", "mini-titulo", "spec.md"));
+    s.appendChild(el("pre", "doc", docSpec));
+  }
+  return s;
+}
+
 function tabCalidad(d) {
   const s = el("section", "seccion");
   s.appendChild(el("h2", null, "Calidad y límites"));
@@ -481,6 +568,7 @@ function pintar(d) {
 
   const defs = [
     ["flujos", "Flujos", Array.isArray(d.flujos) && d.flujos.length > 0, tabFlujos],
+    ["actores", "Por actor", Array.isArray(d.actores) && d.actores.length > 0 && ((Array.isArray(d.flujos) && d.flujos.length > 0) || !!d.superficie), tabActores],
     ["recorridos", "Recorridos", Array.isArray(d.recorridos) && d.recorridos.length > 0, tabRecorridos],
     ["reglas", "Reglas", Array.isArray(d.reglas) && d.reglas.length > 0, tabReglas],
     ["estados", "Estados", Array.isArray(d.estados) && d.estados.length > 0, tabEstados],
@@ -488,7 +576,8 @@ function pintar(d) {
     ["superficie", "Superficie", !!(d.superficie && ((d.superficie.puntos || []).length || d.superficie.permisos || (d.superficie.avisos || []).length || (d.superficie.condiciones || []).length)), tabSuperficie],
     ["calidad", "Calidad", Array.isArray(d.calidad) && d.calidad.length > 0, tabCalidad],
     ["fuera", "Fuera de alcance", Array.isArray(d.fuera) && d.fuera.length > 0, tabFuera],
-    ["preguntas", "Preguntas", Array.isArray(d.preguntas) && d.preguntas.length > 0, tabPreguntas]
+    ["preguntas", "Preguntas", Array.isArray(d.preguntas) && d.preguntas.length > 0, tabPreguntas],
+    ["documentos", "Documentos", !!(docSpec || docEncargo), tabDocumentos]
   ];
 
   const cont = document.getElementById("contenido");
@@ -514,26 +603,40 @@ function pintar(d) {
   activar(ids.includes(pestanaActiva) ? pestanaActiva : "resumen");
 }
 
-function cargar() {
-  fetch("datos.json", { cache: "no-store" })
-    .then(r => { if (!r.ok) throw new Error("HTTP " + r.status + " al pedir los datos."); return r.text(); })
-    .then(texto => {
-      document.getElementById("banner").classList.remove("visible");
-      if (texto === ultimaFoto) return;
-      ultimaFoto = texto;
-      const d = JSON.parse(texto);
-      if (!d || d.version !== 2) throw new Error('falta "version": 2.');
-      if (typeof d.titulo !== "string" || !d.titulo) throw new Error('falta "titulo".');
-      document.getElementById("error").hidden = true;
-      pintar(d);
-    })
-    .catch(e => {
-      if (ultimaFoto) {
-        document.getElementById("banner").classList.add("visible");
-      } else {
-        fallo(e.message);
-      }
-    });
+async function txtOpcional(ruta) {
+  try {
+    const r = await fetch(ruta, { cache: "no-store" });
+    return r.ok ? await r.text() : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function cargar() {
+  try {
+    const r = await fetch("datos.json", { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status + " al pedir los datos.");
+    const texto = await r.text();
+    const spec = await txtOpcional("spec.md");
+    const encargo = await txtOpcional("encargo.md");
+    document.getElementById("banner").classList.remove("visible");
+    const foto = texto + " " + (spec || "") + " " + (encargo || "");
+    if (foto === ultimaFoto) return;
+    ultimaFoto = foto;
+    const d = JSON.parse(texto);
+    if (!d || d.version !== 2) throw new Error('falta "version": 2.');
+    if (typeof d.titulo !== "string" || !d.titulo) throw new Error('falta "titulo".');
+    docSpec = spec;
+    docEncargo = encargo;
+    document.getElementById("error").hidden = true;
+    pintar(d);
+  } catch (e) {
+    if (ultimaFoto) {
+      document.getElementById("banner").classList.add("visible");
+    } else {
+      fallo(e.message);
+    }
+  }
 }
 
 cargar();

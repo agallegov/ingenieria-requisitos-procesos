@@ -30,8 +30,15 @@ def hacer_handler(ruta_datos):
             elif self.path == "/datos.json":
                 # Se relee en cada petición: editar el json + recargar basta.
                 self._fichero(ruta_datos, "application/json; charset=utf-8")
+            elif self.path in ("/spec.md", "/encargo.md"):
+                # Documentos de salida, si ya existen junto a los datos.
+                ruta = os.path.join(os.path.dirname(ruta_datos), self.path.lstrip("/"))
+                if os.path.isfile(ruta):
+                    self._fichero(ruta, "text/plain; charset=utf-8")
+                else:
+                    self.send_error(404, "Aún no se ha generado " + self.path.lstrip("/"))
             else:
-                self.send_error(404, "Este visor solo sirve / y /datos.json")
+                self.send_error(404, "Este visor solo sirve /, /datos.json, /spec.md y /encargo.md")
 
         def _fichero(self, ruta, tipo):
             try:

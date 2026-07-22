@@ -84,8 +84,11 @@ misma fuente, mismo fondo, mismos bloques, en cualquier ordenador. Lo único
 que se genera con el usuario son datos: `planos.json`.
 
 La web tiene pestañas: Resumen (contrato, actores, vocabulario y progreso),
-Flujos, Recorridos, Reglas, Estados, Datos, Superficie, Calidad, Fuera de
-alcance y Preguntas. Las pestañas aparecen según se rellenan los bloques.
+Flujos, Por actor (el corte transversal: qué hace cada uno, por dónde toca
+la app, permisos y avisos; se calcula solo desde los datos), Recorridos,
+Reglas, Estados, Datos, Superficie, Calidad, Fuera de alcance, Preguntas y
+Documentos (el `spec.md` y el `encargo.md` tal cual, en cuanto existen junto
+a `planos.json`). Las pestañas aparecen según se rellenan los bloques.
 
 Vocabulario cerrado de pasos en los flujos (el visor no dibuja nada más):
 
