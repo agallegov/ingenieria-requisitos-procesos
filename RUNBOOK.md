@@ -63,10 +63,12 @@ Cómo se trabaja:
    No entres al detalle de ninguna: si el usuario se mete en una, apunta y
    reconduce ("esa la abrimos en su sesión").
 2. **Una sesión por actividad**, en el orden del mapa: método completo
-   F1-F5 en su carpeta, con su propio visor. Abre cada sesión leyendo el
-   mapa: lo global NO se re-pregunta. Si en una actividad aparece algo
-   global nuevo (un actor, un término, una entidad, una integración), se
-   añade AL MAPA, no a la actividad.
+   F1-F5 en su carpeta. Abre cada sesión leyendo el mapa: lo global NO se
+   re-pregunta. Si en una actividad aparece algo global nuevo (un actor, un
+   término, una entidad, una integración), se añade AL MAPA, no a la
+   actividad. Al cerrar su F5, cada actividad baja a SU PROPIO spec file:
+   `python3 visor/generar_spec.py --datos .../actividades/<id>/planos.json`
+   genera `spec.md` y tú escribes `encargo.md`, ambos en su carpeta.
 3. **El estado vive en el mapa**: sin empezar → en entrevista →
    especificada → en obra → entregada. Lo actualizas tú al cerrar cada
    sesión o cada entrega. Quien mira el mapa ve el proyecto entero de un
@@ -85,6 +87,31 @@ Cómo se trabaja:
 Cuándo NO hace falta mapa: si el encargo es una sola actividad (el almacén
 de Paco), el plano único de siempre basta. Si al cartografiar salen más de
 3 o 4 actividades, hay mapa.
+
+**El visor en proyectos con mapa**: sirve SIEMPRE el `planos.json` del mapa
+(no el de una actividad): la web enseña un menú a la izquierda con el mapa
+y todas las actividades, el usuario elige cuál mirar, y los planos de cada
+una se sirven solos desde `actividades/<id>/`. Una actividad sin planos
+todavía enseña su ficha con cómo arrancarla.
+
+**El mapa como interfaz de mando.** En cualquier momento, con sus palabras,
+el usuario puede pedirte:
+
+- "¿Qué actividades hay? ¿Cómo vamos?": lee el `planos.json` del mapa y
+  responde con las áreas, cada actividad con su estado, los números (tantas
+  entregadas, tantas sin empezar) y qué toca ahora según el orden y las
+  dependencias.
+- "Quiero iterar / abrir / seguir con [actividad]": localízala en el mapa
+  (si el nombre no casa con ninguna, enseña el índice y pregunta cuál era).
+  Según su estado: sin empezar → arranca su sesión F1-F5 en
+  `actividades/<id>/` y márcala "en entrevista"; especificada, en obra o
+  entregada → modo C sobre su `planos.json` (cosechando antes su buzón de
+  preguntas del constructor). Levanta el visor de ESA actividad.
+- "Añade [tal cosa] al mapa": nueva entrada en el catálogo, con su área,
+  su línea de resumen y sus dependencias, estado "sin empezar".
+
+Cada cambio de estado se escribe en el mapa en el momento en que ocurre:
+el mapa siempre dice la verdad del proyecto.
 
 ## Conducta
 

@@ -61,6 +61,30 @@
   .chip-hecho { background: #383835; color: #ffffff; border: 1px solid #383835; }
   .chip-obra { background: #cde2fb; color: #1c5cab; border: 1px solid #2a78d6; }
   .chip-spec { background: #d6f1e7; color: #0e7a55; border: 1px solid #1baf7a; }
+  .indice-mapa { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 20px; }
+  .indice-mapa button { font: 12px Arial, Helvetica, sans-serif; border: 1px solid #e1e0d9; border-radius: 999px; padding: 4px 11px; background: #f9f9f7; cursor: pointer; color: #0b0b0b; }
+  .indice-mapa button:hover { border-color: #d95926; }
+  .indice-mapa button:focus-visible { outline: 2px solid #d95926; outline-offset: 2px; }
+  .pm { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .pm-entregada { background: #383835; } .pm-en.obra, .pm-obra { background: #2a78d6; }
+  .pm-especificada { background: #1baf7a; } .pm-entrevista { background: #d95926; } .pm-sin { background: #e1e0d9; }
+  .fila-resaltada { outline: 2px solid #d95926; outline-offset: 4px; border-radius: 4px; }
+
+  body.con-menu .pagina { max-width: 1200px; }
+  .cuerpo { display: flex; gap: 24px; align-items: flex-start; }
+  .panel { flex: 1; min-width: 0; }
+  .menu-actividades { flex: 0 0 235px; position: sticky; top: 0; max-height: 100vh; overflow-y: auto; padding: 14px 6px 20px 0; }
+  .menu-actividades .grupo { font-size: 10.5px; font-weight: bold; text-transform: uppercase; letter-spacing: .1em; color: #898781; margin: 14px 0 4px 10px; }
+  .menu-actividades button { display: block; width: 100%; text-align: left; font: 13px/1.35 Arial, Helvetica, sans-serif; padding: 7px 10px; border: 0; background: none; border-radius: 8px; cursor: pointer; color: #0b0b0b; }
+  .menu-actividades button:hover { background: #f0efec; }
+  .menu-actividades button:focus-visible { outline: 2px solid #d95926; outline-offset: 1px; }
+  .menu-actividades button.activo { background: #383835; color: #ffffff; }
+  @media (max-width: 760px) {
+    .cuerpo { display: block; }
+    .menu-actividades { position: static; max-height: none; display: flex; overflow-x: auto; gap: 4px; padding: 10px 0; }
+    .menu-actividades .grupo { display: none; }
+    .menu-actividades button { width: auto; white-space: nowrap; border: 1px solid #e1e0d9; }
+  }
   .flujo .descripcion { font-size: 13.5px; color: #52514e; max-width: 65ch; }
   .lienzo { margin-top: 16px; }
 
@@ -136,9 +160,14 @@
     aún no son válidos; estás viendo la última versión buena. Se actualizará
     solo cuando tu IA termine de escribir.</div>
 
-    <nav class="pestanas" id="pestanas" hidden></nav>
-    <main id="contenido"></main>
-    <div class="error" id="error" hidden></div>
+    <div class="cuerpo">
+      <aside class="menu-actividades" id="menuIzq" hidden></aside>
+      <div class="panel">
+        <nav class="pestanas" id="pestanas" hidden></nav>
+        <main id="contenido"></main>
+        <div class="error" id="error" hidden></div>
+      </div>
+    </div>
 
     <footer>Plantilla fija v2.1 · la página se actualiza sola cuando tu IA
     añade contenido · el servidor local se apaga solo al cabo de un rato; tu
@@ -152,7 +181,8 @@ let ultimaFoto = "";
 let docSpec = null;
 let docEncargo = null;
 let cargando = false;
-let pestanaActiva = (location.hash || "").replace("#", "") || "resumen";
+let seleccion = "mapa";
+let pestanaActiva = "resumen";
 
 function el(tag, clase, texto) {
   const n = document.createElement(tag);
@@ -340,10 +370,16 @@ function tabResumen(d, presentes) {
 
 const CHIP_ACTIVIDAD = { "sin empezar": "chip-neutro", "en entrevista": "chip-futuro", "especificada": "chip-spec", "en obra": "chip-obra", "entregada": "chip-hecho" };
 
+const PM_ESTADO = { "entregada": "pm-entregada", "en obra": "pm-obra", "especificada": "pm-especificada", "en entrevista": "pm-entrevista", "sin empezar": "pm-sin" };
+
 function tabMapa(d) {
   const s = el("section", "seccion");
   s.appendChild(el("h2", null, "El mapa de la aplicación"));
-  s.appendChild(el("div", "nota", "Una aplicación grande son muchas actividades (hacer un pedido, emitir una factura, dar un alta...). Este mapa las tiene todas, agrupadas por zonas del negocio, con su estado. Cada actividad se detalla en su propia sesión y tiene sus propios planos; este mapa es el panel de control del proyecto entero."));
+  s.appendChild(el("div", "nota", "Una aplicación grande son muchas actividades (hacer un pedido, emitir una factura, dar un alta...). Este mapa las tiene todas, agrupadas por zonas del negocio, con su estado. Cada actividad se detalla en su propia sesión y tiene sus propios planos; este mapa es el panel de control del proyecto entero. Pulsa una en el índice para saltar a ella."));
+
+  const filas = {};
+  const indice = el("div", "indice-mapa");
+  const cuerpoCards = [];
   const areas = [];
   d.actividades.forEach(a => { if (!areas.includes(a.area)) areas.push(a.area); });
   areas.forEach(area => {
@@ -358,9 +394,19 @@ function tabMapa(d) {
       if (Array.isArray(a.depende_de) && a.depende_de.length) cuerpo.appendChild(el("span", "objetivo", " · necesita antes: " + a.depende_de.join(", ")));
       fila.appendChild(cuerpo);
       c.appendChild(fila);
+      filas[a.id] = fila;
+
+      const b = el("button");
+      b.appendChild(el("span", "pm " + (PM_ESTADO[a.estado] || "pm-sin")));
+      b.appendChild(document.createTextNode(a.nombre));
+      b.title = "abrir esta actividad · " + (a.estado || "sin empezar") + " · " + area;
+      b.addEventListener("click", () => seleccionar(a.id));
+      indice.appendChild(b);
     });
-    s.appendChild(c);
+    cuerpoCards.push(c);
   });
+  s.appendChild(indice);
+  cuerpoCards.forEach(c => s.appendChild(c));
   return s;
 }
 
@@ -665,9 +711,57 @@ function tabPreguntas(d) {
 
 function activar(id) {
   pestanaActiva = id;
-  history.replaceState(null, "", "#" + id);
+  history.replaceState(null, "", "#" + (seleccion === "mapa" ? "" : seleccion + "::") + id);
   document.querySelectorAll("nav.pestanas button").forEach(b => b.classList.toggle("activa", b.dataset.id === id));
   document.querySelectorAll("main .seccion").forEach(sec => sec.classList.toggle("activa", sec.id === "s-" + id));
+}
+
+function seleccionar(id) {
+  if (seleccion === id) return;
+  seleccion = id;
+  pestanaActiva = "resumen";
+  ultimaFoto = "";
+  cargar();
+}
+
+function pintarMenu(dRoot) {
+  const menu = document.getElementById("menuIzq");
+  menu.textContent = "";
+  const bMapa = el("button", seleccion === "mapa" ? "activo" : null, "🗺 El mapa");
+  bMapa.addEventListener("click", () => seleccionar("mapa"));
+  menu.appendChild(bMapa);
+  const areas = [];
+  dRoot.actividades.forEach(a => { if (!areas.includes(a.area)) areas.push(a.area); });
+  areas.forEach(area => {
+    menu.appendChild(el("div", "grupo", area));
+    dRoot.actividades.filter(a => a.area === area).forEach(a => {
+      const b = el("button", seleccion === a.id ? "activo" : null);
+      b.appendChild(el("span", "pm " + (PM_ESTADO[a.estado] || "pm-sin")));
+      b.appendChild(document.createTextNode(a.nombre));
+      b.title = a.estado || "sin empezar";
+      b.addEventListener("click", () => seleccionar(a.id));
+      menu.appendChild(b);
+    });
+  });
+  menu.hidden = false;
+  document.body.classList.add("con-menu");
+}
+
+function pintarVacia(dRoot, id) {
+  const act = (dRoot.actividades || []).find(a => a.id === id);
+  document.title = (act ? act.nombre : id) + " · planos";
+  document.getElementById("titulo").textContent = act ? act.nombre : id;
+  document.getElementById("proyecto").textContent = "Actividad de: " + dRoot.titulo + (act && act.estado ? " · " + act.estado : "");
+  const cont = document.getElementById("contenido");
+  const nav = document.getElementById("pestanas");
+  nav.textContent = "";
+  nav.hidden = true;
+  cont.textContent = "";
+  const sec = el("section", "seccion activa");
+  sec.appendChild(el("h2", null, "Esta actividad aún no tiene planos"));
+  sec.appendChild(el("div", "nota", (act && act.resumen ? act.resumen + ". " : "") +
+    'Pídele a tu IA que la abra ("quiero empezar con ' + (act ? act.nombre : id) + '") y esta página se rellenará sola.'));
+  cont.appendChild(sec);
 }
 
 function pintar(d) {
@@ -744,13 +838,11 @@ async function cargar() {
   if (cargando) return;
   cargando = true;
   try {
-    let texto, spec, encargo;
+    let textoRoot;
     try {
       const r = await fetch("datos.json", { cache: "no-store" });
       if (!r.ok) throw new Error("HTTP " + r.status);
-      texto = await r.text();
-      spec = await txtOpcional("spec.md");
-      encargo = await txtOpcional("encargo.md");
+      textoRoot = await r.text();
     } catch (e) {
       // El servidor no responde: avisa, pero conserva lo pintado.
       if (ultimaFoto) document.getElementById("banner").classList.add("visible");
@@ -759,13 +851,10 @@ async function cargar() {
     }
     document.getElementById("banner").classList.remove("visible");
 
-    const foto = JSON.stringify([texto, spec, encargo]);
-    if (foto === ultimaFoto) return;
-
-    let d;
+    let dRoot;
     try {
-      d = JSON.parse(texto);
-      validarTodo(d);
+      dRoot = JSON.parse(textoRoot);
+      validarTodo(dRoot);
     } catch (e) {
       // Datos a medio escribir o inválidos: NO se toca el render bueno.
       if (ultimaFoto) document.getElementById("bannerDatos").classList.add("visible");
@@ -773,17 +862,53 @@ async function cargar() {
       return;
     }
 
-    docSpec = spec;
-    docEncargo = encargo;
+    const esMapa = Array.isArray(dRoot.actividades) && dRoot.actividades.length > 0;
+    if (!esMapa) seleccion = "mapa";
+    const base = (esMapa && seleccion !== "mapa") ? "actividades/" + seleccion + "/" : "";
+
+    let textoAct = null;
+    let dSel = dRoot;
+    if (base) {
+      textoAct = await txtOpcional(base + "datos.json");
+      if (textoAct === null) {
+        dSel = null; // la actividad aún no tiene planos
+      } else {
+        try {
+          dSel = JSON.parse(textoAct);
+          validarTodo(dSel);
+        } catch (e) {
+          if (ultimaFoto) { document.getElementById("bannerDatos").classList.add("visible"); return; }
+          fallo(e.message);
+          return;
+        }
+      }
+    }
+    const spec = await txtOpcional(base + "spec.md");
+    const encargo = await txtOpcional(base + "encargo.md");
+
+    const foto = JSON.stringify([seleccion, textoRoot, textoAct, spec, encargo]);
+    if (foto === ultimaFoto) return;
+
     document.getElementById("error").hidden = true;
     document.getElementById("bannerDatos").classList.remove("visible");
-    pintar(d);
+    if (esMapa) pintarMenu(dRoot);
+    docSpec = spec;
+    docEncargo = encargo;
+    if (dSel) pintar(dSel);
+    else pintarVacia(dRoot, seleccion);
     ultimaFoto = foto; // solo tras un render completo con éxito
   } finally {
     cargando = false;
   }
 }
 
+const hash0 = decodeURIComponent((location.hash || "").replace("#", ""));
+if (hash0.includes("::")) {
+  seleccion = hash0.split("::")[0] || "mapa";
+  pestanaActiva = hash0.split("::")[1] || "resumen";
+} else if (hash0) {
+  pestanaActiva = hash0;
+}
 cargar();
 setInterval(cargar, 3000);
 </script>

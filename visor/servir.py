@@ -14,11 +14,14 @@ import argparse
 import http.server
 import json
 import os
+import re
 import sys
 import threading
 import time
 import webbrowser
 from urllib.parse import urlsplit
+
+RUTA_ACTIVIDAD = re.compile(r"^/actividades/([a-z0-9][a-z0-9-]*)/(datos\.json|spec\.md|encargo\.md)$")
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 PLANTILLA = os.path.join(BASE, "plantilla.html")
@@ -40,8 +43,18 @@ def hacer_handler(ruta_datos):
                     self._fichero(ruta, "text/plain; charset=utf-8")
                 else:
                     self.send_error(404, "Aún no se ha generado " + pedida.lstrip("/"))
+            elif RUTA_ACTIVIDAD.match(pedida):
+                # Planos y documentos de cada actividad (proyectos mapa).
+                m = RUTA_ACTIVIDAD.match(pedida)
+                nombre = "planos.json" if m.group(2) == "datos.json" else m.group(2)
+                ruta = os.path.join(os.path.dirname(ruta_datos), "actividades", m.group(1), nombre)
+                if os.path.isfile(ruta):
+                    tipo = "application/json; charset=utf-8" if nombre.endswith(".json") else "text/plain; charset=utf-8"
+                    self._fichero(ruta, tipo)
+                else:
+                    self.send_error(404, "Esta actividad aún no tiene " + nombre)
             else:
-                self.send_error(404, "Este visor solo sirve /, /datos.json, /spec.md y /encargo.md")
+                self.send_error(404, "Este visor sirve /, /datos.json, /spec.md, /encargo.md y /actividades/<id>/...")
 
         def do_HEAD(self):
             self.send_response(200)
