@@ -27,9 +27,9 @@ la IA te entrevista, y validas mirando una web que se va rellenando sola.
    teorías. La IA hace el resto.
 
 Durante la conversación se te abrirá una página en el navegador: son tus
-planos, y se actualizan solos según avanza la entrevista. El servidor de esa
-página se apaga solo a los 15 minutos; si se apaga, pídele a tu IA que lo
-vuelva a levantar.
+planos, y se actualizan solos según avanza la entrevista. Mientras la tengas
+abierta se mantiene viva; si pasa un buen rato sin usarse se apaga sola, y
+entonces basta pedirle a tu IA que la vuelva a levantar.
 
 ## Qué obtienes al final
 

@@ -27,9 +27,10 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 PLANTILLA = os.path.join(BASE, "plantilla.html")
 
 
-def hacer_handler(ruta_datos):
+def hacer_handler(ruta_datos, estado):
     class Visor(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
+            estado["ultimo"] = time.time()
             pedida = urlsplit(self.path).path
             if pedida in ("/", "/index.html"):
                 self._fichero(PLANTILLA, "text/html; charset=utf-8")
@@ -57,6 +58,7 @@ def hacer_handler(ruta_datos):
                 self.send_error(404, "Este visor sirve /, /datos.json, /spec.md, /encargo.md y /actividades/<id>/...")
 
         def do_HEAD(self):
+            estado["ultimo"] = time.time()
             self.send_response(200)
             self.end_headers()
 
@@ -83,7 +85,7 @@ def hacer_handler(ruta_datos):
 def main():
     p = argparse.ArgumentParser(description="Visor local de los planos")
     p.add_argument("--datos", required=True, help="Ruta al planos.json del proyecto")
-    p.add_argument("--minutos", type=float, default=15, help="Vida del servidor (defecto: 15)")
+    p.add_argument("--minutos", type=float, default=15, help="Minutos SIN actividad antes de apagarse (defecto: 15)")
     p.add_argument("--sin-navegador", action="store_true", help="No abrir el navegador")
     args = p.parse_args()
 
@@ -103,10 +105,11 @@ def main():
 
     # Puerto fijo 8765 para que relanzar conserve la URL; si está ocupado,
     # el sistema asigna uno libre.
+    estado = {"ultimo": time.time()}
     try:
-        servidor = http.server.ThreadingHTTPServer(("127.0.0.1", 8765), hacer_handler(ruta_datos))
+        servidor = http.server.ThreadingHTTPServer(("127.0.0.1", 8765), hacer_handler(ruta_datos, estado))
     except OSError:
-        servidor = http.server.ThreadingHTTPServer(("127.0.0.1", 0), hacer_handler(ruta_datos))
+        servidor = http.server.ThreadingHTTPServer(("127.0.0.1", 0), hacer_handler(ruta_datos, estado))
     puerto = servidor.server_address[1]
     hilo = threading.Thread(target=servidor.serve_forever, daemon=True)
     hilo.start()
@@ -114,16 +117,21 @@ def main():
     url = "http://127.0.0.1:%d/" % puerto
     print("Visor levantado: %s" % url, flush=True)
     print("Datos: %s (se releen al recargar la página)" % ruta_datos, flush=True)
-    print("Se apaga solo en %g minutos." % args.minutos, flush=True)
+    print("Se apaga solo tras %g minutos sin actividad (cada visita o recarga "
+          "reinicia el contador)." % args.minutos, flush=True)
     if not args.sin_navegador:
         webbrowser.open(url)
 
     try:
-        time.sleep(args.minutos * 60)
+        while True:
+            restante = args.minutos * 60 - (time.time() - estado["ultimo"])
+            if restante <= 0:
+                break
+            time.sleep(min(restante, 15))
     except KeyboardInterrupt:
         pass
     servidor.shutdown()
-    print("Visor cerrado. Para volver a verlo, lanza este comando otra vez.", flush=True)
+    print("Visor cerrado tras un rato sin uso. Para volver a verlo, lanza este comando otra vez.", flush=True)
 
 
 if __name__ == "__main__":

@@ -242,9 +242,11 @@ Cómo se usa:
 3. Lánzalo en segundo plano y dale la URL al usuario:
    `python3 RUTA_HERRAMIENTA/visor/servir.py --datos CARPETA_PROYECTO/planos.json`
    Sirve solo en 127.0.0.1 (puerto 8765 si está libre), abre el navegador y
-   se apaga solo a los 15 minutos. Vigila la caducidad: si la entrevista
-   sigue viva cuando muera, relánzalo sin esperar a que te lo pidan; el
-   puerto se conserva y la pestaña del usuario revive al recargar.
+   se apaga tras 15 minutos SIN ACTIVIDAD: cada visita o recarga reinicia el
+   contador, así que mientras el usuario tenga la página abierta sigue viva.
+   Si aun así caduca (pestaña cerrada, ordenador dormido), relánzalo sin
+   esperar a que te lo pidan; el puerto se conserva y la pestaña revive al
+   recargar.
 4. La página se actualiza sola cuando cambias `planos.json`: no hace falta
    que el usuario recargue.
 
