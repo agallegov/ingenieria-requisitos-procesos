@@ -99,19 +99,31 @@ Vocabulario cerrado de pasos en los flujos (el visor no dibuja nada más):
 | `humano` | redondeado naranja, etiqueta "Persona" | lo hace una persona (con su `quien`) |
 | `estatico` | barras dobles azul, etiqueta "Automático · código" | lo hace la app con reglas fijas |
 | `ia` | hexágono aqua, etiqueta "Automático · IA" | lo hace la app con un modelo de IA |
-| `decision` | rombo gris, etiqueta "Regla" o "Excepción" | bifurcación con su rama de desvío |
+| `externo` | redondeado punteado gris, etiqueta "Tercero externo" | lo hace alguien de fuera (el banco, la gestora) |
+| `decision` | rombo gris, etiqueta "Regla" o "Excepción" | bifurcación; `quien` opcional = quién la decide |
 | inicio/fin | círculos oscuros | los pone el visor solo |
 
 Cada bloque lleva su etiqueta escrita encima: el usuario nunca tiene que
 recordar qué significa una forma o un color.
+
+Sobre las decisiones: una decisión lleva `rama` (un desvío) o `ramas` (varias
+salidas con contenido); cada rama vuelve al flujo salvo que lleve
+`"termina": true` (una anulación, una baja: caminos que acaban ahí). Los
+textos van en pasado TAMBIÉN en los flujos futuros ("la app avisó al
+almacén"): se validan como episodios imaginados ya ocurridos. Si al usuario
+le choca, dile: "lo contamos como si ya hubiera pasado, que es como se
+comprueba si es verdad".
 
 Cómo se usa:
 
 1. Escribe o actualiza `proyectos/<slug>/planos.json`. Textos en pasado,
    nombres reales; excepciones y reglas como `decision` con su `rama` (el
    desvío siempre vuelve al flujo).
-2. Comprueba que es JSON válido y respeta `visor/esquema.json` antes de
-   servirlo.
+2. Valídalo con la herramienta del paquete tras CADA escritura:
+   `python3 visor/validar.py --datos proyectos/<slug>/planos.json`
+   Corrige los errores antes de seguir; los avisos señalan fichas cojas,
+   avisos sin canal o referencias rotas. Los ids R-n, C-n, G-n, Q-n y REC-n
+   son globales al proyecto: el validador rechaza duplicados.
 3. Lánzalo en segundo plano y dale la URL al usuario:
    `python3 visor/servir.py --datos proyectos/<slug>/planos.json`
    Sirve solo en 127.0.0.1 (puerto 8765 si está libre), abre el navegador y
@@ -124,6 +136,11 @@ Cómo se usa:
 Los ficheros `visor/ejemplo.json`, `visor/spec.md` y `visor/encargo.md` son
 material de muestra del visor, no un proyecto: no los toques ni los
 confundas con `proyectos/`.
+
+Plan B sin visor: si el visor no puede levantarse (sin navegador, sesión
+remota, entorno restringido), no te saltes la validación: enseña cada bloque
+en la conversación, en el orden de las pestañas, y consigue el "así es" del
+usuario bloque a bloque antes de seguir.
 
 Prohibido: generar HTML propio, editar la plantilla, el esquema o los
 scripts del visor, inventar tipos de paso o campos fuera del esquema. La
@@ -164,7 +181,10 @@ corrija:
 No sigas hasta que la dé por buena. Si no sabe definir el resultado medible,
 ayúdale con preguntas: sin eso no sabréis si la app funcionó. Con la frase
 acordada, crea `proyectos/<slug>/`, escribe `planos.json` (version, titulo,
-contrato, actores) y levanta el visor: que vea sus planos nacer.
+`descripcion` con dos o tres frases en sus palabras sobre qué es el negocio
+y qué se construye, contrato, actores) y levanta el visor: que vea sus
+planos nacer. Si el usuario da varios resultados medibles, `contrato.exito`
+admite una lista: no los comprimas en una frase.
 
 ## F1: Cartografía de flujos
 
@@ -221,8 +241,22 @@ Si aparece una regla con 3 o más condiciones combinadas, conviértela en una
 tabla de decisión y métela en el bloque `reglas` de los planos para que la
 corrija viéndola en la web.
 
-Lo que salga aquí va cayendo en `planos.json`: reglas, estados, fuera de
-alcance, y el éxito a `contrato.exito`.
+Trucos de esta fase, que es la más larga:
+
+- Cada 4 o 5 preguntas, un mini resumen de avance ("llevamos excepciones y
+  concurrencia; faltan estados y volumen"): sin él la fase se siente
+  interrogatorio.
+- Para estados no preguntes en abstracto ("¿en qué situaciones puede estar
+  un pedido?"): pregunta "¿a quién tienes ahora mismo a medias o sin servir,
+  y por qué?".
+- Los episodios con nombres y números van al bloque `episodios` de
+  `planos.json`, con `refs` a los ids que alimentan: son la munición de los
+  tests y deben viajar al constructor, no morir en `mural.md`.
+- Los números de escala van al bloque `volumen`.
+
+Lo que salga aquí va cayendo en `planos.json`: reglas, estados, episodios,
+volumen, fuera de alcance, y el éxito a `contrato.exito` (lista si son
+varios).
 
 ## F3: Materia prima y reparto
 
@@ -238,7 +272,9 @@ Primero la materia prima, preguntando solo lo que falte:
 
 Cuando exista el documento real (la factura de verdad, el Excel real), pide
 verlo: un documento real es la mejor especificación de sí mismo y destapa
-reglas que nadie cuenta.
+reglas que nadie cuenta. Si no puede o no quiere enseñarlo, no insistas:
+anota en `preguntas` "pendiente ver el [documento] real" y sigue; esa deuda
+viaja al constructor.
 
 Después el reparto: el mismo proceso, con cada paso tipado según quién lo
 ejecutará cuando exista la app:
@@ -268,8 +304,15 @@ un correo que llega, un enlace).
 Ficha (los 7 campos, siempre todos): nombre en palabras del usuario ("el
 panel de María"); quién entra; por dónde llega (móvil, ordenador, WhatsApp,
 correo); cuándo lo usa (qué momento del flujo lo dispara); qué ve nada más
-entrar; qué puede hacer (verbo + objeto); y qué NO debe poder hacer ni ver
-jamás (piensa en el empleado enfadado su último día).
+entrar (en puntos que no son pantallas, "qué recibe"); qué puede hacer
+(verbo + objeto); y qué NO debe poder hacer ni ver jamás (piensa en el
+empleado enfadado su último día).
+
+Con varios puntos de entrada no hagas 7 preguntas por ficha: propón la ficha
+entera rellena con lo que ya sabes y pide que la corrija, igual que con la
+frase de contrato. Si un permiso tiene matiz ("puede dar citas, pero solo
+por la tarde"), desdobla la acción en la matriz o recógelo en el campo
+"nunca"; la matriz es sí/no a propósito.
 
 Canales, siempre explícitos: cada punto de entrada dice por dónde llega (UI
 web, app del móvil, WhatsApp, SMS, correo, llamada de voz, un fichero en una
@@ -287,7 +330,9 @@ Cierra la fase con tres piezas transversales, validadas mirando la web:
   preguntas: cuánta espera es tolerable y dónde, qué pasa si se cae medio
   día, qué datos son delicados y quién no debe verlos jamás, desde qué
   aparatos y en qué condiciones se usa, y si alguien que lo usará tiene
-  alguna dificultad (vista, idioma, poca soltura).
+  alguna dificultad (vista, idioma, poca soltura). Estas condiciones son el
+  relato; su versión comprobable serán los Q-n de F5, y si divergen manda
+  el Q-n.
 
 Todo va al bloque `superficie` de `planos.json`. No diseñes pantallas ni
 menús: la superficie dice quién, por dónde, qué puede y qué no; el aspecto
@@ -308,7 +353,8 @@ Cuando no queden huecos:
    por valor, tú ajustas por dependencias.
 2. Genera el spec:
    `python3 visor/generar_spec.py --datos proyectos/<slug>/planos.json`
-3. Escribe `encargo.md` según el modo (abajo).
+3. Escribe `encargo.md` según el modo (abajo): el texto del encargo y,
+   debajo, la ruta de la carpeta de planos. Nada más.
 4. Pide al usuario que recorra TODAS las pestañas de la web buscando
    mentiras y huecos, y señálale las 3 partes donde tengas menos confianza
    de haberle entendido bien, para que las revise primero.
@@ -363,6 +409,10 @@ enséñale en la web solo lo que cambió. Si el cambio trae puntos calientes
 nuevos (reglas, dinero, excepciones), pide ejemplos con datos reales igual
 que en F2. Si toca quién entra o qué puede hacer, actualiza superficie y
 matriz.
+
+El `estado` de cada recorrido ("pendiente", "en construcción", "entregado")
+lo cambias tú en los planos cuando el usuario confirme el avance; el
+constructor nunca toca los planos.
 
 Los planos son la única fuente de verdad: la obra se regenera a partir de
 ellos, y los cambios nunca se le piden al agente constructor de palabra.

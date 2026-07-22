@@ -2,6 +2,7 @@
   "version": 2,
   "proyecto": "almacen-de-paco",
   "titulo": "Pedidos del almacén",
+  "descripcion": "La app del almacén de piensos: los pedidos que hoy llegan por WhatsApp y se copian a mano al Excel pasarán a registrarse y facturarse solos. La IA lee el mensaje y monta un borrador, María lo confirma, el código factura y avisa, y el jefe aprueba las excepciones desde el móvil.",
   "contrato": {
     "frase": "Cuando llega un pedido por WhatsApp, María necesita registrarlo y facturarlo sin copiarlo a mano para que el despacho medio baje de 40 a 10 minutos.",
     "exito": "en un mes, el tiempo medio entre que llega el mensaje y sale el pedido baja de 40 a 10 minutos, y ningún pedido se pierde."
@@ -66,8 +67,14 @@
           "sigue": "sí había"
         },
         {
-          "tipo": "decision", "clase": "regla", "condicion": "¿hacía falta el visto bueno del jefe?",
-          "rama": { "etiqueta": "sí: debía dinero o el pedido pasaba de 1.000€", "pasos": [ { "tipo": "humano", "texto": "Aprobó o rechazó desde el móvil", "quien": "el jefe" } ] },
+          "tipo": "decision", "clase": "regla", "condicion": "¿hacía falta el visto bueno del jefe? (deuda o más de 1.000€)",
+          "ramas": [
+            { "etiqueta": "sí, y el jefe aprobó", "pasos": [ { "tipo": "humano", "texto": "Aprobó desde el móvil", "quien": "el jefe" } ] },
+            { "etiqueta": "sí, y el jefe rechazó", "pasos": [
+              { "tipo": "humano", "texto": "Rechazó desde el móvil, escribiendo el motivo", "quien": "el jefe" },
+              { "tipo": "estatico", "texto": "Se dejó el pedido como anulado y María vio el motivo en su panel" }
+            ], "termina": true }
+          ],
           "sigue": "no hacía falta"
         },
         { "tipo": "estatico", "texto": "Se generó la factura" },
@@ -75,6 +82,14 @@
         { "tipo": "humano", "texto": "Preparó el pedido y lo marcó como enviado", "quien": "el almacén" }
       ]
     }
+  ],
+  "episodios": [
+    { "texto": "El 3 de julio Paco pidió 40 sacos debiendo 300€; el pedido esperó 2 horas a que el jefe volviera de la obra y el almacén cerró sin prepararlo.", "refs": ["G-1", "R-4"] },
+    { "texto": "En vendimia entraron 52 pedidos en un día y María dejó de contestar el teléfono para poder copiarlos al Excel.", "refs": ["Q-1"] }
+  ],
+  "volumen": [
+    { "que": "pedidos al día", "cuanto": "unos 30, con picos de 50 en vendimia" },
+    { "que": "clientes con ficha", "cuanto": "unos 200, 40 activos cada semana" }
   ],
   "recorridos": [
     {

@@ -32,18 +32,24 @@ def tabla_md(columnas, filas):
     p()
 
 
-ETIQUETAS = {"humano": "persona", "estatico": "automático: código", "ia": "automático: IA"}
+ETIQUETAS = {"humano": "persona", "estatico": "automático: código",
+             "ia": "automático: IA", "externo": "tercero externo"}
 
 
 def paso_texto(paso, sangria):
     pre = "    " * sangria
     if paso["tipo"] == "decision":
         marca = "⚠ Excepción" if paso["clase"] == "excepcion" else "⚑ Regla"
-        p("%s- %s: ¿%s" % (pre, marca, paso["condicion"].lstrip("¿")))
-        p("%s    - si %s:" % (pre, paso["rama"]["etiqueta"]))
-        for x in paso["rama"]["pasos"]:
-            paso_texto(x, sangria + 2)
-        p("%s    - …y vuelve al flujo%s" % (pre, (" (%s)" % paso["sigue"]) if paso.get("sigue") else ""))
+        quien = (" (la evalúa %s)" % paso["quien"]) if paso.get("quien") else ""
+        p("%s- %s%s: %s" % (pre, marca, quien, paso["condicion"]))
+        ramas = paso.get("ramas") or ([paso["rama"]] if paso.get("rama") else [])
+        for r in ramas:
+            p("%s    - si %s:" % (pre, r["etiqueta"]))
+            for x in r["pasos"]:
+                paso_texto(x, sangria + 2)
+            p("%s        - %s" % (pre, "aquí termina este camino" if r.get("termina") else "…y vuelve al flujo"))
+        if paso.get("sigue"):
+            p("%s    - camino normal: %s" % (pre, paso["sigue"]))
     else:
         quien = (" · %s" % paso["quien"]) if paso.get("quien") else ""
         p("%s- [%s] %s%s" % (pre, ETIQUETAS[paso["tipo"]], paso["texto"], quien))
@@ -73,11 +79,17 @@ def main():
 
     p("## 1. Propósito")
     p()
+    if d.get("descripcion"):
+        p(d["descripcion"])
+        p()
     c = d.get("contrato") or {}
     p(c.get("frase", "(Pendiente: aún sin frase de contrato.)"))
-    if c.get("exito"):
+    exito = c.get("exito")
+    if exito:
         p()
-        p("Criterio de éxito: %s" % c["exito"])
+        p("Criterios de éxito:")
+        for x in (exito if isinstance(exito, list) else [exito]):
+            p("- %s" % x)
     p()
 
     p("## 2. Actores y vocabulario")
@@ -130,6 +142,14 @@ def main():
         p("(Pendiente.)")
         p()
 
+    if d.get("episodios"):
+        p("### Episodios reales que sustentan los requisitos")
+        p()
+        for e in d["episodios"]:
+            refs = (" [%s]" % ", ".join(e["refs"])) if e.get("refs") else ""
+            p("- %s%s" % (e["texto"], refs))
+        p()
+
     p("## 5. Reglas de negocio")
     p()
     for g in d.get("reglas", []):
@@ -160,6 +180,10 @@ def main():
     if d.get("datos"):
         tabla_md(["Cosa", "Qué se guarda", "De dónde viene"],
                  [[x["cosa"], ", ".join(x.get("guarda", [])), x.get("origen", "")] for x in d["datos"]])
+    if d.get("volumen"):
+        p("Números del negocio:")
+        p()
+        tabla_md(["Qué", "Cuánto"], [[v["que"], v["cuanto"]] for v in d["volumen"]])
     for x in d.get("integraciones", []):
         p("- Habla con **%s**%s" % (x["con"], (": %s" % x["para"]) if x.get("para") else ""))
     if not d.get("datos") and not d.get("integraciones"):
