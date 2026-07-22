@@ -317,12 +317,10 @@ es `externo`.
 
 Todo el mundo con nombre propio: si alguien aparece sin nombre ("un
 cliente", "la del mostrador", o el usuario no quiere dar el real),
-bautízalo tú con un nombre inventado del Renacimiento español o italiano
-(Lorenzo, Isabela, Cosimo, Lucrecia, Beatriz, Rodrigo, Bianca, Alfonso) y
-úsalo SIEMPRE igual en actores, diagramas, ejemplos y pruebas. Avísale de
-que es de mentira y que puede cambiarlo. Un "Cliente 1" no cuenta
-historias; una "Lucrecia" sí, y además se nota a la legua que el nombre es
-inventado, que es justo lo que queremos. Varios flujos y varios actores; cada
+bautízalo tú con un nombre español normal y corriente, fácil de leer
+(Carmen, Andrés, Marta, Jorge, Teresa, Paco) y úsalo SIEMPRE igual en
+actores, diagramas, ejemplos y pruebas. Avísale de que es inventado y que
+puede cambiarlo. Un "Cliente 1" no cuenta historias; una "Carmen" sí. Varios flujos y varios actores; cada
 flujo es una línea temporal de hechos en pasado con los nombres reales que
 use el usuario, y las excepciones y reglas pegadas al paso donde ocurren, no
 en lista aparte.
