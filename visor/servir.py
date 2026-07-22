@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Visor local de idea-a-spec.
+"""Visor local de los planos (ingeniería de requisitos).
 
 Sirve la plantilla fija (plantilla.html, junto a este script) y los datos del
-proyecto (proceso.json) en 127.0.0.1, en un puerto libre, y se apaga solo
-pasados N minutos (15 por defecto). Solo biblioteca estándar.
+proyecto (planos.json) en 127.0.0.1 y se apaga solo pasados N minutos (15
+por defecto). Intenta siempre el puerto 8765: así relanzar conserva la URL y
+la pestaña del usuario revive con recargar. Solo biblioteca estándar.
 
 Uso:
-    python3 servir.py --datos <ruta/proceso.json> [--minutos 15] [--sin-navegador]
+    python3 servir.py --datos <ruta/planos.json> [--minutos 15] [--sin-navegador]
 """
 
 import argparse
@@ -17,6 +18,7 @@ import sys
 import threading
 import time
 import webbrowser
+from urllib.parse import urlsplit
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 PLANTILLA = os.path.join(BASE, "plantilla.html")
@@ -25,20 +27,25 @@ PLANTILLA = os.path.join(BASE, "plantilla.html")
 def hacer_handler(ruta_datos):
     class Visor(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
-            if self.path in ("/", "/index.html"):
+            pedida = urlsplit(self.path).path
+            if pedida in ("/", "/index.html"):
                 self._fichero(PLANTILLA, "text/html; charset=utf-8")
-            elif self.path == "/datos.json":
-                # Se relee en cada petición: editar el json + recargar basta.
+            elif pedida == "/datos.json":
+                # Se relee en cada petición: la página lo sondea sola.
                 self._fichero(ruta_datos, "application/json; charset=utf-8")
-            elif self.path in ("/spec.md", "/encargo.md"):
+            elif pedida in ("/spec.md", "/encargo.md"):
                 # Documentos de salida, si ya existen junto a los datos.
-                ruta = os.path.join(os.path.dirname(ruta_datos), self.path.lstrip("/"))
+                ruta = os.path.join(os.path.dirname(ruta_datos), pedida.lstrip("/"))
                 if os.path.isfile(ruta):
                     self._fichero(ruta, "text/plain; charset=utf-8")
                 else:
-                    self.send_error(404, "Aún no se ha generado " + self.path.lstrip("/"))
+                    self.send_error(404, "Aún no se ha generado " + pedida.lstrip("/"))
             else:
                 self.send_error(404, "Este visor solo sirve /, /datos.json, /spec.md y /encargo.md")
+
+        def do_HEAD(self):
+            self.send_response(200)
+            self.end_headers()
 
         def _fichero(self, ruta, tipo):
             try:
@@ -61,11 +68,14 @@ def hacer_handler(ruta_datos):
 
 
 def main():
-    p = argparse.ArgumentParser(description="Visor local de idea-a-spec")
-    p.add_argument("--datos", required=True, help="Ruta al proceso.json del proyecto")
+    p = argparse.ArgumentParser(description="Visor local de los planos")
+    p.add_argument("--datos", required=True, help="Ruta al planos.json del proyecto")
     p.add_argument("--minutos", type=float, default=15, help="Vida del servidor (defecto: 15)")
     p.add_argument("--sin-navegador", action="store_true", help="No abrir el navegador")
     args = p.parse_args()
+
+    if not (0 < args.minutos <= 1440):
+        sys.exit("--minutos debe estar entre 0 y 1440")
 
     ruta_datos = os.path.abspath(args.datos)
     if not os.path.isfile(ruta_datos):
@@ -78,8 +88,12 @@ def main():
     except (OSError, ValueError) as e:
         sys.exit("El fichero de datos no es JSON válido: " + str(e))
 
-    # Puerto 0: el sistema asigna uno libre, sin carreras.
-    servidor = http.server.ThreadingHTTPServer(("127.0.0.1", 0), hacer_handler(ruta_datos))
+    # Puerto fijo 8765 para que relanzar conserve la URL; si está ocupado,
+    # el sistema asigna uno libre.
+    try:
+        servidor = http.server.ThreadingHTTPServer(("127.0.0.1", 8765), hacer_handler(ruta_datos))
+    except OSError:
+        servidor = http.server.ThreadingHTTPServer(("127.0.0.1", 0), hacer_handler(ruta_datos))
     puerto = servidor.server_address[1]
     hilo = threading.Thread(target=servidor.serve_forever, daemon=True)
     hilo.start()

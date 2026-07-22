@@ -76,7 +76,9 @@ proyecto crecer en tiempo real, y esa es parte de la experiencia.
 
 Antes de empezar, comprueba que `python3` funciona en esta máquina; si
 falta, díselo al usuario e instálalo con su permiso (macOS lo trae de serie;
-en Windows, winget o python.org). El visor lo necesita.
+en Windows, winget o python.org). El visor lo necesita. En Windows el
+intérprete se llama `py` o `python`: usa ese nombre en TODOS los comandos de
+este documento.
 
 Los planos se enseñan SIEMPRE con el visor local de esta carpeta. La página
 ya está hecha (`visor/plantilla.html`) y no se genera ni se toca jamás:
@@ -112,11 +114,16 @@ Cómo se usa:
    servirlo.
 3. Lánzalo en segundo plano y dale la URL al usuario:
    `python3 visor/servir.py --datos proyectos/<slug>/planos.json`
-   Sirve solo en 127.0.0.1, en un puerto libre, abre el navegador y se apaga
-   solo a los 15 minutos. Cuando caduque, relánzalo si el usuario quiere
-   seguir mirando.
+   Sirve solo en 127.0.0.1 (puerto 8765 si está libre), abre el navegador y
+   se apaga solo a los 15 minutos. Vigila la caducidad: si la entrevista
+   sigue viva cuando muera, relánzalo sin esperar a que te lo pidan; el
+   puerto se conserva y la pestaña del usuario revive al recargar.
 4. La página se actualiza sola cuando cambias `planos.json`: no hace falta
    que el usuario recargue.
+
+Los ficheros `visor/ejemplo.json`, `visor/spec.md` y `visor/encargo.md` son
+material de muestra del visor, no un proyecto: no los toques ni los
+confundas con `proyectos/`.
 
 Prohibido: generar HTML propio, editar la plantilla, el esquema o los
 scripts del visor, inventar tipos de paso o campos fuera del esquema. La
@@ -317,27 +324,37 @@ Encargo modo A, construcción:
 > tu plan de implementación y tu lista de tareas, y verifica cada tarea
 > contra los criterios de aceptación. Construye en el orden de los
 > recorridos, empezando por el esqueleto. Si algo no está especificado, NO
-> lo decidas tú: apúntalo en "Preguntas abiertas" del spec y elige la opción
-> más simple y reversible. Los criterios Dado/Cuando/Entonces son tus tests
+> lo decidas tú: apúntalo en el fichero `preguntas-del-constructor.md` junto
+> a los planos (el spec se regenera y no debe editarse a mano) y elige la
+> opción más simple y reversible. Los criterios Dado/Cuando/Entonces son tus tests
 > de aceptación: una tarea no está terminada hasta que los cumple. La
 > seguridad técnica de base (sesiones, contraseñas, copias de seguridad,
 > protección de datos) es tuya: aplícala según el estándar aunque los planos
 > no la mencionen, y apunta las decisiones que tomes.
 
-Encargo modo B, auditoría:
+Encargo modo B, auditoría (rellena la ruta: pregúntala al usuario al cerrar,
+que pedir la ruta del código no es mirar el código):
 
-> Audita el código contra estos planos: `spec.md` y `planos.json`. No
+> El código a auditar vive en [RUTA]. Audítalo contra estos planos:
+> `spec.md` y `planos.json`. No
 > asumas que el código es correcto ni que los planos son completos.
 > Reconstruye el proceso que el código implementa en el mismo formato de
 > flujos de `planos.json` y busca tres cosas: lo que los planos exigen y el
 > código no hace, lo que el código hace y los planos no piden, y lo que
 > ambos cubren con reglas distintas. Ejecuta los criterios
 > Dado/Cuando/Entonces contra el código real siempre que puedas. Cada
-> desviación se reporta en `desviaciones.md` con el ejemplo concreto que la
+> desviación se reporta en `desviaciones.md` (junto a los planos) con el
+> ejemplo concreto que la
 > demuestra, en lenguaje de negocio, citando el identificador (R-n, C-n,
 > Q-n) incumplido. No arregles nada sin encargo aparte.
 
 ## Protocolo de iteración (modo C)
+
+Lo primero, cosecha el buzón: si en la carpeta del proyecto hay
+`preguntas-del-constructor.md` o `desviaciones.md`, incorpora sus puntos al
+bloque `preguntas` de `planos.json` ANTES de tocar nada, para que no se
+pierdan al regenerar el spec. Si hay varios proyectos en `proyectos/`,
+pregunta al usuario cuál es, listándolos.
 
 Cuando el usuario vuelva con cambios ("los clientes ahora también piden por
 WhatsApp"), no parchees: localiza en qué bloque de `planos.json` impacta,

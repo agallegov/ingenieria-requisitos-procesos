@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Planos del proyecto · ingeniería de requisitos</title>
 <style>
-  /* PLANTILLA FIJA v2 (pestañas). No se edita nunca: los proyectos solo
+  /* PLANTILLA FIJA v2.1 (pestañas). No se edita nunca: los proyectos solo
      aportan datos (planos.json). Colores validados para daltonismo. */
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -22,8 +22,8 @@
   nav.pestanas button:focus-visible { outline: 2px solid #d95926; outline-offset: 2px; }
   nav.pestanas button.activa { background: #383835; border-color: #383835; color: #ffffff; }
 
-  .banner-caido { display: none; margin-top: 14px; border: 2px solid #d95926; border-radius: 10px; background: #f9e0d5; padding: 10px 14px; font-size: 13.5px; }
-  .banner-caido.visible { display: block; }
+  .aviso-flotante { display: none; position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px; z-index: 20; width: calc(100% - 40px); max-width: 680px; border: 2px solid #d95926; border-radius: 10px; background: #f9e0d5; padding: 10px 14px; font-size: 13.5px; box-shadow: 0 4px 16px rgba(11, 11, 11, .18); }
+  .aviso-flotante.visible { display: block; }
 
   .seccion { display: none; margin-top: 26px; }
   .seccion.activa { display: block; }
@@ -123,16 +123,20 @@
       <div class="sub" id="proyecto"></div>
     </header>
 
-    <div class="banner-caido" id="banner">⚠ El visor perdió la conexión: el servidor
-    local se apaga solo a los 15 minutos. Pide a tu IA que lo vuelva a levantar
-    y recarga esta página.</div>
+    <div class="aviso-flotante" id="banner">⚠ El visor perdió la conexión: el
+    servidor local se apaga solo pasado un rato. Pide a tu IA que lo levante
+    otra vez y recarga esta página.</div>
+    <div class="aviso-flotante" id="bannerDatos">⚠ Los últimos datos guardados
+    aún no son válidos; estás viendo la última versión buena. Se actualizará
+    solo cuando tu IA termine de escribir.</div>
 
     <nav class="pestanas" id="pestanas" hidden></nav>
     <main id="contenido"></main>
     <div class="error" id="error" hidden></div>
 
-    <footer>Plantilla fija v2 · la página se actualiza sola cuando tu IA añade
-    contenido · el servidor local caduca a los 15 minutos.</footer>
+    <footer>Plantilla fija v2.1 · la página se actualiza sola cuando tu IA
+    añade contenido · el servidor local se apaga solo al cabo de un rato; tu
+    IA puede relanzarlo.</footer>
   </div>
 
 <script>
@@ -141,6 +145,7 @@ const TIPOS_ACCION = ["humano", "estatico", "ia"];
 let ultimaFoto = "";
 let docSpec = null;
 let docEncargo = null;
+let cargando = false;
 let pestanaActiva = (location.hash || "").replace("#", "") || "resumen";
 
 function el(tag, clase, texto) {
@@ -157,7 +162,7 @@ function fallo(msg) {
   document.getElementById("titulo").textContent = "Datos no válidos";
 }
 
-/* ---------- flujos: mismo lenguaje visual de siempre ---------- */
+/* ---------- validación (SIEMPRE antes de tocar el DOM) ---------- */
 
 function validarPaso(p, flujo) {
   if (p.tipo === "decision") {
@@ -171,6 +176,17 @@ function validarPaso(p, flujo) {
     throw new Error('tipo de paso desconocido: "' + p.tipo + '".');
   }
 }
+
+function validarTodo(d) {
+  if (!d || d.version !== 2) throw new Error('falta "version": 2.');
+  if (typeof d.titulo !== "string" || !d.titulo) throw new Error('falta "titulo".');
+  (Array.isArray(d.flujos) ? d.flujos : []).forEach(f => {
+    if (!f || !f.titulo || !Array.isArray(f.pasos)) throw new Error("flujo mal formado.");
+    f.pasos.forEach(p => validarPaso(p, f.titulo));
+  });
+}
+
+/* ---------- flujos: el diagrama de actividades ---------- */
 
 const ETIQUETAS = { humano: "Persona", estatico: "Automático · código", ia: "Automático · IA" };
 
@@ -294,7 +310,6 @@ function tabFlujos(d) {
     .forEach(([c, t]) => { const sp = el("span"); sp.appendChild(el("i", c)); sp.appendChild(document.createTextNode(t)); ley.appendChild(sp); });
   s.appendChild(ley);
   d.flujos.forEach(f => {
-    f.pasos.forEach(p => validarPaso(p, f.titulo));
     const bloc = el("div", "flujo");
     const cab = el("div", "flujo-cabecera");
     cab.appendChild(el("h3", null, f.titulo));
@@ -613,29 +628,46 @@ async function txtOpcional(ruta) {
 }
 
 async function cargar() {
+  if (cargando) return;
+  cargando = true;
   try {
-    const r = await fetch("datos.json", { cache: "no-store" });
-    if (!r.ok) throw new Error("HTTP " + r.status + " al pedir los datos.");
-    const texto = await r.text();
-    const spec = await txtOpcional("spec.md");
-    const encargo = await txtOpcional("encargo.md");
+    let texto, spec, encargo;
+    try {
+      const r = await fetch("datos.json", { cache: "no-store" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      texto = await r.text();
+      spec = await txtOpcional("spec.md");
+      encargo = await txtOpcional("encargo.md");
+    } catch (e) {
+      // El servidor no responde: avisa, pero conserva lo pintado.
+      if (ultimaFoto) document.getElementById("banner").classList.add("visible");
+      else fallo("no hay conexión con el servidor local (" + e.message + ").");
+      return;
+    }
     document.getElementById("banner").classList.remove("visible");
-    const foto = texto + " " + (spec || "") + " " + (encargo || "");
+
+    const foto = JSON.stringify([texto, spec, encargo]);
     if (foto === ultimaFoto) return;
-    ultimaFoto = foto;
-    const d = JSON.parse(texto);
-    if (!d || d.version !== 2) throw new Error('falta "version": 2.');
-    if (typeof d.titulo !== "string" || !d.titulo) throw new Error('falta "titulo".');
+
+    let d;
+    try {
+      d = JSON.parse(texto);
+      validarTodo(d);
+    } catch (e) {
+      // Datos a medio escribir o inválidos: NO se toca el render bueno.
+      if (ultimaFoto) document.getElementById("bannerDatos").classList.add("visible");
+      else fallo(e.message);
+      return;
+    }
+
     docSpec = spec;
     docEncargo = encargo;
     document.getElementById("error").hidden = true;
+    document.getElementById("bannerDatos").classList.remove("visible");
     pintar(d);
-  } catch (e) {
-    if (ultimaFoto) {
-      document.getElementById("banner").classList.add("visible");
-    } else {
-      fallo(e.message);
-    }
+    ultimaFoto = foto; // solo tras un render completo con éxito
+  } finally {
+    cargando = false;
   }
 }
 

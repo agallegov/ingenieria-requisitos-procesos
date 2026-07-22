@@ -19,11 +19,16 @@ def p(texto=""):
     L.append(texto)
 
 
+def celda(x):
+    # Sin '|' ni saltos de línea dentro de una celda: romperían la tabla.
+    return " ".join(str(x).split()).replace("|", "\\|")
+
+
 def tabla_md(columnas, filas):
-    p("| " + " | ".join(columnas) + " |")
+    p("| " + " | ".join(celda(c) for c in columnas) + " |")
     p("|" + "---|" * len(columnas))
     for f in filas:
-        p("| " + " | ".join(f) + " |")
+        p("| " + " | ".join(celda(c) for c in f) + " |")
     p()
 
 
@@ -57,6 +62,7 @@ def main():
         sys.exit("No pude leer los planos: %s" % e)
     if d.get("version") != 2 or not d.get("titulo"):
         sys.exit("planos.json debe tener version: 2 y titulo.")
+    d["titulo"] = " ".join(str(d["titulo"]).split())
 
     salida = args.salida or os.path.join(os.path.dirname(os.path.abspath(args.datos)), "spec.md")
 
@@ -228,4 +234,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyError as e:
+        sys.exit("planos.json no respeta el esquema: falta el campo %s en algún "
+                 "bloque. Valida contra visor/esquema.json y reintenta." % e)
