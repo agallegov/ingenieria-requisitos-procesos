@@ -41,15 +41,16 @@ y 100 (vender, facturar, dar altas, emitir, soportar...). Un solo plano
 para todo eso sería una chapuza: el método se aplica a dos escalas, con el
 mismo esquema y el mismo visor.
 
-- **El mapa** (el plano general): `proyectos/<app>/planos.json` con la
+- **El mapa** (el plano general): el `planos.json` raíz de la carpeta del
+  proyecto, con la
   visión global: descripción, frase de contrato de la aplicación, actores,
   vocabulario y datos compartidos, integraciones, calidad global, fuera de
   alcance... y el bloque `actividades`: el catálogo COMPLETO agrupado por
   áreas del negocio, cada actividad con una línea de resumen, su estado y
   sus dependencias. El mapa no detalla ninguna actividad: es el índice y el
   panel de control.
-- **Cada actividad**: su propia carpeta
-  `proyectos/<app>/actividades/<id>/` con su `planos.json` COMPLETO de
+- **Cada actividad**: su propia carpeta `actividades/<id>/` dentro de la
+  carpeta del proyecto, con su `planos.json` COMPLETO de
   siempre (flujos, reglas, estados, entregas, superficie), hecho con las
   fases F1 a F5 normales, con alcance de UNA actividad.
 
@@ -67,7 +68,7 @@ Cómo se trabaja:
    re-pregunta. Si en una actividad aparece algo global nuevo (un actor, un
    término, una entidad, una integración), se añade AL MAPA, no a la
    actividad. Al cerrar su F5, cada actividad baja a SU PROPIO spec file:
-   `python3 visor/generar_spec.py --datos .../actividades/<id>/planos.json`
+   `python3 RUTA_HERRAMIENTA/visor/generar_spec.py --datos CARPETA_PROYECTO/actividades/<id>/planos.json`
    genera `spec.md` y tú escribes `encargo.md`, ambos en su carpeta.
 3. **El estado vive en el mapa**: sin empezar → en entrevista →
    especificada → en obra → entregada. Lo actualizas tú al cerrar cada
@@ -116,9 +117,9 @@ el mapa siempre dice la verdad del proyecto.
 **La documentación final.** Al cerrar cada sesión (y siempre que el usuario
 pida "dame la documentación"), compila la carpeta de especificaciones:
 
-`python3 visor/compilar.py --mapa proyectos/<app>/planos.json`
+`python3 RUTA_HERRAMIENTA/visor/compilar.py --mapa CARPETA_PROYECTO/planos.json`
 
-Deja `proyectos/<app>/especificaciones/` con el índice (README.md), el spec
+Deja `CARPETA_PROYECTO/especificaciones/` con el índice (README.md), el spec
 del mapa y el spec de cada actividad con planos, agrupados por área: la
 documentación completa y al día de la aplicación, lista para leer, versionar
 o entregar a cualquiera. Se regenera entera en cada compilación: no se edita
@@ -156,8 +157,18 @@ a mano jamás.
 
 ## Los ficheros del proyecto (los planos)
 
+REGLA DURA DE UBICACIÓN: la carpeta de este paquete (donde vive este
+RUNBOOK.md) es una herramienta compartida y reutilizable. No escribas JAMÁS
+dentro de ella: ni proyectos, ni specs, ni notas, ni temporales. Todo lo del
+usuario vive FUERA, en su carpeta de trabajo. En los comandos de este
+documento, RUTA_HERRAMIENTA es la carpeta del paquete y CARPETA_PROYECTO la
+carpeta del proyecto del usuario.
+
 Tras acordar la frase de contrato (F0), deriva de ella un slug corto en
-kebab-case y crea `proyectos/<slug>/` dentro de esta carpeta. Los planos son:
+kebab-case y crea la carpeta del proyecto en el directorio de trabajo del
+usuario (o donde él te diga), nunca dentro del paquete; si tu sesión corre
+dentro del paquete, pregunta dónde quiere guardar su proyecto. Los planos
+son:
 
 - `planos.json`: TODO el proyecto como datos, conforme al esquema
   `visor/esquema.json`: contrato, actores, vocabulario, flujos, recorridos
@@ -220,16 +231,16 @@ comprueba si es verdad".
 
 Cómo se usa:
 
-1. Escribe o actualiza `proyectos/<slug>/planos.json`. Textos en pasado,
+1. Escribe o actualiza `CARPETA_PROYECTO/planos.json`. Textos en pasado,
    nombres reales; excepciones y reglas como `decision` con su `rama` (el
    desvío siempre vuelve al flujo).
 2. Valídalo con la herramienta del paquete tras CADA escritura:
-   `python3 visor/validar.py --datos proyectos/<slug>/planos.json`
+   `python3 RUTA_HERRAMIENTA/visor/validar.py --datos CARPETA_PROYECTO/planos.json`
    Corrige los errores antes de seguir; los avisos señalan fichas cojas,
    avisos sin canal o referencias rotas. Los ids R-n, C-n, G-n, Q-n y REC-n
    son globales al proyecto: el validador rechaza duplicados.
 3. Lánzalo en segundo plano y dale la URL al usuario:
-   `python3 visor/servir.py --datos proyectos/<slug>/planos.json`
+   `python3 RUTA_HERRAMIENTA/visor/servir.py --datos CARPETA_PROYECTO/planos.json`
    Sirve solo en 127.0.0.1 (puerto 8765 si está libre), abre el navegador y
    se apaga solo a los 15 minutos. Vigila la caducidad: si la entrevista
    sigue viva cuando muera, relánzalo sin esperar a que te lo pidan; el
@@ -284,7 +295,8 @@ corrija:
 
 No sigas hasta que la dé por buena. Si no sabe definir el resultado medible,
 ayúdale con preguntas: sin eso no sabréis si la app funcionó. Con la frase
-acordada, crea `proyectos/<slug>/`, escribe `planos.json` (version, titulo,
+acordada, crea la carpeta del proyecto (fuera del paquete, ver la regla de
+ubicación), escribe `planos.json` (version, titulo,
 `descripcion` con dos o tres frases en sus palabras sobre qué es el negocio
 y qué se construye, contrato, actores) y levanta el visor: que vea sus
 planos nacer. Si el usuario da varios resultados medibles, `contrato.exito`
@@ -417,6 +429,15 @@ ejecutará cuando exista la app:
 - `estatico`: reglas fijas, cálculos, registros, avisos.
 - `ia`: interpretar texto libre, clasificar, resumir, redactar borradores.
 
+OJO con la `ia`: lo más probable es que la aplicación no la necesite EN
+NINGÚN SITIO, y mejor así. Un paso `ia` cuesta dinero cada vez que corre,
+puede equivocarse y exige revisión humana. Cuestiónalo SIEMPRE antes de
+proponerlo: ¿un formulario, un desplegable o una regla fija lo resuelve?
+(que el cliente elija el producto de una lista mata a "la IA que interpreta
+el mensaje"). Solo queda `ia` cuando la entrada es inevitablemente libre
+(texto, audio, foto) y estructurarla costaría más que revisarla. Cero pasos
+`ia` es un resultado excelente, no un fracaso del método.
+
 Aquí propones tú primero, porque la automatización es tu terreno; la última
 palabra es del usuario. Añade los flujos futuros a `planos.json` (`momento`
 "futuro") y pide correcciones con el flujo de hoy delante. "Esto lo quiero
@@ -512,14 +533,14 @@ Cuando no queden huecos:
    - Cada número de `contrato.exito` se puede medir con los datos que la
      app guarda: si no, añade el requisito y los campos que lo midan.
 3. Genera el spec:
-   `python3 visor/generar_spec.py --datos proyectos/<slug>/planos.json`
+   `python3 RUTA_HERRAMIENTA/visor/generar_spec.py --datos CARPETA_PROYECTO/planos.json`
 3. Escribe `encargo.md` según el modo (abajo): el texto del encargo y,
    debajo, la ruta de la carpeta de planos. Nada más.
 4. Pide al usuario que recorra TODAS las pestañas de la web buscando
    mentiras y huecos, y señálale las 3 partes donde tengas menos confianza
    de haberle entendido bien, para que las revise primero.
 5. Dile qué hacer después: sesión nueva con la IA de código, dándole
-   `encargo.md` y la carpeta `proyectos/<slug>/`. Y que la validación final
+   `encargo.md` y la carpeta del proyecto. Y que la validación final
    es usar la obra con los ejemplos de los planos ("haz el pedido de Paco
    con la deuda de 300€"), no mirar pantallas.
 
@@ -559,8 +580,8 @@ que pedir la ruta del código no es mirar el código):
 Lo primero, cosecha el buzón: si en la carpeta del proyecto hay
 `preguntas-del-constructor.md` o `desviaciones.md`, incorpora sus puntos al
 bloque `preguntas` de `planos.json` ANTES de tocar nada, para que no se
-pierdan al regenerar el spec. Si hay varios proyectos en `proyectos/`,
-pregunta al usuario cuál es, listándolos.
+pierdan al regenerar el spec. Si en la carpeta de trabajo hay varios
+proyectos, pregunta al usuario cuál es, listándolos.
 
 Cuando el usuario vuelva con cambios ("los clientes ahora también piden por
 WhatsApp"), no parchees: localiza en qué bloque de `planos.json` impacta,

@@ -15,9 +15,14 @@ la IA te entrevista, y validas mirando una web que se va rellenando sola.
 
 ## Cómo se usa (3 pasos)
 
-1. Descomprime esta carpeta donde quieras y abre tu agente de IA dentro de
-   ella.
-2. Dile: **"Lee RUNBOOK.md y sigue sus instrucciones."**
+1. Descomprime esta carpeta donde quieras. Es la herramienta: no se toca ni
+   se guarda nada dentro.
+2. Abre tu agente de IA en la carpeta donde quieras guardar tu proyecto
+   (por ejemplo `Documentos/mi-app/`) y dile:
+   **"Lee el RUNBOOK.md de [la ruta de esta carpeta] y sigue sus
+   instrucciones."**
+   Si abres el agente dentro de la herramienta también funciona: te
+   preguntará dónde guardar tu proyecto.
 3. Cuenta tu negocio y corrige lo que te enseñe. Con hechos reales, no con
    teorías. La IA hace el resto.
 
@@ -28,12 +33,15 @@ vuelva a levantar.
 
 ## Qué obtienes al final
 
-Una carpeta `proyectos/<tu-proyecto>/` con:
+En tu carpeta de proyecto (la tuya, fuera de la herramienta):
 
-- `planos.json`: todo tu proyecto como datos (lo que pinta la web).
-- `spec.md`: la especificación completa en texto, generada desde los datos.
-- `encargo.md`: el texto exacto que debes darle a la IA que construya (o
-  audite) tu aplicación, en una sesión nueva.
+- `planos.json`: tu proyecto como datos (lo que pinta la web). En
+  aplicaciones grandes, un mapa general más `actividades/<actividad>/` con
+  los planos de cada actividad.
+- `spec.md` y `encargo.md`: la especificación en texto y el encargo exacto
+  para la IA que construya (o audite) tu aplicación, en una sesión nueva.
+- `especificaciones/`: la documentación completa de tu aplicación, con un
+  índice y un documento por actividad, siempre regenerable.
 
 ## Reglas de oro
 
