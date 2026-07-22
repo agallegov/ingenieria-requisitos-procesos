@@ -10,7 +10,7 @@ la IA te entrevista, y validas mirando una web que se va rellenando sola.
   comprobará al empezar y lo instalará contigo.
 - Un agente de IA que pueda ejecutar comandos en tu ordenador (por ejemplo
   Claude Code). Un chat web normal no vale: no puede levantar el visor.
-- Entre 45 minutos y 2 horas, y tu negocio en la cabeza: el proceso de
+- Tiempo tranquilo por delante, y tu negocio en la cabeza: el proceso de
   memoria, con nombres y números reales.
 
 ## Cómo se usa (3 pasos)

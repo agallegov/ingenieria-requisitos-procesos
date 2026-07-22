@@ -267,7 +267,8 @@ se cuenta en texto.
 
 Abre con el contrato conversacional, en un párrafo: qué vais a hacer (los
 planos de su aplicación), qué se espera de él (contar hechos reales y
-corregir leyendo, nunca redactar), cuánto dura (entre 45 minutos y 2 horas) y
+corregir leyendo, nunca redactar; no prometas ninguna duración: cada negocio
+lleva lo que lleva y se puede pausar y retomar cuando quiera) y
 qué saldrá al final (una web con sus planos y un encargo listo para la IA
 que construya).
 
