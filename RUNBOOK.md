@@ -236,8 +236,8 @@ comprueba si es verdad".
 Cómo se usa:
 
 1. Escribe o actualiza `CARPETA_PROYECTO/planos.json`. Textos en pasado,
-   nombres reales; excepciones y reglas como `decision` con su `rama` (el
-   desvío siempre vuelve al flujo).
+   nombres reales; excepciones y reglas como `decision` con su `rama` o sus
+   `ramas` (cada rama vuelve al flujo, salvo que lleve `"termina": true`).
 2. Valídalo con la herramienta del paquete tras CADA escritura:
    `python3 RUTA_HERRAMIENTA/visor/validar.py --datos CARPETA_PROYECTO/planos.json`
    Corrige los errores antes de seguir; los avisos señalan fichas cojas,

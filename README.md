@@ -57,3 +57,7 @@ En tu carpeta de proyecto (la tuya, fuera de la herramienta):
   pidas cambios "de palabra" a la IA que construye.
 - La validación final es usar la aplicación con los ejemplos reales de tus
   planos, no mirar pantallas bonitas.
+
+## Licencia
+
+MIT: úsalo, cópialo y adáptalo con libertad.
