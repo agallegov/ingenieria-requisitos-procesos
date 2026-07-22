@@ -313,7 +313,16 @@ herramientas que ya usan, sean las que sean (un Excel, un WhatsApp, un SAP,
 un Holded, la web del banco, la web de un proveedor, un Google Drive, una
 app de terceros). Si una de esas herramientas hace algo sola, ese paso es
 `estatico`; si lo hace una empresa de fuera (el banco carga los recibos),
-es `externo`. Varios flujos y varios actores; cada
+es `externo`.
+
+Todo el mundo con nombre propio: si alguien aparece sin nombre ("un
+cliente", "la del mostrador", o el usuario no quiere dar el real),
+bautízalo tú con un nombre inventado del Renacimiento español o italiano
+(Lorenzo, Isabela, Cosimo, Lucrecia, Beatriz, Rodrigo, Bianca, Alfonso) y
+úsalo SIEMPRE igual en actores, diagramas, ejemplos y pruebas. Avísale de
+que es de mentira y que puede cambiarlo. Un "Cliente 1" no cuenta
+historias; una "Lucrecia" sí, y además se nota a la legua que el nombre es
+inventado, que es justo lo que queremos. Varios flujos y varios actores; cada
 flujo es una línea temporal de hechos en pasado con los nombres reales que
 use el usuario, y las excepciones y reglas pegadas al paso donde ocurren, no
 en lista aparte.
@@ -375,6 +384,8 @@ SOLO los que falten, de uno en uno:
 En cada punto caliente (reglas, excepciones, dinero), exige ejemplos con
 datos de verdad: 2 normales y 1 raro, con nombres y números reales. No
 aceptes "un cliente hace un pedido"; exige "Paco pide 40 sacos y debe 300€".
+Si el nombre real no existe o no lo quiere dar, usa el nombre inventado
+estable de ese actor: lo que no puede quedar es un ejemplo sin nombre.
 Si aparece una regla con 3 o más condiciones combinadas, conviértela en una
 tabla de decisión y métela en el bloque `reglas` de los planos para que la
 corrija viéndola en la web.
