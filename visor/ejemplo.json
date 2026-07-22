@@ -1,0 +1,180 @@
+{
+  "version": 2,
+  "proyecto": "almacen-de-paco",
+  "titulo": "Pedidos del almacén",
+  "contrato": {
+    "frase": "Cuando llega un pedido por WhatsApp, María necesita registrarlo y facturarlo sin copiarlo a mano para despachar cada pedido en menos de 10 minutos.",
+    "exito": "en un mes, el tiempo medio de despacho baja de 40 a 10 minutos y ningún pedido se pierde."
+  },
+  "actores": [
+    { "nombre": "Paco", "rol": "cliente" },
+    { "nombre": "María", "rol": "gestiona pedidos" },
+    { "nombre": "el jefe", "rol": "aprueba excepciones" },
+    { "nombre": "el almacén", "rol": "prepara y envía" }
+  ],
+  "vocabulario": [
+    { "termino": "pedido", "significado": "lo que un cliente pide de una vez, con sus sacos y su fecha; no es lo mismo que la factura" },
+    { "termino": "deuda", "significado": "dinero pendiente de facturas anteriores; si hay deuda, el pedido necesita visto bueno del jefe" }
+  ],
+  "flujos": [
+    {
+      "id": "pedido-hoy",
+      "titulo": "Un pedido, de la llamada al envío",
+      "momento": "hoy",
+      "descripcion": "Cómo funciona el negocio ahora mismo, sin la app.",
+      "pasos": [
+        { "tipo": "humano", "texto": "Llegó un pedido por WhatsApp", "quien": "Paco" },
+        { "tipo": "humano", "texto": "Lo pasó al Excel", "quien": "María" },
+        {
+          "tipo": "decision", "clase": "excepcion", "condicion": "¿había stock?",
+          "rama": { "etiqueta": "no había", "pasos": [ { "tipo": "humano", "texto": "Llamó al proveedor", "quien": "María" } ] },
+          "sigue": "sí había"
+        },
+        { "tipo": "humano", "texto": "Hizo la factura en Word", "quien": "María" },
+        {
+          "tipo": "decision", "clase": "regla", "condicion": "¿el cliente debía dinero?",
+          "rama": { "etiqueta": "sí, Paco debe 300€", "pasos": [ { "tipo": "humano", "texto": "Aprobó el pedido", "quien": "el jefe" } ] },
+          "sigue": "no debía nada"
+        },
+        { "tipo": "humano", "texto": "Preparó y envió el pedido", "quien": "el almacén" }
+      ]
+    },
+    {
+      "id": "pedido-futuro",
+      "titulo": "El mismo pedido, con la app",
+      "momento": "futuro",
+      "descripcion": "El reparto del trabajo: qué queda en personas, qué hace código normal y qué hace un modelo de IA.",
+      "pasos": [
+        { "tipo": "humano", "texto": "Llegó un pedido por WhatsApp", "quien": "Paco" },
+        { "tipo": "ia", "texto": "La app leyó el mensaje y montó el pedido" },
+        { "tipo": "estatico", "texto": "Se comprobó el stock" },
+        {
+          "tipo": "decision", "clase": "excepcion", "condicion": "¿había stock?",
+          "rama": { "etiqueta": "no había", "pasos": [
+            { "tipo": "estatico", "texto": "Se avisó a María por WhatsApp" },
+            { "tipo": "humano", "texto": "Llamó al proveedor", "quien": "María" }
+          ] },
+          "sigue": "sí había"
+        },
+        { "tipo": "estatico", "texto": "Se generó la factura" },
+        {
+          "tipo": "decision", "clase": "regla", "condicion": "¿el cliente debía dinero?",
+          "rama": { "etiqueta": "sí, Paco debe 300€", "pasos": [ { "tipo": "humano", "texto": "Aprobó desde el móvil", "quien": "el jefe" } ] },
+          "sigue": "no debía nada"
+        },
+        { "tipo": "estatico", "texto": "Se avisó al almacén" },
+        { "tipo": "humano", "texto": "Preparó y envió el pedido", "quien": "el almacén" }
+      ]
+    }
+  ],
+  "recorridos": [
+    {
+      "id": "REC-1",
+      "nombre": "Esqueleto: un pedido normal, de WhatsApp a enviado",
+      "objetivo": "Recorrer todo el camino feliz aunque sea en fino: entra el mensaje, se monta el pedido, se factura y el almacén se entera.",
+      "estado": "pendiente",
+      "requisitos": [
+        { "id": "R-1", "texto": "Cuando llegue un mensaje de pedido por WhatsApp, el sistema deberá convertirlo en un pedido con cliente, líneas y fecha." },
+        { "id": "R-2", "texto": "Cuando se registre un pedido con stock y sin deuda, el sistema deberá generar la factura y avisar al almacén." }
+      ],
+      "criterios": [
+        { "id": "C-1", "dado": "que Paco no debe nada y hay 100 sacos en stock", "cuando": "escribe \"40 sacos de 25kg para el jueves\"", "entonces": "aparece un pedido de 40 sacos a nombre de Paco, con factura hecha y aviso al almacén" }
+      ]
+    },
+    {
+      "id": "REC-2",
+      "nombre": "Clientes con deuda: el visto bueno del jefe",
+      "objetivo": "Que ningún pedido de un cliente con deuda salga sin aprobación.",
+      "estado": "pendiente",
+      "requisitos": [
+        { "id": "R-3", "texto": "Cuando se registre un pedido de un cliente con deuda pendiente, el sistema deberá retenerlo y pedir aprobación al jefe por el móvil." },
+        { "id": "R-4", "texto": "Cuando el jefe apruebe o rechace, el sistema deberá continuar o anular el pedido y avisar a María." }
+      ],
+      "criterios": [
+        { "id": "C-2", "dado": "que Paco debe 300€", "cuando": "pide 40 sacos", "entonces": "el pedido queda retenido y al jefe le llega la petición con la deuda visible" },
+        { "id": "C-3", "dado": "un pedido retenido de Paco", "cuando": "el jefe lo rechaza", "entonces": "el pedido queda anulado y María ve el motivo" }
+      ]
+    }
+  ],
+  "reglas": [
+    {
+      "id": "G-1",
+      "nombre": "Cuándo necesita un pedido el visto bueno del jefe",
+      "tabla": {
+        "columnas": ["¿Debe dinero?", "¿Pedido mayor de 1.000€?", "Qué pasa"],
+        "filas": [
+          ["no", "no", "sale directo"],
+          ["no", "sí", "aprueba el jefe"],
+          ["sí", "lo que sea", "aprueba el jefe"]
+        ]
+      }
+    }
+  ],
+  "estados": [
+    {
+      "entidad": "pedido",
+      "estados": [
+        { "nombre": "nuevo", "acciones": ["editar líneas", "anular"] },
+        { "nombre": "retenido", "acciones": ["aprobar (solo el jefe)", "rechazar (solo el jefe)"] },
+        { "nombre": "facturado", "acciones": ["enviar al almacén"] },
+        { "nombre": "enviado", "acciones": ["nada: solo consultar"] }
+      ]
+    }
+  ],
+  "datos": [
+    { "cosa": "cliente", "guarda": ["nombre", "teléfono de WhatsApp", "deuda pendiente"], "origen": "se importa del Excel de María" },
+    { "cosa": "pedido", "guarda": ["cliente", "líneas (producto y cantidad)", "fecha de entrega", "estado"], "origen": "se empieza de cero" }
+  ],
+  "integraciones": [
+    { "con": "WhatsApp", "para": "recibir pedidos y mandar avisos" }
+  ],
+  "superficie": {
+    "puntos": [
+      {
+        "nombre": "El panel de María",
+        "quien": ["María"],
+        "llega": "ordenador del despacho",
+        "cuando": "cada vez que entra un pedido nuevo o hay un aviso",
+        "ve": "los pedidos de hoy, con los retenidos arriba en naranja",
+        "puede": ["corregir un pedido mal leído", "anular un pedido", "marcar deuda como pagada"],
+        "nunca": ["aprobar pedidos retenidos", "borrar el historial de un cliente"]
+      },
+      {
+        "nombre": "El móvil del jefe",
+        "quien": ["el jefe"],
+        "llega": "móvil, por WhatsApp",
+        "cuando": "solo cuando un pedido queda retenido",
+        "ve": "el pedido, la deuda del cliente y dos botones: aprobar o rechazar",
+        "puede": ["aprobar", "rechazar con motivo"],
+        "nunca": ["editar el pedido", "ver otra cosa que los retenidos"]
+      }
+    ],
+    "permisos": {
+      "acciones": ["registrar pedido", "corregir pedido", "aprobar retenido", "marcar deuda pagada"],
+      "roles": [
+        { "rol": "María", "permitidas": ["registrar pedido", "corregir pedido", "marcar deuda pagada"] },
+        { "rol": "el jefe", "permitidas": ["aprobar retenido"] }
+      ]
+    },
+    "avisos": [
+      { "quien": "el almacén", "que": "pedido listo para preparar", "canal": "WhatsApp", "cuando": "al facturarse" },
+      { "quien": "el jefe", "que": "pedido retenido por deuda", "canal": "WhatsApp", "cuando": "al retenerse" }
+    ],
+    "condiciones": [
+      "María registra pedidos con el cliente al teléfono: nada puede tardar más de 5 segundos.",
+      "Si se corta internet media mañana, no se pierde ningún pedido ya registrado.",
+      "La deuda de los clientes solo la ven María y el jefe."
+    ]
+  },
+  "calidad": [
+    { "id": "Q-1", "criterio": "Con 30 pedidos en un día, registrar uno (del WhatsApp al panel) tarda menos de 10 segundos." },
+    { "id": "Q-2", "criterio": "Si la app se cae, al volver no falta ningún pedido ya registrado ni se duplica ninguno." }
+  ],
+  "fuera": [
+    "Cobros y pasarela de pago: se sigue cobrando como hasta ahora.",
+    "Control de stock en tiempo real: el stock se comprueba contra la cifra que carga María cada mañana."
+  ],
+  "preguntas": [
+    "¿Qué pasa con los pedidos que llegan por teléfono (un 10%)? ¿Los registra María a mano en el panel?"
+  ]
+}

@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Planos del proyecto · ingeniería de requisitos</title>
+<style>
+  /* PLANTILLA FIJA v2 (pestañas). No se edita nunca: los proyectos solo
+     aportan datos (planos.json). Colores validados para daltonismo. */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { background: #fcfcfb; color: #0b0b0b; font: 16px/1.5 Arial, Helvetica, sans-serif; }
+  .pagina { max-width: 920px; margin: 0 auto; padding: 32px 20px 90px; }
+
+  header .marca { font-size: 11px; font-weight: bold; letter-spacing: .14em; text-transform: uppercase; color: #d95926; }
+  h1 { font-size: 25px; line-height: 1.2; margin: 6px 0 2px; }
+  .sub { color: #52514e; font-size: 13.5px; }
+
+  nav.pestanas { position: sticky; top: 0; z-index: 5; display: flex; gap: 6px; overflow-x: auto; padding: 12px 0 10px; margin-top: 16px; background: #fcfcfb; box-shadow: 0 1px 0 #e1e0d9; }
+  nav.pestanas button { white-space: nowrap; font: bold 13px Arial, Helvetica, sans-serif; color: #52514e; border: 1px solid #e1e0d9; border-radius: 999px; padding: 7px 14px; background: #f9f9f7; cursor: pointer; }
+  nav.pestanas button:hover { border-color: #d95926; color: #0b0b0b; }
+  nav.pestanas button:focus-visible { outline: 2px solid #d95926; outline-offset: 2px; }
+  nav.pestanas button.activa { background: #383835; border-color: #383835; color: #ffffff; }
+
+  .banner-caido { display: none; margin-top: 14px; border: 2px solid #d95926; border-radius: 10px; background: #f9e0d5; padding: 10px 14px; font-size: 13.5px; }
+  .banner-caido.visible { display: block; }
+
+  .seccion { display: none; margin-top: 26px; }
+  .seccion.activa { display: block; }
+  .seccion > h2 { font-size: 20px; margin-bottom: 4px; }
+  .seccion > .nota { font-size: 13px; color: #898781; margin-bottom: 14px; max-width: 65ch; }
+
+  .contrato { border: 1px solid #e1e0d9; border-left: 4px solid #d95926; border-radius: 8px; padding: 12px 16px; background: #f9f9f7; font-size: 15px; max-width: 70ch; }
+  .contrato .exito { font-size: 13px; color: #52514e; margin-top: 6px; }
+  .actores { margin-top: 14px; font-size: 13px; color: #52514e; }
+  .actores span { display: inline-block; background: #f0efec; border: 1px solid #e1e0d9; border-radius: 999px; padding: 2px 10px; margin: 2px 4px 0 0; }
+  .progreso { margin-top: 18px; }
+  .progreso .fila { display: flex; gap: 8px; align-items: baseline; font-size: 14px; margin: 4px 0; }
+  .progreso .si { color: #0b0b0b; }
+  .progreso .no { color: #898781; }
+  .puntito { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
+  .puntito.si { background: #1baf7a; }
+  .puntito.no { background: #e1e0d9; }
+
+  .leyenda { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; margin: 4px 0 6px; padding: 12px 16px; border: 1px solid #e1e0d9; border-radius: 10px; background: #f9f9f7; font-size: 12.5px; color: #52514e; }
+  .leyenda i { display: inline-block; vertical-align: -3px; margin-right: 7px; font-style: normal; }
+  .m-humano { width: 18px; height: 14px; background: #f9e0d5; border: 2px solid #d95926; border-radius: 7px; }
+  .m-estatico { width: 18px; height: 14px; background: #cde2fb; border: 2px solid #2a78d6; box-shadow: inset 2px 0 0 #2a78d6, inset -2px 0 0 #2a78d6; }
+  .m-ia { width: 20px; height: 14px; background: #1baf7a; clip-path: polygon(5px 0, 15px 0, 20px 7px, 15px 14px, 5px 14px, 0 7px); }
+  .m-decision { width: 14px; height: 14px; background: #f0efec; border: 2px solid #898781; transform: rotate(45deg) scale(.82); }
+  .m-terminal { width: 14px; height: 14px; background: #383835; border-radius: 50%; }
+
+  .flujo { margin-top: 34px; }
+  .flujo-cabecera { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+  .flujo h3 { font-size: 17px; }
+  .chip { font-size: 11px; font-weight: bold; letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; padding: 3px 10px; }
+  .chip-hoy { background: #f0efec; color: #52514e; border: 1px solid #d8d7d0; }
+  .chip-futuro { background: #f9e0d5; color: #a03c10; border: 1px solid #d95926; }
+  .chip-neutro { background: #f0efec; color: #52514e; border: 1px solid #d8d7d0; }
+  .chip-hecho { background: #383835; color: #ffffff; border: 1px solid #383835; }
+  .flujo .descripcion { font-size: 13.5px; color: #52514e; max-width: 65ch; }
+  .lienzo { margin-top: 16px; }
+
+  .paso { max-width: 460px; margin: 0 auto; text-align: center; font-size: 14.5px; line-height: 1.35; }
+  .paso .quien { font-weight: bold; }
+  .humano { background: #f9e0d5; border: 2px solid #d95926; border-radius: 14px; padding: 10px 18px; }
+  .estatico { background: #cde2fb; border: 2px solid #2a78d6; padding: 10px 26px; box-shadow: inset 5px 0 0 -3px #2a78d6, inset -5px 0 0 -3px #2a78d6; }
+  .ia-borde { max-width: 470px; margin: 0 auto; background: #1baf7a; clip-path: polygon(19px 0, calc(100% - 19px) 0, 100% 50%, calc(100% - 19px) 100%, 19px 100%, 0 50%); padding: 2px 3px; }
+  .ia { background: #d6f1e7; padding: 10px 34px; max-width: none; clip-path: polygon(18px 0, calc(100% - 18px) 0, 100% 50%, calc(100% - 18px) 100%, 18px 100%, 0 50%); }
+  .decision-borde { width: max-content; max-width: 420px; margin: 0 auto; background: #898781; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); padding: 2px; }
+  .decision { background: #f0efec; padding: 22px 56px; font-size: 13.5px; max-width: none; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+  .terminal { width: 54px; height: 54px; border-radius: 50%; background: #383835; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11.5px; margin: 0 auto; }
+  .conector { width: 0; height: 30px; border-left: 2px solid #898781; margin: 0 auto; position: relative; }
+  .conector.discontinuo { border-left-style: dashed; }
+  .conector::after { content: ""; position: absolute; bottom: 0; left: -6px; border: 5px solid transparent; border-top: 7px solid #898781; }
+  .etiqueta-camino { width: max-content; max-width: 300px; margin: -4px auto 0; font-size: 12px; color: #52514e; background: #fcfcfb; padding: 0 6px; position: relative; top: -20px; margin-bottom: -18px; }
+  .rama { margin: 12px 0 12px 14%; padding: 10px 0 2px 20px; border-left: 2px dashed #898781; border-radius: 0 0 0 8px; }
+  .rama .titulo-rama { font-size: 12.5px; font-weight: bold; color: #52514e; margin-bottom: 8px; text-align: left; }
+  .rama .paso { max-width: 400px; }
+  .rama .conector { height: 22px; }
+  .vuelta { font-size: 11.5px; color: #898781; text-align: left; margin-top: 6px; }
+
+  .tarjeta { border: 1px solid #e1e0d9; border-radius: 10px; padding: 14px 16px; background: #f9f9f7; margin: 0 0 12px; }
+  .tarjeta-cabecera { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .tarjeta-cabecera .nombre { font-weight: bold; font-size: 15px; }
+  .tarjeta .objetivo { font-size: 13px; color: #52514e; margin-top: 4px; }
+  .nombre { font-weight: bold; font-size: 15px; }
+  .idtag { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: #f0efec; border: 1px solid #e1e0d9; border-radius: 4px; padding: 1px 6px; }
+  .mini-titulo { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: .1em; color: #898781; margin: 14px 0 6px; }
+  ul.lista { padding-left: 20px; display: grid; gap: 6px; font-size: 14px; }
+  ul.lista li::marker { color: #d95926; }
+  .req { display: flex; gap: 8px; align-items: baseline; font-size: 14px; margin: 4px 0; }
+  .criterio { background: #fcfcfb; border: 1px solid #e1e0d9; border-radius: 8px; padding: 8px 12px; margin: 6px 0; font-size: 13.5px; }
+  .criterio b { color: #52514e; }
+
+  .tabla-envoltorio { overflow-x: auto; margin: 8px 0; }
+  table { border-collapse: collapse; font-size: 13.5px; }
+  th, td { border: 1px solid #e1e0d9; padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: #f9f9f7; font-size: 12.5px; }
+  td.centrado { text-align: center; }
+
+  dl.vocab { display: grid; gap: 6px; font-size: 14px; }
+  dl.vocab dt { font-weight: bold; display: inline; }
+  dl.vocab dd { display: inline; margin-left: 6px; color: #52514e; }
+  .aviso-preguntas { border-left: 4px solid #d95926; }
+
+  .error { margin-top: 30px; border: 2px solid #d03b3b; border-radius: 10px; padding: 16px 18px; background: #fdf1f1; color: #7c1f1f; font-size: 14px; }
+  footer { margin-top: 60px; font-size: 12px; color: #898781; text-align: center; }
+</style>
+</head>
+<body>
+  <div class="pagina">
+    <header>
+      <div class="marca">ingeniería de requisitos · planos del proyecto</div>
+      <h1 id="titulo">Cargando…</h1>
+      <div class="sub" id="proyecto"></div>
+    </header>
+
+    <div class="banner-caido" id="banner">⚠ El visor perdió la conexión: el servidor
+    local se apaga solo a los 15 minutos. Pide a tu IA que lo vuelva a levantar
+    y recarga esta página.</div>
+
+    <nav class="pestanas" id="pestanas" hidden></nav>
+    <main id="contenido"></main>
+    <div class="error" id="error" hidden></div>
+
+    <footer>Plantilla fija v2 · la página se actualiza sola cuando tu IA añade
+    contenido · el servidor local caduca a los 15 minutos.</footer>
+  </div>
+
+<script>
+"use strict";
+const TIPOS_ACCION = ["humano", "estatico", "ia"];
+let ultimaFoto = "";
+let pestanaActiva = (location.hash || "").replace("#", "") || "resumen";
+
+function el(tag, clase, texto) {
+  const n = document.createElement(tag);
+  if (clase) n.className = clase;
+  if (texto !== undefined) n.textContent = texto;
+  return n;
+}
+
+function fallo(msg) {
+  const e = document.getElementById("error");
+  e.textContent = "No se pudo pintar el proyecto: " + msg + " Revisa planos.json contra visor/esquema.json.";
+  e.hidden = false;
+  document.getElementById("titulo").textContent = "Datos no válidos";
+}
+
+/* ---------- flujos: mismo lenguaje visual de siempre ---------- */
+
+function validarPaso(p, flujo) {
+  if (p.tipo === "decision") {
+    if (p.clase !== "regla" && p.clase !== "excepcion") throw new Error('decisión sin "clase" en "' + flujo + '".');
+    if (!p.condicion) throw new Error('decisión sin "condicion" en "' + flujo + '".');
+    if (!p.rama || !p.rama.etiqueta || !Array.isArray(p.rama.pasos)) throw new Error('decisión "' + p.condicion + '" sin rama {etiqueta, pasos}.');
+    p.rama.pasos.forEach(x => validarPaso(x, flujo));
+  } else if (TIPOS_ACCION.includes(p.tipo)) {
+    if (!p.texto) throw new Error('paso "' + p.tipo + '" sin "texto" en "' + flujo + '".');
+  } else {
+    throw new Error('tipo de paso desconocido: "' + p.tipo + '".');
+  }
+}
+
+function ponerTexto(nodo, p) {
+  nodo.appendChild(document.createTextNode(p.texto));
+  if (p.quien) {
+    nodo.appendChild(document.createTextNode(" · "));
+    nodo.appendChild(el("span", "quien", p.quien));
+  }
+}
+
+function bloqueAccion(p) {
+  if (p.tipo === "ia") {
+    const borde = el("div", "ia-borde");
+    const b = el("div", "paso ia");
+    ponerTexto(b, p);
+    borde.appendChild(b);
+    return borde;
+  }
+  const b = el("div", "paso " + p.tipo);
+  ponerTexto(b, p);
+  return b;
+}
+
+function conector(discontinuo, etiqueta) {
+  const frag = document.createDocumentFragment();
+  frag.appendChild(el("div", "conector" + (discontinuo ? " discontinuo" : "")));
+  if (etiqueta) frag.appendChild(el("div", "etiqueta-camino", etiqueta));
+  return frag;
+}
+
+function pintarPasos(destino, pasos, dentroDeRama) {
+  pasos.forEach(p => {
+    destino.appendChild(conector(!!dentroDeRama));
+    if (p.tipo === "decision") {
+      const borde = el("div", "decision-borde");
+      borde.appendChild(el("div", "paso decision", (p.clase === "excepcion" ? "⚠ " : "⚑ ") + p.condicion));
+      destino.appendChild(borde);
+      const rama = el("div", "rama");
+      rama.appendChild(el("div", "titulo-rama", (p.clase === "excepcion" ? "⚠ " : "⚑ ") + p.rama.etiqueta));
+      pintarPasos(rama, p.rama.pasos, true);
+      rama.appendChild(el("div", "vuelta", "…y vuelve al flujo"));
+      destino.appendChild(rama);
+      if (p.sigue) destino.appendChild(el("div", "etiqueta-camino", p.sigue));
+    } else {
+      destino.appendChild(bloqueAccion(p));
+    }
+  });
+}
+
+/* ---------- utilidades ---------- */
+
+function tabla(cabeceras, filas) {
+  const env = el("div", "tabla-envoltorio");
+  const t = el("table");
+  const tr = el("tr");
+  cabeceras.forEach(c => tr.appendChild(el("th", null, c)));
+  t.appendChild(tr);
+  filas.forEach(f => {
+    const r = el("tr");
+    f.forEach(celda => r.appendChild(el("td", celda === "✓" || celda === "" ? "centrado" : null, celda)));
+    t.appendChild(r);
+  });
+  env.appendChild(t);
+  return env;
+}
+
+/* ---------- pestañas ---------- */
+
+function tabResumen(d, presentes) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Resumen"));
+  if (d.contrato && d.contrato.frase) {
+    const c = el("div", "contrato");
+    c.appendChild(document.createTextNode(d.contrato.frase));
+    if (d.contrato.exito) c.appendChild(el("div", "exito", "Sabremos que funcionó si: " + d.contrato.exito));
+    s.appendChild(c);
+  } else {
+    s.appendChild(el("div", "nota", "Todavía no hay frase de contrato: aparecerá aquí en cuanto la acordéis."));
+  }
+  if (Array.isArray(d.actores) && d.actores.length) {
+    const a = el("div", "actores");
+    a.appendChild(document.createTextNode("Actores: "));
+    d.actores.forEach(x => a.appendChild(el("span", null, x.nombre + (x.rol ? " (" + x.rol + ")" : ""))));
+    s.appendChild(a);
+  }
+  if (Array.isArray(d.vocabulario) && d.vocabulario.length) {
+    s.appendChild(el("div", "mini-titulo", "Vocabulario del negocio"));
+    const dl = el("dl", "vocab");
+    d.vocabulario.forEach(v => {
+      const linea = el("div");
+      linea.appendChild(el("dt", null, v.termino + ":"));
+      linea.appendChild(el("dd", null, v.significado));
+      dl.appendChild(linea);
+    });
+    s.appendChild(dl);
+  }
+  const prog = el("div", "progreso");
+  prog.appendChild(el("div", "mini-titulo", "Qué hay ya en los planos"));
+  presentes.forEach(([titulo, hay]) => {
+    const fila = el("div", "fila " + (hay ? "si" : "no"));
+    fila.appendChild(el("span", "puntito " + (hay ? "si" : "no")));
+    fila.appendChild(el("span", null, titulo + (hay ? "" : " (pendiente)")));
+    prog.appendChild(fila);
+  });
+  s.appendChild(prog);
+  return s;
+}
+
+function tabFlujos(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Los flujos"));
+  s.appendChild(el("div", "nota", "Naranja lo hacen personas, azul lo hace código normal, verde lo hace un modelo de IA."));
+  const ley = el("div", "leyenda");
+  [["m-humano", "humano: lo hace una persona"], ["m-estatico", "estático: código normal"],
+   ["m-ia", "modelo IA"], ["m-decision", "⚑ regla / ⚠ excepción"], ["m-terminal", "inicio y fin"]]
+    .forEach(([c, t]) => { const sp = el("span"); sp.appendChild(el("i", c)); sp.appendChild(document.createTextNode(t)); ley.appendChild(sp); });
+  s.appendChild(ley);
+  d.flujos.forEach(f => {
+    f.pasos.forEach(p => validarPaso(p, f.titulo));
+    const bloc = el("div", "flujo");
+    const cab = el("div", "flujo-cabecera");
+    cab.appendChild(el("h3", null, f.titulo));
+    cab.appendChild(el("span", "chip " + (f.momento === "hoy" ? "chip-hoy" : "chip-futuro"), f.momento === "hoy" ? "hoy" : "con la app"));
+    bloc.appendChild(cab);
+    if (f.descripcion) bloc.appendChild(el("p", "descripcion", f.descripcion));
+    const lienzo = el("div", "lienzo");
+    lienzo.appendChild(el("div", "terminal", "inicio"));
+    pintarPasos(lienzo, f.pasos, false);
+    lienzo.appendChild(conector(false));
+    lienzo.appendChild(el("div", "terminal", "fin"));
+    bloc.appendChild(lienzo);
+    s.appendChild(bloc);
+  });
+  return s;
+}
+
+function tabRecorridos(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Recorridos y requisitos"));
+  s.appendChild(el("div", "nota", "Cada recorrido es un trozo de la app que se puede probar de principio a fin. El orden es el orden de entrega; el primero es el esqueleto que recorre todo el camino feliz."));
+  d.recorridos.forEach((r, i) => {
+    const c = el("div", "tarjeta");
+    const cab = el("div", "tarjeta-cabecera");
+    if (r.id) cab.appendChild(el("span", "idtag", r.id));
+    cab.appendChild(el("span", "nombre", r.nombre));
+    if (i === 0) cab.appendChild(el("span", "chip chip-futuro", "1ª entrega"));
+    cab.appendChild(el("span", "chip " + (r.estado === "entregado" ? "chip-hecho" : "chip-neutro"), r.estado === "entregado" ? "entregado" : "pendiente"));
+    c.appendChild(cab);
+    if (r.objetivo) c.appendChild(el("div", "objetivo", r.objetivo));
+    if (Array.isArray(r.requisitos) && r.requisitos.length) {
+      c.appendChild(el("div", "mini-titulo", "Requisitos"));
+      r.requisitos.forEach(q => {
+        const fila = el("div", "req");
+        fila.appendChild(el("span", "idtag", q.id));
+        fila.appendChild(el("span", null, q.texto));
+        c.appendChild(fila);
+      });
+    }
+    if (Array.isArray(r.criterios) && r.criterios.length) {
+      c.appendChild(el("div", "mini-titulo", "Criterios de aceptación"));
+      r.criterios.forEach(cr => {
+        const b = el("div", "criterio");
+        b.appendChild(el("span", "idtag", cr.id));
+        b.appendChild(document.createTextNode(" "));
+        [["Dado", cr.dado], ["Cuando", cr.cuando], ["Entonces", cr.entonces]].forEach(([et, tx], j) => {
+          if (j > 0) b.appendChild(document.createTextNode(" / "));
+          b.appendChild(el("b", null, et + " "));
+          b.appendChild(document.createTextNode(tx));
+        });
+        c.appendChild(b);
+      });
+    }
+    s.appendChild(c);
+  });
+  return s;
+}
+
+function tabReglas(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Reglas de negocio"));
+  d.reglas.forEach(g => {
+    const c = el("div", "tarjeta");
+    const cab = el("div", "tarjeta-cabecera");
+    if (g.id) cab.appendChild(el("span", "idtag", g.id));
+    cab.appendChild(el("span", "nombre", g.nombre));
+    c.appendChild(cab);
+    if (g.texto) c.appendChild(el("div", "objetivo", g.texto));
+    if (g.tabla) c.appendChild(tabla(g.tabla.columnas, g.tabla.filas));
+    s.appendChild(c);
+  });
+  return s;
+}
+
+function tabEstados(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Estados"));
+  s.appendChild(el("div", "nota", "En qué situaciones puede estar cada cosa y qué se puede hacer en cada una."));
+  d.estados.forEach(e2 => {
+    const c = el("div", "tarjeta");
+    c.appendChild(el("div", "nombre", e2.entidad));
+    c.appendChild(tabla(["Estado", "Qué se puede hacer"], e2.estados.map(x => [x.nombre, (x.acciones || []).join(" · ")])));
+    s.appendChild(c);
+  });
+  return s;
+}
+
+function tabDatos(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Datos e integraciones"));
+  if (Array.isArray(d.datos) && d.datos.length) {
+    s.appendChild(el("div", "mini-titulo", "Qué se guarda"));
+    s.appendChild(tabla(["Cosa", "Qué se guarda", "De dónde viene"], d.datos.map(x => [x.cosa, (x.guarda || []).join(", "), x.origen || ""])));
+  }
+  if (Array.isArray(d.integraciones) && d.integraciones.length) {
+    s.appendChild(el("div", "mini-titulo", "Con qué habla"));
+    const ul = el("ul", "lista");
+    d.integraciones.forEach(x => ul.appendChild(el("li", null, x.con + (x.para ? ": " + x.para : ""))));
+    s.appendChild(ul);
+  }
+  return s;
+}
+
+function tabSuperficie(d) {
+  const sup = d.superficie;
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Superficie de uso"));
+  s.appendChild(el("div", "nota", "Por dónde se toca la aplicación, quién puede qué, y en qué condiciones se usa."));
+  (sup.puntos || []).forEach(p => {
+    const c = el("div", "tarjeta");
+    c.appendChild(el("div", "nombre", p.nombre));
+    c.appendChild(tabla(["", ""], [
+      ["Quién entra", (p.quien || []).join(", ")],
+      ["Por dónde llega", p.llega || ""],
+      ["Cuándo lo usa", p.cuando || ""],
+      ["Qué ve nada más entrar", p.ve || ""],
+      ["Qué puede hacer", (p.puede || []).join(" · ")],
+      ["Qué NO debe poder jamás", (p.nunca || []).join(" · ")]
+    ]));
+    s.appendChild(c);
+  });
+  if (sup.permisos && Array.isArray(sup.permisos.acciones) && sup.permisos.acciones.length) {
+    s.appendChild(el("div", "mini-titulo", "Matriz de permisos"));
+    s.appendChild(tabla([""].concat(sup.permisos.acciones),
+      (sup.permisos.roles || []).map(r => [r.rol].concat(sup.permisos.acciones.map(a => (r.permitidas || []).includes(a) ? "✓" : "")))));
+  }
+  if (Array.isArray(sup.avisos) && sup.avisos.length) {
+    s.appendChild(el("div", "mini-titulo", "Avisos"));
+    s.appendChild(tabla(["Quién se entera", "De qué", "Por dónde", "Cuándo"],
+      sup.avisos.map(a => [a.quien, a.que, a.canal || "", a.cuando || ""])));
+  }
+  if (Array.isArray(sup.condiciones) && sup.condiciones.length) {
+    s.appendChild(el("div", "mini-titulo", "Condiciones de uso"));
+    const ul = el("ul", "lista");
+    sup.condiciones.forEach(x => ul.appendChild(el("li", null, x)));
+    s.appendChild(ul);
+  }
+  return s;
+}
+
+function tabCalidad(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Calidad y límites"));
+  d.calidad.forEach(q => {
+    const fila = el("div", "req");
+    fila.appendChild(el("span", "idtag", q.id));
+    fila.appendChild(el("span", null, q.criterio));
+    s.appendChild(fila);
+  });
+  return s;
+}
+
+function tabFuera(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Fuera de alcance"));
+  s.appendChild(el("div", "nota", "Esto NO se construye, y está decidido a propósito."));
+  const ul = el("ul", "lista");
+  d.fuera.forEach(x => ul.appendChild(el("li", null, x)));
+  s.appendChild(ul);
+  return s;
+}
+
+function tabPreguntas(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Preguntas abiertas"));
+  s.appendChild(el("div", "nota", "Lo que quedó sin decidir. También es el buzón del agente constructor."));
+  const c = el("div", "tarjeta aviso-preguntas");
+  const ul = el("ul", "lista");
+  d.preguntas.forEach(x => ul.appendChild(el("li", null, x)));
+  c.appendChild(ul);
+  s.appendChild(c);
+  return s;
+}
+
+/* ---------- montaje ---------- */
+
+function activar(id) {
+  pestanaActiva = id;
+  history.replaceState(null, "", "#" + id);
+  document.querySelectorAll("nav.pestanas button").forEach(b => b.classList.toggle("activa", b.dataset.id === id));
+  document.querySelectorAll("main .seccion").forEach(sec => sec.classList.toggle("activa", sec.id === "s-" + id));
+}
+
+function pintar(d) {
+  document.title = d.titulo + " · planos";
+  document.getElementById("titulo").textContent = d.titulo;
+  document.getElementById("proyecto").textContent = d.proyecto ? "Proyecto: " + d.proyecto : "";
+
+  const defs = [
+    ["flujos", "Flujos", Array.isArray(d.flujos) && d.flujos.length > 0, tabFlujos],
+    ["recorridos", "Recorridos", Array.isArray(d.recorridos) && d.recorridos.length > 0, tabRecorridos],
+    ["reglas", "Reglas", Array.isArray(d.reglas) && d.reglas.length > 0, tabReglas],
+    ["estados", "Estados", Array.isArray(d.estados) && d.estados.length > 0, tabEstados],
+    ["datos", "Datos", (Array.isArray(d.datos) && d.datos.length > 0) || (Array.isArray(d.integraciones) && d.integraciones.length > 0), tabDatos],
+    ["superficie", "Superficie", !!(d.superficie && ((d.superficie.puntos || []).length || d.superficie.permisos || (d.superficie.avisos || []).length || (d.superficie.condiciones || []).length)), tabSuperficie],
+    ["calidad", "Calidad", Array.isArray(d.calidad) && d.calidad.length > 0, tabCalidad],
+    ["fuera", "Fuera de alcance", Array.isArray(d.fuera) && d.fuera.length > 0, tabFuera],
+    ["preguntas", "Preguntas", Array.isArray(d.preguntas) && d.preguntas.length > 0, tabPreguntas]
+  ];
+
+  const cont = document.getElementById("contenido");
+  const nav = document.getElementById("pestanas");
+  cont.textContent = "";
+  nav.textContent = "";
+
+  const progreso = defs.map(([id, titulo, presente]) => [titulo, !!presente]);
+  const pestañas = [["resumen", "Resumen", true, dd => tabResumen(dd, progreso)]].concat(defs.filter(x => x[2]));
+
+  pestañas.forEach(([id, titulo, presente, render]) => {
+    const sec = render(d);
+    sec.id = "s-" + id;
+    cont.appendChild(sec);
+    const b = el("button", null, titulo);
+    b.dataset.id = id;
+    b.addEventListener("click", () => activar(id));
+    nav.appendChild(b);
+  });
+  nav.hidden = false;
+
+  const ids = pestañas.map(x => x[0]);
+  activar(ids.includes(pestanaActiva) ? pestanaActiva : "resumen");
+}
+
+function cargar() {
+  fetch("datos.json", { cache: "no-store" })
+    .then(r => { if (!r.ok) throw new Error("HTTP " + r.status + " al pedir los datos."); return r.text(); })
+    .then(texto => {
+      document.getElementById("banner").classList.remove("visible");
+      if (texto === ultimaFoto) return;
+      ultimaFoto = texto;
+      const d = JSON.parse(texto);
+      if (!d || d.version !== 2) throw new Error('falta "version": 2.');
+      if (typeof d.titulo !== "string" || !d.titulo) throw new Error('falta "titulo".');
+      document.getElementById("error").hidden = true;
+      pintar(d);
+    })
+    .catch(e => {
+      if (ultimaFoto) {
+        document.getElementById("banner").classList.add("visible");
+      } else {
+        fallo(e.message);
+      }
+    });
+}
+
+cargar();
+setInterval(cargar, 3000);
+</script>
+</body>
+</html>
