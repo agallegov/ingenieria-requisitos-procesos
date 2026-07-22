@@ -309,6 +309,12 @@ function tabFlujos(d) {
    ["m-ia", "Automático · IA"], ["m-decision", "⚑ Regla / ⚠ Excepción"], ["m-terminal", "inicio y fin"]]
     .forEach(([c, t]) => { const sp = el("span"); sp.appendChild(el("i", c)); sp.appendChild(document.createTextNode(t)); ley.appendChild(sp); });
   s.appendChild(ley);
+  if (Array.isArray(d.actores) && d.actores.length) {
+    const a = el("div", "actores");
+    a.appendChild(document.createTextNode("Quién es quién: "));
+    d.actores.forEach(x => a.appendChild(el("span", null, x.nombre + (x.rol ? " (" + x.rol + ")" : ""))));
+    s.appendChild(a);
+  }
   d.flujos.forEach(f => {
     const bloc = el("div", "flujo");
     const cab = el("div", "flujo-cabecera");
