@@ -113,6 +113,17 @@ el usuario puede pedirte:
 Cada cambio de estado se escribe en el mapa en el momento en que ocurre:
 el mapa siempre dice la verdad del proyecto.
 
+**La documentación final.** Al cerrar cada sesión (y siempre que el usuario
+pida "dame la documentación"), compila la carpeta de especificaciones:
+
+`python3 visor/compilar.py --mapa proyectos/<app>/planos.json`
+
+Deja `proyectos/<app>/especificaciones/` con el índice (README.md), el spec
+del mapa y el spec de cada actividad con planos, agrupados por área: la
+documentación completa y al día de la aplicación, lista para leer, versionar
+o entregar a cualquiera. Se regenera entera en cada compilación: no se edita
+a mano jamás.
+
 ## Conducta
 
 - Modo Barrio Sésamo, SIEMPRE: habla muy claro y muy masticado, como a un
@@ -306,6 +317,13 @@ Itera hasta que diga que así es como pasa de verdad, en todos.
 
 En estos flujos de hoy casi todo será `humano`; `estatico` solo si su sistema
 actual hace algo solo; `ia` no debería aparecer todavía.
+
+El flujo de hoy es ANDAMIO, no entregable: se valida UNA vez ("¿así pasa de
+verdad?") y queda archivado como contexto. Desde el reparto (F3) en
+adelante, las correcciones van SOLO al flujo con la app; en el visor, el de
+hoy queda plegado bajo "ver cómo funciona hoy". Y si la actividad no existe
+hoy (nace con la app), sáltate su flujo de hoy sin culpa y anótalo en el
+mural: "no hay proceso actual".
 
 ## F2: Interrogatorio de huecos
 

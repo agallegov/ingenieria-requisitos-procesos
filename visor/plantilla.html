@@ -52,6 +52,10 @@
   .m-terminal { width: 14px; height: 14px; background: #383835; border-radius: 50%; }
 
   .flujo { margin-top: 34px; }
+  details.flujo-hoy { margin-top: 34px; border: 1px solid #e1e0d9; border-radius: 10px; background: #f9f9f7; padding: 12px 16px; }
+  details.flujo-hoy > summary { cursor: pointer; font-weight: bold; font-size: 14.5px; color: #52514e; }
+  details.flujo-hoy > summary:focus-visible { outline: 2px solid #d95926; outline-offset: 3px; border-radius: 4px; }
+  details.flujo-hoy .flujo { margin-top: 10px; }
   .flujo-cabecera { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
   .flujo h3 { font-size: 17px; }
   .chip { font-size: 11px; font-weight: bold; letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; padding: 3px 10px; }
@@ -423,10 +427,30 @@ function tabEpisodios(d) {
   return s;
 }
 
+function pintarFlujo(f) {
+  const bloc = el("div", "flujo");
+  const cab = el("div", "flujo-cabecera");
+  cab.appendChild(el("h3", null, f.titulo));
+  cab.appendChild(el("span", "chip " + (f.momento === "hoy" ? "chip-hoy" : "chip-futuro"), f.momento === "hoy" ? "hoy" : "con la app"));
+  bloc.appendChild(cab);
+  if (f.descripcion) bloc.appendChild(el("p", "descripcion", f.descripcion));
+  const lienzo = el("div", "lienzo");
+  lienzo.appendChild(el("div", "terminal", "inicio"));
+  pintarPasos(lienzo, f.pasos, false);
+  lienzo.appendChild(conector(false));
+  lienzo.appendChild(el("div", "terminal", "fin"));
+  bloc.appendChild(lienzo);
+  return bloc;
+}
+
 function tabFlujos(d) {
   const s = el("section", "seccion");
   s.appendChild(el("h2", null, "Cómo funciona el proceso"));
-  s.appendChild(el("div", "nota", "Primero verás cómo pasa HOY, sin la app; después el mismo proceso cuando la app exista. Cada bloque lleva su etiqueta: Persona (lo hace alguien de carne y hueso), Automático código (lo hace la app sola, con reglas fijas), Automático IA (lo hace la app usando inteligencia artificial) o Tercero externo (lo hace alguien de fuera, como el banco). Léelo de arriba abajo y busca mentiras: pasos que faltan, cosas que no pasan así."));
+  const hayFuturo = d.flujos.some(f => f.momento === "futuro");
+  s.appendChild(el("div", "nota", (hayFuturo
+    ? "Este es el proceso CON LA APP: lo que se va a construir. Debajo, plegada, queda la foto de cómo funciona hoy, por si quieres comparar el antes y el después. "
+    : "Este es el proceso tal y como funciona HOY, sin la app; cuando acordemos el reparto aparecerá aquí la versión con la app. ") +
+    "Cada bloque lleva su etiqueta: Persona (lo hace alguien de carne y hueso), Automático código (la app sola, con reglas fijas), Automático IA (la app usando inteligencia artificial) o Tercero externo (alguien de fuera, como el banco). Léelo de arriba abajo y busca mentiras: pasos que faltan, cosas que no pasan así."));
   const ley = el("div", "leyenda");
   [["m-humano", "Persona"], ["m-estatico", "Automático · código"],
    ["m-ia", "Automático · IA"], ["m-externo", "Tercero externo"], ["m-decision", "⚑ Regla / ⚠ Excepción"], ["m-terminal", "inicio y fin"]]
@@ -438,21 +462,17 @@ function tabFlujos(d) {
     d.actores.forEach(x => a.appendChild(el("span", null, x.nombre + (x.rol ? " (" + x.rol + ")" : ""))));
     s.appendChild(a);
   }
-  d.flujos.forEach(f => {
-    const bloc = el("div", "flujo");
-    const cab = el("div", "flujo-cabecera");
-    cab.appendChild(el("h3", null, f.titulo));
-    cab.appendChild(el("span", "chip " + (f.momento === "hoy" ? "chip-hoy" : "chip-futuro"), f.momento === "hoy" ? "hoy" : "con la app"));
-    bloc.appendChild(cab);
-    if (f.descripcion) bloc.appendChild(el("p", "descripcion", f.descripcion));
-    const lienzo = el("div", "lienzo");
-    lienzo.appendChild(el("div", "terminal", "inicio"));
-    pintarPasos(lienzo, f.pasos, false);
-    lienzo.appendChild(conector(false));
-    lienzo.appendChild(el("div", "terminal", "fin"));
-    bloc.appendChild(lienzo);
-    s.appendChild(bloc);
-  });
+  const futuros = d.flujos.filter(f => f.momento === "futuro");
+  const hoys = d.flujos.filter(f => f.momento === "hoy");
+  futuros.forEach(f => s.appendChild(pintarFlujo(f)));
+  if (hoys.length && futuros.length) {
+    const det = el("details", "flujo-hoy");
+    det.appendChild(el("summary", null, "Ver cómo funciona hoy, sin la app (el antes)"));
+    hoys.forEach(f => det.appendChild(pintarFlujo(f)));
+    s.appendChild(det);
+  } else {
+    hoys.forEach(f => s.appendChild(pintarFlujo(f)));
+  }
   return s;
 }
 

@@ -133,7 +133,12 @@ def main():
     p()
     p("La versión gráfica vive en el visor local del paquete (visor/servir.py).")
     p()
-    for f in d.get("flujos", []):
+    flujos = sorted(d.get("flujos", []), key=lambda f: 0 if f["momento"] == "futuro" else 1)
+    if any(f["momento"] == "hoy" for f in flujos) and any(f["momento"] == "futuro" for f in flujos):
+        p("Lo que se construye son los flujos \"con la app\"; los flujos \"hoy\" "
+          "son la foto del antes y se incluyen como contexto.")
+        p()
+    for f in flujos:
         p("### %s [%s]" % (f["titulo"], "hoy" if f["momento"] == "hoy" else "con la app"))
         if f.get("descripcion"):
             p()
