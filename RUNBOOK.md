@@ -119,11 +119,14 @@ pida "dame la documentación"), compila la carpeta de especificaciones:
 
 `python3 RUTA_HERRAMIENTA/visor/compilar.py --mapa CARPETA_PROYECTO/planos.json`
 
-Deja `CARPETA_PROYECTO/especificaciones/` con el índice (README.md), el spec
-del mapa y el spec de cada actividad con planos, agrupados por área: la
-documentación completa y al día de la aplicación, lista para leer, versionar
-o entregar a cualquiera. Se regenera entera en cada compilación: no se edita
-a mano jamás.
+Deja `CARPETA_PROYECTO/especificaciones/` con estructura fija de dos piezas:
+`01-constitution/constitution.md` (lo que vale para toda la aplicación:
+propósito, actores, vocabulario, el mapa, datos compartidos, compromisos y
+fuera de alcance) y `02-flows/` (un documento por actividad con planos,
+agrupados por área), más el índice README.md. Es la documentación completa
+y al día de la aplicación, lista para leer, versionar, entregar, o darle a
+una cadena de Spec-Driven Development como el /specify ya hecho. Se
+regenera entera en cada compilación: no se edita a mano jamás.
 
 ## Conducta
 

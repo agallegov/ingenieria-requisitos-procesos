@@ -40,8 +40,9 @@ En tu carpeta de proyecto (la tuya, fuera de la herramienta):
   los planos de cada actividad.
 - `spec.md` y `encargo.md`: la especificación en texto y el encargo exacto
   para la IA que construya (o audite) tu aplicación, en una sesión nueva.
-- `especificaciones/`: la documentación completa de tu aplicación, con un
-  índice y un documento por actividad, siempre regenerable.
+- `especificaciones/`: la documentación completa de tu aplicación, siempre
+  regenerable: `01-constitution/` (las reglas y el mapa de toda la app) y
+  `02-flows/` (un documento por actividad).
 
 ## Reglas de oro
 

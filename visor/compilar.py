@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
-"""Compila la carpeta especificaciones/: la documentación completa de la app.
+"""Compila la documentación final de la aplicación: especificaciones/.
 
-Regenera el spec del mapa y el de cada actividad con planos, agrupados por
-área, más un índice (README.md). Se regenera ENTERA en cada ejecución: no se
-edita a mano. Solo biblioteca estándar.
+Estructura de salida, siempre la misma:
+    especificaciones/
+      README.md                  (índice)
+      01-constitution/
+        constitution.md          (los principios y el mapa: lo global)
+      02-flows/
+        <area>/<actividad>.md    (un spec por actividad con planos)
+
+Se regenera ENTERA en cada ejecución: no se edita a mano. Solo stdlib.
 
 Uso: python3 compilar.py --mapa <ruta/planos.json> [--salida <dir>]
-(por defecto escribe en especificaciones/ junto al planos.json del mapa)
+(por defecto escribe en especificaciones/ junto al planos.json)
 """
 
 import argparse
@@ -34,6 +40,97 @@ def generar(datos, salida):
         sys.exit("Fallo generando %s:\n%s%s" % (salida, r.stdout, r.stderr))
 
 
+def md_constitution(d):
+    L = []
+    a = L.append
+    a("# Constitución: %s" % d.get("titulo", "Proyecto"))
+    a("")
+    a("Lo que vale para TODA la aplicación: qué es, para qué, quién aparece, "
+      "qué reglas de calidad se respetan siempre y qué queda fuera. Generado "
+      "desde los planos: no editar a mano.")
+    a("")
+    if d.get("descripcion"):
+        a("## Qué es")
+        a("")
+        a(d["descripcion"])
+        a("")
+    c = d.get("contrato") or {}
+    if c.get("frase"):
+        a("## Propósito")
+        a("")
+        a(c["frase"])
+        exito = c.get("exito")
+        if exito:
+            a("")
+            a("Criterios de éxito:")
+            for x in (exito if isinstance(exito, list) else [exito]):
+                a("- %s" % x)
+        a("")
+    if d.get("actores") or d.get("vocabulario"):
+        a("## Actores y vocabulario")
+        a("")
+        for x in d.get("actores", []):
+            a("- **%s**%s" % (x["nombre"], (": %s" % x["rol"]) if x.get("rol") else ""))
+        if d.get("vocabulario"):
+            a("")
+            for v in d["vocabulario"]:
+                a("- \"%s\": %s" % (v["termino"], v["significado"]))
+        a("")
+    if d.get("actividades"):
+        a("## El mapa de la aplicación")
+        a("")
+        a("Cada actividad tiene (o tendrá) su propio documento en `02-flows/`.")
+        a("")
+        areas = []
+        for x in d["actividades"]:
+            if x["area"] not in areas:
+                areas.append(x["area"])
+        for area in areas:
+            a("### %s" % area)
+            a("")
+            for x in [y for y in d["actividades"] if y["area"] == area]:
+                extra = []
+                if x.get("resumen"):
+                    extra.append(x["resumen"])
+                if x.get("depende_de"):
+                    extra.append("necesita antes: %s" % ", ".join(x["depende_de"]))
+                a("- [%s] **%s** (`%s`)%s" % (x.get("estado", "sin empezar"), x["nombre"], x["id"],
+                                              (": " + "; ".join(extra)) if extra else ""))
+            a("")
+    if d.get("datos"):
+        a("## Datos compartidos")
+        a("")
+        for x in d["datos"]:
+            a("- **%s**: %s%s" % (x["cosa"], ", ".join(x.get("guarda", [])),
+                                  (" (origen: %s)" % x["origen"]) if x.get("origen") else ""))
+        a("")
+    if d.get("integraciones"):
+        a("## Integraciones")
+        a("")
+        for x in d["integraciones"]:
+            a("- **%s**%s" % (x["con"], (": %s" % x["para"]) if x.get("para") else ""))
+        a("")
+    if d.get("calidad"):
+        a("## Compromisos de toda la aplicación")
+        a("")
+        for q in d["calidad"]:
+            a("- **%s**: %s" % (q["id"], q["criterio"]))
+        a("")
+    if d.get("fuera"):
+        a("## Fuera de alcance")
+        a("")
+        for x in d["fuera"]:
+            a("- %s" % x)
+        a("")
+    if d.get("preguntas"):
+        a("## Preguntas abiertas globales")
+        a("")
+        for x in d["preguntas"]:
+            a("- %s" % x)
+        a("")
+    return "\n".join(L) + "\n"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mapa", required=True, help="El planos.json del mapa (o de un proyecto de una sola actividad)")
@@ -45,11 +142,14 @@ def main():
         with open(ruta_mapa, "r", encoding="utf-8") as f:
             d = json.load(f)
     except (OSError, ValueError) as e:
-        sys.exit("No pude leer el mapa: %s" % e)
+        sys.exit("No pude leer los planos: %s" % e)
 
     raiz = os.path.dirname(ruta_mapa)
     out = os.path.abspath(args.salida or os.path.join(raiz, "especificaciones"))
-    os.makedirs(out, exist_ok=True)
+    c1 = os.path.join(out, "01-constitution")
+    c2 = os.path.join(out, "02-flows")
+    os.makedirs(c1, exist_ok=True)
+    os.makedirs(c2, exist_ok=True)
 
     # Se regenera entera: fuera los .md de compilaciones anteriores.
     for dirpath, _, ficheros in os.walk(out):
@@ -57,50 +157,51 @@ def main():
             if f.endswith(".md"):
                 os.remove(os.path.join(dirpath, f))
 
+    with open(os.path.join(c1, "constitution.md"), "w", encoding="utf-8") as f:
+        f.write(md_constitution(d))
+
     idx = []
     idx.append("# %s: especificaciones" % d.get("titulo", "Proyecto"))
     idx.append("")
-    if d.get("descripcion"):
-        idx.append(d["descripcion"])
-        idx.append("")
     if (d.get("contrato") or {}).get("frase"):
         idx.append("> %s" % d["contrato"]["frase"])
         idx.append("")
-    idx.append("Documentación generada desde los planos (no editar a mano; se "
-               "regenera con `visor/compilar.py`).")
+    idx.append("Generado desde los planos con `visor/compilar.py`: no editar a mano.")
+    idx.append("")
+    idx.append("- [01-constitution/constitution.md](01-constitution/constitution.md): lo que vale para toda la aplicación.")
+    idx.append("- `02-flows/`: un documento por actividad.")
     idx.append("")
 
     actividades = d.get("actividades", [])
     if actividades:
-        generar(ruta_mapa, os.path.join(out, "00-el-mapa.md"))
-        idx.append("- [El mapa de la aplicación](00-el-mapa.md)")
-        idx.append("")
         con, sin = 0, 0
         areas = []
-        for a in actividades:
-            if a["area"] not in areas:
-                areas.append(a["area"])
+        for x in actividades:
+            if x["area"] not in areas:
+                areas.append(x["area"])
         for area in areas:
             idx.append("## %s" % area)
             idx.append("")
-            for a in [x for x in actividades if x["area"] == area]:
-                pj = os.path.join(raiz, "actividades", a["id"], "planos.json")
-                estado = a.get("estado", "sin empezar")
+            for x in [y for y in actividades if y["area"] == area]:
+                pj = os.path.join(raiz, "actividades", x["id"], "planos.json")
+                estado = x.get("estado", "sin empezar")
                 if os.path.isfile(pj):
-                    destino_rel = os.path.join(slug(area), a["id"] + ".md")
+                    destino_rel = os.path.join("02-flows", slug(area), x["id"] + ".md")
                     destino = os.path.join(out, destino_rel)
                     os.makedirs(os.path.dirname(destino), exist_ok=True)
                     generar(pj, destino)
-                    idx.append("- [%s](%s) · %s" % (a["nombre"], destino_rel.replace(os.sep, "/"), estado))
+                    idx.append("- [%s](%s) · %s" % (x["nombre"], destino_rel.replace(os.sep, "/"), estado))
                     con += 1
                 else:
-                    idx.append("- %s · %s · (aún sin planos)" % (a["nombre"], estado))
+                    idx.append("- %s · %s · (aún sin planos)" % (x["nombre"], estado))
                     sin += 1
             idx.append("")
         resumen = "%d actividades con especificación, %d aún sin planos." % (con, sin)
     else:
-        generar(ruta_mapa, os.path.join(out, "especificacion.md"))
-        idx.append("- [Especificación completa](especificacion.md)")
+        nombre = slug(d.get("proyecto") or d.get("titulo") or "aplicacion")
+        destino_rel = os.path.join("02-flows", nombre + ".md")
+        generar(ruta_mapa, os.path.join(out, destino_rel))
+        idx.append("- [%s](%s)" % (d.get("titulo", "Especificación"), destino_rel.replace(os.sep, "/")))
         idx.append("")
         resumen = "Proyecto de una sola actividad."
 
