@@ -23,7 +23,11 @@ fase si ya tienes la información.
 
 Decide el modo con el contexto, o con una sola pregunta: "¿Qué traes: una
 idea para construir de cero, un código que ya existe y quieres entender o
-auditar, o cambios sobre unos planos que ya hicimos?"
+auditar, cambios sobre unos planos que ya hicimos, o quieres que ponga al día
+los proyectos que ya montamos?"
+
+Esa última opción se ofrece SIEMPRE, aunque el usuario no la mencione: es la
+única forma de que se entere de que sus proyectos pueden estar desactualizados.
 
 - **Modo A, construir de cero**: crea el workspace inmediatamente y recorre
   F0 a F5, con encargo de construcción.
@@ -32,6 +36,10 @@ auditar, o cambios sobre unos planos que ya hicimos?"
   ese inventario como punto de partida para completar F0 a F5.
 - **Modo C, iteración**: hay planos previos y el usuario trae un cambio; ve
   directo al protocolo de iteración del final.
+- **Modo D, actualizar los proyectos ya creados**: el usuario no trae un
+  proyecto, trae mantenimiento ("actualiza mis proyectos", "¿están al día?",
+  "he cambiado el método, repárteselo"). No hay entrevista ni fases: ve directo
+  a *Modo D* al final de este documento.
 - Compuestos: arreglos tras una auditoría entran como C; una feature sobre
   código sin planos es B del tramo afectado y luego C.
 
@@ -741,6 +749,58 @@ que pedir la ruta del código no es mirar el código):
 > ejemplo concreto que la
 > demuestra, en lenguaje de negocio, citando el identificador (R-n, C-n,
 > Q-n) incumplido. No arregles nada sin encargo aparte.
+
+## Modo D: actualizar los proyectos ya creados
+
+Cuando esta herramienta mejora su método, los workspaces ya creados **no se
+enteran solos**: cada uno es un repositorio aparte y su copia del método salió
+de aquí por copia de ficheros, no por clonado. Un `git pull` allí trae el
+historial de ESE proyecto; del método, nada. Esto es lo que lo reparte.
+
+0. **Encuentra los proyectos.** El registro local solo conoce lo que se creó en
+   ESTA máquina con esta herramienta; un workspace clonado, movido o hecho en
+   otro ordenador no está. Así que primero se rastrea y se registra lo que
+   aparezca:
+
+   `python RUTA_HERRAMIENTA/visor/actualizar.py buscar`
+
+   Mira la carpeta del usuario y las de trabajo habituales. Si sus proyectos
+   viven en otro sitio, pregúntaselo y añade `--en /ruta/donde/estan`.
+
+1. **Enseña la foto y pregunta.** Sin tocar nada:
+
+   `python RUTA_HERRAMIENTA/visor/actualizar.py revisar --todos`
+
+   Sale, proyecto por proyecto, qué se actualizaría solo, qué se añadiría, qué
+   está modificado ALLÍ y qué sobra. Cuéntaselo en cristiano ("de tus tres
+   proyectos, dos están al día y uno tiene veintisiete cosas nuevas del
+   método") y **pregúntale cuáles quiere actualizar**: todos, algunos o
+   ninguno.
+
+2. **Aplica lo que te diga:**
+
+   `python RUTA_HERRAMIENTA/visor/actualizar.py aplicar --todos` (o con la ruta
+   de uno). Exige que el workspace esté limpio y sin trabajo en vuelo —no se le
+   cambia el método por debajo a una unidad abierta—, escribe solo lo que nadie
+   había tocado allí, deja en `METODO.json` la huella de cada fichero para que
+   la próxima vez sea exacta, y pasa el linter de ese workspace.
+
+3. **Lo modificado allí lo juzgas tú, no el script.** Para cada fichero que ese
+   proyecto había adaptado a propósito: compáralo, decide si es personalización
+   que se conserva (y le adaptas la mejora), regla vieja que se retira, o duda
+   que se pregunta. El detalle del criterio y los límites duros están en
+   `ACTUALIZAR-PROYECTOS.md`. Nunca se sobrescribe a ciegas y nunca se borra
+   nada por sobrar.
+
+4. **El commit lo pide el usuario.** Enseña `git -C <workspace> diff`, explica
+   qué cambió en negocio ("ahora el cierre es un comando y avisa si algo se
+   quedó sin guardar") y commitea solo si dice que sí. Si ese workspace tiene
+   remoto, sus otras máquinas ya sí se lo bajan con un `git pull` normal.
+
+Límites que el modo D no cruza jamás: no toca `01-constitucion/`,
+`02-flujos/`, `03-investigacion/`, `04-planificacion/`, `05-trabajo/`,
+`bugs/`, `conocimiento/`, `decisiones/`, `repos.yaml`, `.private/`, `main/`
+ni `worktrees/`. Solo el método y las piezas que lo ejecutan.
 
 ## Protocolo de iteración (modo C)
 

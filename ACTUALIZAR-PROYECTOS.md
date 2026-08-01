@@ -1,15 +1,21 @@
 # Playbook — actualizar workspaces con un agente
 
-Este proceso lo realiza el agente que está abierto en `ingenieria-requisitos`. No es
-una migración automática. La huella solo dice de qué plantilla parece venir un
-workspace; nunca autoriza a copiar ni borrar archivos sin leerlos.
+Este proceso lo realiza el agente que está abierto en `ingenieria-requisitos`, siguiendo
+el **Modo D** de `RUNBOOK.md`. `visor/actualizar.py` hace la parte mecánica —clasificar
+cada fichero y escribir solo los que nadie tocó en ese workspace—; este playbook es el
+criterio para la parte que NO es mecánica: los ficheros que ese proyecto adaptó a
+propósito. Ningún script los sobrescribe.
 
 ## Entrada
 
-1. Ejecuta `python visor/proyectos.py contexto --todos` o pide una ruta concreta.
-2. Si un proyecto no aparece, regístralo con `python visor/proyectos.py registrar RUTA`.
-3. Lee `METODO.json` si existe. Si no existe, trátalo como anterior al sistema de
-   huellas y audítalo entero.
+1. `python visor/actualizar.py buscar` (encuentra los workspaces del disco y los
+   registra; `--en RUTA` si están en un sitio poco habitual).
+2. `python visor/actualizar.py revisar --todos`: qué se actualizaría solo, qué se
+   añadiría, qué está **tocado** en ese workspace y qué **sobra**. No escribe nada.
+3. Enséñaselo al usuario en cristiano y pregúntale cuáles quiere actualizar.
+4. `python visor/actualizar.py aplicar RUTA` (o `--todos`): aplica lo seguro, deja
+   `METODO.json` con la huella de cada fichero para la próxima vez, y lista lo que queda
+   para ti. Si el workspace está sucio o tiene trabajo en vuelo, se niega.
 
 ## Límites duros
 

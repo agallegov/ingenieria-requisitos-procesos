@@ -62,23 +62,32 @@ completa:
 
 ## Actualizar proyectos creados anteriormente
 
-La herramienta recuerda en este ordenador los workspaces que crea. Esa memoria
-vive en `.ingenieria-requisitos-local/`, está ignorada por Git y no contiene
-secretos ni se sube a GitHub.
+Cuando esta herramienta mejora su método, tus proyectos ya creados **no se
+enteran solos**: cada uno es un repositorio aparte y su copia del método salió
+de aquí por copia de ficheros. Un `git pull` allí trae el historial de *ese*
+proyecto; del método, nada.
+
+Para repartirlo, baja lo último aquí (`git pull`), abre tu agente en esta
+carpeta y dile: «pon al día mis proyectos». Hará esto:
 
 ```text
-python visor/proyectos.py listar
-python visor/proyectos.py contexto --todos
+python visor/actualizar.py buscar            # los encuentra y los recuerda
+python visor/actualizar.py revisar --todos   # te enseña qué cambiaría en cada uno
+python visor/actualizar.py aplicar --todos   # lo aplica, cuando tú lo digas
 ```
 
-Después dile a tu agente: «audita y actualiza mis proyectos anteriores». El
-agente seguirá `ACTUALIZAR-PROYECTOS.md`, leerá cada workspace y decidirá qué es
-antiguo y qué es una personalización útil. La huella de `METODO.json` solo le da
-una pista; no existe un script que sobrescriba el proyecto a ciegas. Los planos,
-el trabajo del proyecto, `repos.yaml` y `main/` están fuera de alcance.
+Las garantías, que son lo importante:
 
-Si un proyecto no aparece, se añade con
-`python visor/proyectos.py registrar RUTA`.
+- **Se te enseña antes de tocar nada.** `revisar` no escribe.
+- **No se pisa lo que tú hayas adaptado.** Si en un proyecto cambiaste una regla
+  del método a propósito, se queda como está y te lo señala para que decidas tú.
+- **No se actualiza un proyecto con trabajo a medias**: primero se cierra.
+- **Solo se toca el método.** Tus planos, tu trabajo, `repos.yaml` y tu código
+  (`main/`) están fuera de alcance, y nada se borra nunca por sobrar.
+
+La memoria de qué proyectos tienes vive en `.ingenieria-requisitos-local/`, está
+ignorada por Git y no se sube a ningún sitio. Si tus proyectos están en una
+carpeta rara: `python visor/actualizar.py buscar --en /donde/estan`.
 
 ## Reglas de oro
 
