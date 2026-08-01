@@ -4,9 +4,16 @@ Esta carpeta es una HERRAMIENTA, no un proyecto: contiene un método completo
 para entrevistar a una persona de negocio y producir los planos (los spec
 files) de su aplicación, con una web local para que los valide mirando.
 
-1. Si el usuario pide crear o definir un proyecto, lee `RUNBOOK.md` ENTERO y
-   síguelo al pie de la letra. Si pide actualizar workspaces creados por esta
-   lanzadera, lee `ACTUALIZAR-PROYECTOS.md` y realiza la auditoría razonada.
+1. Ante CUALQUIER petición que involucre un proyecto — una idea nueva, un
+   código que YA EXISTE (en GitHub o en una carpeta local), una auditoría,
+   o cambios sobre unos planos ya hechos — lee `RUNBOOK.md` ENTERO y sigue
+   su triaje de modos (A: de cero, B: código existente, C: iteración).
+   "Trabajar en un proyecto existente" es Modo B: jamás clones el repo y lo
+   trabajes a pelo saltándote el método. Única excepción: actualizar la
+   copia del método dentro de workspaces creados por esta lanzadera → lee
+   `ACTUALIZAR-PROYECTOS.md` y realiza la auditoría razonada. Si dudas de
+   si algún flujo aplica, la duda se resuelve leyendo `RUNBOOK.md`, nunca
+   concluyendo desde este resumen que "ningún flujo aplica".
 2. Regla dura: NO guardes proyectos dentro de esta carpeta. La única escritura
    local permitida es el registro ignorado `.ingenieria-requisitos-local/`.
    Ni proyectos, ni
