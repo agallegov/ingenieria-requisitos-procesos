@@ -8,47 +8,77 @@ la IA te entrevista, y validas mirando una web que se va rellenando sola.
 
 - Un ordenador con Python 3. Si no lo tienes, tranquilo: tu propia IA lo
   comprobará al empezar y lo instalará contigo.
+- Git, para guardar el historial y separar el repositorio padre del código.
 - Un agente de IA que pueda ejecutar comandos en tu ordenador (por ejemplo
   Claude Code). Un chat web normal no vale: no puede levantar el visor.
 - Tiempo tranquilo por delante, y tu negocio en la cabeza: el proceso de
   memoria, con nombres y números reales.
 
-## Cómo se usa (3 pasos)
+## Cómo se usa
 
-1. Descomprime esta carpeta donde quieras. Es la herramienta: no se toca ni
-   se guarda nada dentro.
-2. Abre tu agente de IA en la carpeta donde quieras guardar tu proyecto
-   (por ejemplo `Documentos/mi-app/`) y dile:
-   **"Lee el RUNBOOK.md de [la ruta de esta carpeta] y sigue sus
-   instrucciones."**
-   Si abres el agente dentro de la herramienta también funciona: te
-   preguntará dónde guardar tu proyecto.
-3. Cuenta tu negocio y corrige lo que te enseñe. Con hechos reales, no con
-   teorías. La IA hace el resto.
+1. Descarga este repositorio y abre una terminal dentro de él.
+2. Lanza aquí tu agente de IA. `AGENTS.md` es el enrutador; `CLAUDE.md` y
+   `GEMINI.md` lo redirigen al mismo sitio. El agente leerá `RUNBOOK.md`.
+3. El agente te preguntará si partes de cero, de un código que ya existe o
+   de unos planos anteriores.
+4. En cuanto conozca el nombre, creará FUERA de esta herramienta una carpeta
+   visible `<nombre>-agents`. Ahí ocurrirá toda la entrevista.
+5. Tú cuentas tu negocio y corriges mirando. La IA estructura y escribe.
 
 Durante la conversación se te abrirá una página en el navegador: son tus
-planos, y se actualizan solos según avanza la entrevista. Mientras la tengas
-abierta se mantiene viva; si pasa un buen rato sin usarse se apaga sola, y
-entonces basta pedirle a tu IA que la vuelva a levantar.
+planos, y se actualizan solos según avanza la entrevista. La sesión se mantiene
+abierta hasta que la cierres; si sigue activa, volver a abrirla reutiliza la
+misma dirección.
 
-## Qué obtienes al final
+## Qué obtienes
 
-En tu carpeta de proyecto (la tuya, fuera de la herramienta):
+Desde el primer momento tienes un workspace, o sea, una carpeta de trabajo
+completa:
 
-- `planos.json`: tu proyecto como datos (lo que pinta la web). En
+- `<nombre>-agents/`: el repositorio padre donde viven el método, las
+  decisiones y la documentación.
+- `<nombre>-agents/main/`: el repositorio hijo que contiene únicamente el
+  código de la aplicación.
+- `docs/02-flujos/planos/planos.json`: tu proyecto como datos (lo que pinta
+  la web). En
   aplicaciones grandes, un mapa general más `actividades/<actividad>/` con
   los planos de cada actividad.
-- `spec.md` y `encargo.md`: la especificación en texto y el encargo exacto
-  para la IA que construya (o audite) tu aplicación, en una sesión nueva.
-- `especificaciones/`: la documentación completa de tu aplicación, siempre
-  regenerable: `01-constitution/` (las reglas y el mapa de toda la app) y
-  `02-flows/` (un documento por actividad).
+- Una web local de solo lectura donde revisas todos los flujos.
+- Constitución y flujos compilados, siempre regenerables desde
+  `planos.json`.
+- Investigación, planificación y trabajo vacíos hasta que toque recorrer
+  esas fases en una sesión nueva dentro de `<nombre>-agents`.
 
 ## Qué hay en esta carpeta
 
 - `RUNBOOK.md`: el método completo que sigue tu IA.
+- `ACTUALIZAR-PROYECTOS.md`: el playbook para que un agente audite workspaces
+  creados con versiones anteriores.
 - `visor/`: la web local y las herramientas. No se tocan.
-- `docs/`: cómo está diseñado el método, por si te pica la curiosidad.
+- `plantilla/`: el molde del proyecto de trabajo que monta el bootstrap
+  (el método de desarrollo por fases). No se toca; su README lo explica.
+- [`manual-ingenieria-requisitos.html`](manual-ingenieria-requisitos.html):
+  el manual completo, autocontenido y explicado desde cero.
+
+## Actualizar proyectos creados anteriormente
+
+La herramienta recuerda en este ordenador los workspaces que crea. Esa memoria
+vive en `.ingenieria-requisitos-local/`, está ignorada por Git y no contiene
+secretos ni se sube a GitHub.
+
+```text
+python visor/proyectos.py listar
+python visor/proyectos.py contexto --todos
+```
+
+Después dile a tu agente: «audita y actualiza mis proyectos anteriores». El
+agente seguirá `ACTUALIZAR-PROYECTOS.md`, leerá cada workspace y decidirá qué es
+antiguo y qué es una personalización útil. La huella de `METODO.json` solo le da
+una pista; no existe un script que sobrescriba el proyecto a ciegas. Los planos,
+el trabajo del proyecto, `repos.yaml` y `main/` están fuera de alcance.
+
+Si un proyecto no aparece, se añade con
+`python visor/proyectos.py registrar RUTA`.
 
 ## Reglas de oro
 

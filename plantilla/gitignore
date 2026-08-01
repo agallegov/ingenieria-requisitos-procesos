@@ -1,0 +1,17 @@
+.DS_Store
+.codex/
+.claude/
+.agents/
+claude-config/
+main/
+worktrees/*
+!worktrees/README.md
+.private/*
+!.private/README.md
+.runtime/*
+!.runtime/README.md
+.env
+.env.*
+!.env.example
+*.pem
+*.key

@@ -2,6 +2,10 @@
 
 Proyecto `almacen-de-paco`. Generado desde `planos.json` (la fuente de verdad): no editar a mano.
 
+**Estado del diseño:** listo para revisar · **modo:** entrevista.
+
+**Cobertura observada en el código actual:** no implementado.
+
 ## 1. Propósito
 
 La app del almacén de piensos: los pedidos que hoy llegan por WhatsApp y se copian a mano al Excel pasarán a registrarse y facturarse solos. La IA lee el mensaje y monta un borrador, María lo confirma, el código factura y avisa, y el jefe aprueba las excepciones desde el móvil.
@@ -27,7 +31,7 @@ La versión gráfica vive en el visor local del paquete (visor/servir.py).
 
 Lo que se construye son los flujos "con la app"; los flujos "hoy" son la foto del antes y se incluyen como contexto.
 
-### El mismo pedido, con la app [con la app]
+### El mismo pedido, con la app [con la app · origen: usuario]
 
 El reparto del trabajo: qué queda en personas, qué hace código normal y qué hace un modelo de IA. La IA propone, María confirma: nada se factura sin ojos humanos.
 
@@ -60,7 +64,7 @@ El reparto del trabajo: qué queda en personas, qué hace código normal y qué 
 - [automático: código] Se avisó al almacén por WhatsApp
 - [persona] Preparó el pedido y lo marcó como enviado · el almacén
 
-### Un pedido, de la llamada al envío [hoy]
+### Un pedido, de la llamada al envío [hoy · origen: usuario]
 
 Cómo funciona el negocio ahora mismo, sin la app.
 
@@ -87,9 +91,15 @@ El orden es el orden de entrega. El primero es el esqueleto: recorre el camino f
 
 Recorrer todo el camino feliz aunque sea en fino: entra el mensaje, María confirma, se factura, el almacén envía.
 
-- **R-1**: Cuando llegue un mensaje de pedido por WhatsApp de un cliente conocido, el sistema deberá montar un borrador de pedido con cliente, líneas y fecha, y guardar el mensaje original.
-- **R-2**: Cuando María confirme un borrador con stock y sin necesidad de visto bueno (G-1), el sistema deberá generar la factura, apuntar su importe a la cuenta del cliente y avisar al almacén por WhatsApp.
-- **R-3**: Cuando el almacén responda al aviso marcando el pedido como enviado, el sistema deberá registrar la hora del envío.
+- **R-1**: Cuando llegue un mensaje de pedido por WhatsApp de un cliente conocido, el sistema deberá montar un borrador de pedido con cliente, líneas y fecha, y guardar el mensaje original. · origen: usuario · código actual: no implementado
+  - Evidencia: Proyecto nuevo sin código.
+  - Prueba: Pendiente de construcción.
+- **R-2**: Cuando María confirme un borrador con stock y sin necesidad de visto bueno (G-1), el sistema deberá generar la factura, apuntar su importe a la cuenta del cliente y avisar al almacén por WhatsApp. · origen: usuario · código actual: no implementado
+  - Evidencia: Proyecto nuevo sin código.
+  - Prueba: Pendiente de construcción.
+- **R-3**: Cuando el almacén responda al aviso marcando el pedido como enviado, el sistema deberá registrar la hora del envío. · origen: usuario · código actual: no implementado
+  - Evidencia: Proyecto nuevo sin código.
+  - Prueba: Pendiente de construcción.
 
 - **C-1**: Dado que Paco no debe nada y hay 100 sacos de harina en stock / Cuando escribe "40 sacos de harina de 25kg para el jueves" y María confirma el borrador / Entonces se genera la factura, el almacén recibe el aviso por WhatsApp y el pedido queda como facturado
 - **C-2**: Dado que llega un audio ininteligible desde un número desconocido / Cuando la app no consigue montar el borrador / Entonces queda como pendiente de revisión, María recibe aviso por WhatsApp y no se factura nada
@@ -99,8 +109,12 @@ Recorrer todo el camino feliz aunque sea en fino: entra el mensaje, María confi
 
 Que ningún pedido con deuda o de más de 1.000€ salga sin aprobación (regla G-1).
 
-- **R-4**: Cuando María confirme un borrador de un cliente con deuda pendiente o por importe mayor de 1.000€, el sistema deberá retenerlo y pedir aprobación al jefe por WhatsApp, enseñándole la deuda y el importe.
-- **R-5**: Cuando el jefe apruebe, el sistema deberá continuar hacia la factura; cuando rechace con motivo, el sistema deberá dejar el pedido como anulado y avisar a María con el motivo.
+- **R-4**: Cuando María confirme un borrador de un cliente con deuda pendiente o por importe mayor de 1.000€, el sistema deberá retenerlo y pedir aprobación al jefe por WhatsApp, enseñándole la deuda y el importe. · origen: usuario · código actual: no implementado
+  - Evidencia: Proyecto nuevo sin código.
+  - Prueba: Pendiente de construcción.
+- **R-5**: Cuando el jefe apruebe, el sistema deberá continuar hacia la factura; cuando rechace con motivo, el sistema deberá dejar el pedido como anulado y avisar a María con el motivo. · origen: usuario · código actual: no implementado
+  - Evidencia: Proyecto nuevo sin código.
+  - Prueba: Pendiente de construcción.
 
 - **C-3**: Dado que Paco debe 300€ / Cuando María confirma su pedido de 40 sacos / Entonces el pedido queda retenido y al jefe le llega la petición con la deuda visible
 - **C-4**: Dado que Paco no debe nada / Cuando María confirma un pedido suyo de 60 sacos por 1.200€ / Entonces el pedido queda retenido por pasar de 1.000€
@@ -225,6 +239,5 @@ Números del negocio:
 
 Buzón del constructor: sus dudas se apuntan aquí, nunca se responden de palabra.
 
-- ¿La deuda del cliente sube sola con cada factura y cómo se apuntan los pagos parciales? (hoy 'marcar deuda pagada' es todo o nada)
-- Los pedidos por teléfono (un 10%) los registra María a mano: ¿necesitan algo especial o van como cualquier borrador?
+- (Ninguna por ahora.)
 

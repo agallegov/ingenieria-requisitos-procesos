@@ -25,14 +25,66 @@ Decide el modo con el contexto, o con una sola pregunta: "¿Qué traes: una
 idea para construir de cero, un código que ya existe y quieres entender o
 auditar, o cambios sobre unos planos que ya hicimos?"
 
-- **Modo A, construir de cero**: fases F0 a F5, encargo de construcción.
-- **Modo B, código existente**: fases F0 a F5 SIN mirar el código (el código
-  ancla y contamina la entrevista: se elicita el negocio puro), y el encargo
-  final es de auditoría.
+- **Modo A, construir de cero**: crea el workspace inmediatamente y recorre
+  F0 a F5, con encargo de construcción.
+- **Modo B, código existente**: crea el workspace inmediatamente, coloca el
+  código en `main/`, analiza `main/` profundamente ANTES de preguntar y usa
+  ese inventario como punto de partida para completar F0 a F5.
 - **Modo C, iteración**: hay planos previos y el usuario trae un cambio; ve
   directo al protocolo de iteración del final.
 - Compuestos: arreglos tras una auditoría entran como C; una feature sobre
   código sin planos es B del tramo afectado y luego C.
+
+## Arranque obligatorio: el workspace existe desde el minuto uno
+
+Nada de la entrevista vive suelto en la carpeta de esta herramienta. En
+cuanto conozcas o propongas un nombre, crea una carpeta visible
+`<nombre>-agents` fuera de aquí:
+
+`python RUTA_HERRAMIENTA/visor/iniciar.py --destino <ruta>/<nombre>-agents
+--nombre <nombre> --titulo "<título>" --tipo <webapp|automatizacion|agente|otro>`
+
+- Proyecto nuevo: `main/` nace como repo vacío con un README.
+- Repo remoto: añade `--remoto <url>`; se clona dentro de `main/`.
+- Carpeta local: añade `--carpeta <ruta>`; se COPIA literalmente dentro de
+  `main/`. Nunca se mueve ni se modifica el original.
+
+Desde ese instante se trabaja únicamente en
+`<nombre>-agents/docs/02-flujos/planos/`. En modo B, analiza `main/` ANTES de
+preguntar: ejecuta sus tests si es viable, localiza interfaces, actores,
+acciones, estados, reglas y datos, y extrae todos los flujos observables con
+referencias concretas. Este análisis describe el presente; no decide el
+futuro. Deja además `docs/03-investigacion/ADOPCION.md` con el inventario,
+los comandos realmente ejecutados, el estado de la suite y el gap-map
+código↔flujos. Ese fichero demuestra a la siguiente sesión que la adopción ya
+se hizo y evita repetirla.
+
+Regla semántica central: **lo que cuenta el usuario es el diseño futuro** y
+son cambios que habrá que implementar aunque difieran del código actual.
+Eso no se reinterpreta para coincidir con la implementación. Cada flujo y requisito
+lleva `origen`; cada requisito lleva además `implementacion.estado`,
+`evidencias` y `pruebas`. Así se distingue “lo queremos” de “ya existe”.
+
+El usuario puede **saltar la entrevista**. Eso no autoriza una entrega
+incompleta: el agente propone detalles de forma autónoma, completa TODOS los bloques
+y marca cada decisión como `inferido` y cada supuesto como
+`propuesto`. La web explica con claridad qué fue dicho, leído del código o
+inferido; la aprobación se comunica al agente, nunca se escribe en la web.
+
+En el mismo triaje, identifica también el TIPO de software (no se lo
+preguntes con jerga: dedúcelo de lo que cuenta y confírmalo con una frase).
+Vocabulario cerrado, decide el bias tecnológico que montará la lanzadera:
+
+- **webapp**: una aplicación donde personas gestionan un negocio o una
+  actividad (fichas, estados, permisos). El caso con receta completa.
+- **automatizacion**: un proceso que corre solo (informes, pipelines,
+  transformar ficheros). La entrevista funciona igual: los "actores" son
+  quien dispara y quien recibe; los flujos, el proceso paso a paso.
+- **agente**: el producto ES un asistente que conversa o actúa. Entrevista
+  igual (qué hace, con qué habla, qué NO puede hacer jamás).
+- **otro**: lo demás (plugins, sistemas, móvil nativo…). Sé honesto con el
+  usuario: la entrevista y la lanzadera le sirven; la receta tecnológica no
+  existe aún y el stack se decidirá en la fase de investigación.
 
 ## Aplicaciones grandes: el mapa y las actividades
 
@@ -68,7 +120,7 @@ Cómo se trabaja:
    re-pregunta. Si en una actividad aparece algo global nuevo (un actor, un
    término, una entidad, una integración), se añade AL MAPA, no a la
    actividad. Al cerrar su F5, cada actividad baja a SU PROPIO spec file:
-   `python3 RUTA_HERRAMIENTA/visor/generar_spec.py --datos CARPETA_PROYECTO/actividades/<id>/planos.json`
+   `python RUTA_HERRAMIENTA/visor/generar_spec.py --datos CARPETA_PROYECTO/actividades/<id>/planos.json`
    genera `spec.md` y tú escribes `encargo.md`, ambos en su carpeta.
 3. **El estado vive en el mapa**: sin empezar → en entrevista →
    especificada → en obra → entregada. Lo actualizas tú al cerrar cada
@@ -118,7 +170,7 @@ el mapa siempre dice la verdad del proyecto.
 **La documentación final.** Al cerrar cada sesión (y siempre que el usuario
 pida "dame la documentación"), compila la carpeta de especificaciones:
 
-`python3 RUTA_HERRAMIENTA/visor/compilar.py --mapa CARPETA_PROYECTO/planos.json`
+`python RUTA_HERRAMIENTA/visor/compilar.py --mapa CARPETA_PROYECTO/planos.json`
 
 Deja `CARPETA_PROYECTO/especificaciones/` con estructura fija de dos piezas:
 `01-constitution/constitution.md` (lo que vale para toda la aplicación:
@@ -128,6 +180,85 @@ agrupados por área), más el índice README.md. Es la documentación completa
 y al día de la aplicación, lista para leer, versionar, entregar, o darle a
 una cadena de Spec-Driven Development como el /specify ya hecho. Se
 regenera entera en cada compilación: no se edita a mano jamás.
+
+## Finalizar el proyecto de trabajo
+
+El workspace ya existe desde el arranque. Al cerrar la definición no se crea
+otro ni se mueve el código: se comprueba, se congela y se finaliza el mismo.
+
+Primero exige una entrega completa:
+
+`python RUTA_HERRAMIENTA/visor/validar.py --datos
+<workspace>/docs/02-flujos/planos/planos.json --perfil revision`
+
+Después abre la sesión estable con `visor/requisitos.py abrir` y pide al
+usuario que revise todos los flujos del menú lateral izquierdo. La web es
+estrictamente de lectura. El usuario comunica comentarios, cambios y
+aprobación al agente en la conversación. El agente incorpora cada cambio y
+vuelve a validar. Cuando el usuario aprueba, el agente ejecuta
+`visor/requisitos.py aprobar --por "NOMBRE" --confirmar-supuestos`, que crea
+`aprobacion.json` con identidad, fecha, versión y huella. No cambies
+`definicion.estado` a mano.
+
+Comprueba que el recibo sigue vigente con:
+
+`python RUTA_HERRAMIENTA/visor/requisitos.py estado --workspace <workspace>`
+
+Finalmente confirma el nombre de repositorio con el usuario y ejecuta
+`visor/finalizar.py` sobre ese workspace. La finalización regenera
+constitución y flows, conserva `main/` y, si se solicita GitHub, crea
+`<nombre>` y `<nombre>-agents` como repositorios independientes.
+Dentro de esa operación se vuelve a ejecutar `validar.py --perfil congelado`;
+si falla, no se genera ni publica nada.
+
+Pregúntale al usuario si quiere sus repositorios en GitHub ("¿quieres que tu
+proyecto quede guardado en tu cuenta de GitHub, además de en este
+ordenador?"). Si dice que sí: comprueba `gh auth status` (si no hay sesión,
+guíale por `gh auth login`) y añade `--github <su-cuenta>` — eso crea los DOS
+repos privados (`<nombre>` para el código, `<nombre>-agents` para el meta) y
+deja en `repos.yaml` la dirección del código. Al clonar el meta, `setup.py`
+clona `origin/main` dentro de `main/` o lo actualiza si ya existe. Si dice que no: sin flags —
+todo queda en local, conectable a remotos más adelante (instrucciones en el
+`repos.yaml` del workspace). Si el repo de código ya existía: `--remoto <url>`.
+
+Qué le montas (cuéntaselo así: "te preparo la carpeta del proyecto, con tus
+planos dentro y todo lo necesario para que los agentes construyan con
+orden"):
+
+- Un **meta-repo** con la documentación viva: su constitución y sus flujos
+  (salidos de los planos), el método completo de trabajo por fases
+  (`docs/00-metodo/`: runbooks, plantillas, roles y linter) y el sitio de
+  las fases siguientes (investigación, planificación, unidades de trabajo).
+  **Los planos viajan dentro** (`docs/02-flujos/planos/`): desde ese momento
+  esa copia es la canónica — las iteraciones futuras (modo C) parten de
+  ella y la carpeta de la entrevista queda como borrador desechable.
+- El **repo de código** dentro, en `main/`: clonado si ya existe, o creado
+  de cero si no. Dos repositorios: los documentos que juzgan la obra viven
+  fuera del alcance de quien construye.
+- Git inicializado con su primer commit y el linter del método en verde
+  (el bootstrap se niega a entregar un workspace mal formado).
+- El workspace queda apuntado en el registro local ignorado por Git. Así una
+  versión futura puede localizarlo. `METODO.json` conserva la huella de la
+  plantilla. Una actualización posterior la juzga un agente siguiendo
+  `ACTUALIZAR-PROYECTOS.md`; la huella orienta, nunca sobrescribe. Si el registro
+  no está disponible, puede rehacerse con
+  `python visor/proyectos.py registrar RUTA_DEL_WORKSPACE`.
+
+El molde vive en `plantilla/` (léete su README si quieres entender el
+método completo). La forma del workspace es SIEMPRE la misma para todos los
+proyectos; lo único que cambia es el contenido que salió de la entrevista.
+
+**Si el proyecto era modo B (código existente)**: el análisis brownfield ya
+se hizo al principio, antes de la entrevista. Al finalizar debe existir un
+gap-map explícito entre diseño y código: implementado, parcial, no
+implementado, contradice o no verificado, siempre con evidencia.
+
+A partir de ahí esta herramienta suelta la mano: el trabajo sigue en una
+sesión nueva DENTRO del workspace, donde el agente padre se orienta solo
+(AGENTS.md + ESTADO.md) y arranca la fase 3 (investigación). Si más adelante
+el negocio cambia, se vuelve aquí en modo C con CARPETA_PROYECTO =
+`<workspace>/docs/02-flujos/planos/`, se iteran los planos, se recompila y
+se re-vuelca al workspace en un cierre.
 
 ## Conducta
 
@@ -150,14 +281,16 @@ regenera entera en cada compilación: no se edita a mano jamás.
   este método pregunta por hechos.
 - Cero jerga técnica con el usuario. Ni código, ni arquitectura, ni nombres
   de tecnologías: el cómo pertenece al agente que construya.
-- Ningún requisito inventado: si el usuario no lo dijo, va a "Preguntas
-  abiertas".
+- Ningún requisito inferido se hace pasar por dicho por el usuario: si hace
+  falta completar sin colaboración, se añade como supuesto `inferido` y
+  `propuesto`, visible para aprobación.
 - El volcado puede llegar en varios mensajes; no empieces a estructurar hasta
   que el usuario confirme que terminó.
 - Cuando propongas un caso límite y el usuario responda "eso no nos pasa
   nunca, fuera", acéptalo y anótalo en fuera de alcance: decidir que un borde
   no importa también es claridad.
-- En modo B, no abras el código en ninguna fase de la entrevista.
+- En modo B, el código se analiza antes de entrevistar y se vuelve a
+  consultar cuando haga falta contrastar cobertura; nunca se modifica.
 
 ## Los ficheros del proyecto (los planos)
 
@@ -168,11 +301,9 @@ usuario vive FUERA, en su carpeta de trabajo. En los comandos de este
 documento, RUTA_HERRAMIENTA es la carpeta del paquete y CARPETA_PROYECTO la
 carpeta del proyecto del usuario.
 
-Tras acordar la frase de contrato (F0), deriva de ella un slug corto en
-kebab-case y crea la carpeta del proyecto en el directorio de trabajo del
-usuario (o donde él te diga), nunca dentro del paquete; si tu sesión corre
-dentro del paquete, pregunta dónde quiere guardar su proyecto. Los planos
-son:
+En el triaje deriva o propone un slug corto en kebab-case y crea de inmediato
+el workspace con `visor/iniciar.py` en el directorio de trabajo del usuario
+(o donde él te diga), nunca dentro del paquete. Los planos son:
 
 - `planos.json`: TODO el proyecto como datos, conforme al esquema
   `visor/esquema.json`: contrato, actores, vocabulario, flujos, recorridos
@@ -182,7 +313,7 @@ son:
   estructura maestra.
 - `spec.md`: NO se escribe a mano. Se regenera cada vez que cambian los
   planos con:
-  `python3 RUTA_HERRAMIENTA/visor/generar_spec.py --datos CARPETA_PROYECTO/planos.json`
+  `python RUTA_HERRAMIENTA/visor/generar_spec.py --datos CARPETA_PROYECTO/planos.json`
 - `encargo.md`: el texto para la IA constructora o auditora (ver F5).
 - `mural.md`: notas de trabajo en bruto (transcripciones, respuestas,
   ejemplos). Registro interno tuyo: no viaja al agente.
@@ -203,6 +334,12 @@ Los planos se enseñan SIEMPRE con el visor local de esta carpeta. La página
 ya está hecha (`visor/plantilla.html`) y no se genera ni se toca jamás:
 misma fuente, mismo fondo, mismos bloques, en cualquier ordenador. Lo único
 que se genera con el usuario son datos: `planos.json`.
+
+La plantilla incluye SIEMPRE un menú lateral izquierdo con todos los flujos
+navegables. En un mapa enumera sus actividades; en el plano de una actividad
+enumera sus flujos. El lateral no desaparece ni se transforma en una barra
+superior en pantallas estrechas. Una entrega sin ese lateral es un FALLO y no
+se presenta al usuario.
 
 La web tiene pestañas: Resumen (contrato, actores, vocabulario y progreso),
 Flujos, Por actor (el corte transversal: qué hace cada uno, por dónde toca
@@ -225,6 +362,11 @@ Vocabulario cerrado de pasos en los flujos (el visor no dibuja nada más):
 Cada bloque lleva su etiqueta escrita encima: el usuario nunca tiene que
 recordar qué significa una forma o un color.
 
+La web es básica y estrictamente de visualización. No incluye formularios,
+comentarios, botones de aprobación ni ninguna acción que escriba datos. El
+usuario da todo el feedback al agente por conversación; las mutaciones y la
+aprobación se hacen únicamente con los comandos locales.
+
 Sobre las decisiones: una decisión lleva `rama` (un desvío) o `ramas` (varias
 salidas con contenido); cada rama vuelve al flujo salvo que lleve
 `"termina": true` (una anulación, una baja: caminos que acaban ahí). Los
@@ -239,29 +381,34 @@ Cómo se usa:
    nombres reales; excepciones y reglas como `decision` con su `rama` o sus
    `ramas` (cada rama vuelve al flujo, salvo que lleve `"termina": true`).
 2. Valídalo con la herramienta del paquete tras CADA escritura:
-   `python3 RUTA_HERRAMIENTA/visor/validar.py --datos CARPETA_PROYECTO/planos.json`
+   `python RUTA_HERRAMIENTA/visor/validar.py --datos CARPETA_PROYECTO/planos.json`
    Corrige los errores antes de seguir; los avisos señalan fichas cojas,
    avisos sin canal o referencias rotas. Los ids R-n, C-n, G-n, Q-n y REC-n
    son globales al proyecto: el validador rechaza duplicados.
-3. Lánzalo en segundo plano y dale la URL al usuario:
-   `python3 RUTA_HERRAMIENTA/visor/servir.py --datos CARPETA_PROYECTO/planos.json`
-   Sirve solo en 127.0.0.1 (puerto 8765 si está libre), abre el navegador y
-   se apaga tras 15 minutos SIN ACTIVIDAD: cada visita o recarga reinicia el
-   contador, así que mientras el usuario tenga la página abierta sigue viva.
-   Si aun así caduca (pestaña cerrada, ordenador dormido), relánzalo sin
-   esperar a que te lo pidan; el puerto se conserva y la pestaña revive al
-   recargar.
-4. La página se actualiza sola cuando cambias `planos.json`: no hace falta
+3. Pasa el E2E obligatorio del lateral con navegador real:
+   `python RUTA_HERRAMIENTA/visor/validar_web.py --datos CARPETA_PROYECTO/planos.json`
+   Tiene que terminar con `OK: menú lateral visible y navegable`. Comprueba
+   dos anchos de ventana, que el menú esté geométricamente a la izquierda,
+   que incluya todas las actividades o flujos y que cada entrada navegue.
+   Si falla, el reporte queda RECHAZADO: no des la URL ni pidas aprobación
+   hasta corregirlo.
+4. Abre la sesión estable y dale la URL al usuario:
+   `python RUTA_HERRAMIENTA/visor/requisitos.py abrir --workspace <workspace>`
+   Sirve sólo en `127.0.0.1`, no caduca por defecto y conserva una URL
+   estable para ese workspace. Si ya está corriendo para el mismo proyecto,
+   reutiliza la sesión; si el puerto pertenece a otro, elige uno estable
+   derivado de la ruta.
+5. La página se actualiza sola cuando cambias `planos.json`: no hace falta
    que el usuario recargue.
 
 Los ficheros `visor/ejemplo.json`, `visor/spec.md` y `visor/encargo.md` son
-material de muestra del visor, no un proyecto: no los toques ni los
-confundas con `proyectos/`.
+material de muestra del visor, no un proyecto: no los toques.
 
-Plan B sin visor: si el visor no puede levantarse (sin navegador, sesión
-remota, entorno restringido), no te saltes la validación: enseña cada bloque
-en la conversación, en el orden de las pestañas, y consigue el "así es" del
-usuario bloque a bloque antes de seguir.
+Plan B sin visor: si el visor o su E2E no pueden ejecutarse (sin navegador,
+sesión remota, entorno restringido), el resultado se marca como NO APTO PARA
+ENTREGA. Puedes enseñar cada bloque en la conversación para seguir trabajando,
+pero no afirmar que la web está terminada ni pedir la aprobación final hasta
+que `validar_web.py` pase.
 
 Prohibido: generar HTML propio, editar la plantilla, el esquema o los
 scripts del visor, inventar tipos de paso o campos fuera del esquema. La
@@ -533,8 +680,10 @@ Cuando no queden huecos:
    prueba). No es burocracia: es lo que permite detectar reglas huérfanas y
    promesas sin prueba.
 
-2. Pasa el cierre de coherencia, con `validar.py` y a ojo, y arregla lo que
-   salga ANTES de enseñar nada:
+2. Pasa el cierre de coherencia con
+   `validar.py --perfil revision`, el E2E obligatorio
+   `validar_web.py` y la revisión humana, y arregla lo que salga ANTES de
+   enseñar nada:
    - Toda regla G-n tiene al menos un requisito que la implementa y toda
      fila de sus tablas al menos un criterio con datos reales.
    - Todo requisito R-n tiene al menos una prueba C-n que lo cubre.
@@ -549,31 +698,33 @@ Cuando no queden huecos:
    - Cada número de `contrato.exito` se puede medir con los datos que la
      app guarda: si no, añade el requisito y los campos que lo midan.
 3. Genera el spec:
-   `python3 RUTA_HERRAMIENTA/visor/generar_spec.py --datos CARPETA_PROYECTO/planos.json`
-3. Escribe `encargo.md` según el modo (abajo): el texto del encargo y,
+   `python RUTA_HERRAMIENTA/visor/generar_spec.py --datos CARPETA_PROYECTO/planos.json`
+4. Escribe `encargo.md` según el modo (abajo): el texto del encargo y,
    debajo, la ruta de la carpeta de planos. Nada más.
-4. Pide al usuario que recorra TODAS las pestañas de la web buscando
+5. Pide al usuario que recorra TODAS las pestañas de la web buscando
    mentiras y huecos, y señálale las 3 partes donde tengas menos confianza
    de haberle entendido bien, para que las revise primero.
-5. Dile qué hacer después: sesión nueva con la IA de código, dándole
-   `encargo.md` y la carpeta del proyecto. Y que la validación final
+6. El usuario aprueba esa versión diciéndoselo al agente. Registra la
+   aprobación con `requisitos.py aprobar --por "NOMBRE"
+   --confirmar-supuestos`; no escribas `aprobado` a mano. Comprueba
+   `requisitos.py estado` y finaliza con `visor/finalizar.py`, que rechazará
+   cualquier plano distinto del recibo.
+7. Dile qué hacer después: cerrar esta sesión y abrir una nueva desde la raíz
+   `<proyecto>-agents`. El agente padre leerá `AGENTS.md`, `ESTADO.md`, los
+   planos y el encargo; no se abre directamente dentro de `main/`. Y que la validación final
    es usar la obra con los ejemplos de los planos ("haz el pedido de Paco
    con la deuda de 300€"), no mirar pantallas.
 
 Encargo modo A, construcción:
 
-> Construye la aplicación descrita en estos planos: `spec.md` y
-> `planos.json` (la fuente estructurada). Antes de escribir código, genera
-> tu plan de implementación y tu lista de tareas, y verifica cada tarea
-> contra los criterios de aceptación. Construye en el orden de los
-> recorridos, empezando por el esqueleto. Si algo no está especificado, NO
-> lo decidas tú: apúntalo en el fichero `preguntas-del-constructor.md` junto
-> a los planos (el spec se regenera y no debe editarse a mano) y elige la
-> opción más simple y reversible. Los criterios Dado/Cuando/Entonces son tus tests
-> de aceptación: una tarea no está terminada hasta que los cumple. La
-> seguridad técnica de base (sesiones, contraseñas, copias de seguridad,
-> protección de datos) es tuya: aplícala según el estándar aunque los planos
-> no la mencionen, y apunta las decisiones que tomes.
+> Este workspace contiene los planos aprobados en `docs/02-flujos/planos/`.
+> Lee `AGENTS.md` y `docs/05-trabajo/ESTADO.md` y continúa por la primera fase
+> pendiente. No programes todavía: primero completa investigación y después
+> acuerda la planificación con la persona. Cada trozo de obra tendrá su propia
+> especificación aprobada, rama y worktree. Si algo de negocio no está definido,
+> registra la pregunta para que el analista actualice los planos; el constructor
+> nunca los modifica. La última prueba es la aplicación real usada por la persona
+> con los ejemplos Dado/Cuando/Entonces.
 
 Encargo modo B, auditoría (rellena la ruta: pregúntala al usuario al cerrar,
 que pedir la ruta del código no es mirar el código):

@@ -3,6 +3,17 @@
   "proyecto": "almacen-de-paco",
   "titulo": "Pedidos del almacén",
   "descripcion": "La app del almacén de piensos: los pedidos que hoy llegan por WhatsApp y se copian a mano al Excel pasarán a registrarse y facturarse solos. La IA lee el mensaje y monta un borrador, María lo confirma, el código factura y avisa, y el jefe aprueba las excepciones desde el móvil.",
+  "definicion": {
+    "estado": "listo para revisar",
+    "modo": "entrevista",
+    "bloques_no_aplican": [],
+    "supuestos": []
+  },
+  "cobertura": {
+    "estado": "no implementado",
+    "evidencias": ["El ejemplo describe un proyecto nuevo, todavía sin aplicación."],
+    "pruebas": ["No existe código de producto que ejecutar."]
+  },
   "contrato": {
     "frase": "Cuando llega un pedido por WhatsApp, María necesita registrarlo y facturarlo sin copiarlo a mano para que el despacho medio baje de 40 a 10 minutos.",
     "exito": "en un mes, el tiempo medio entre que llega el mensaje y sale el pedido baja de 40 a 10 minutos, y ningún pedido se pierde."
@@ -22,6 +33,7 @@
       "id": "pedido-hoy",
       "titulo": "Un pedido, de la llamada al envío",
       "momento": "hoy",
+      "origen": "usuario",
       "descripcion": "Cómo funciona el negocio ahora mismo, sin la app.",
       "pasos": [
         { "tipo": "humano", "texto": "Llegó un pedido por WhatsApp", "quien": "Paco" },
@@ -44,6 +56,7 @@
       "id": "pedido-futuro",
       "titulo": "El mismo pedido, con la app",
       "momento": "futuro",
+      "origen": "usuario",
       "descripcion": "El reparto del trabajo: qué queda en personas, qué hace código normal y qué hace un modelo de IA. La IA propone, María confirma: nada se factura sin ojos humanos.",
       "pasos": [
         { "tipo": "humano", "texto": "Llegó un pedido por WhatsApp", "quien": "Paco" },
@@ -98,9 +111,9 @@
       "objetivo": "Recorrer todo el camino feliz aunque sea en fino: entra el mensaje, María confirma, se factura, el almacén envía.",
       "estado": "pendiente",
       "requisitos": [
-        { "id": "R-1", "texto": "Cuando llegue un mensaje de pedido por WhatsApp de un cliente conocido, el sistema deberá montar un borrador de pedido con cliente, líneas y fecha, y guardar el mensaje original." },
-        { "id": "R-2", "texto": "Cuando María confirme un borrador con stock y sin necesidad de visto bueno (G-1), el sistema deberá generar la factura, apuntar su importe a la cuenta del cliente y avisar al almacén por WhatsApp.", "regla": "G-1" },
-        { "id": "R-3", "texto": "Cuando el almacén responda al aviso marcando el pedido como enviado, el sistema deberá registrar la hora del envío." }
+        { "id": "R-1", "texto": "Cuando llegue un mensaje de pedido por WhatsApp de un cliente conocido, el sistema deberá montar un borrador de pedido con cliente, líneas y fecha, y guardar el mensaje original.", "origen": "usuario", "implementacion": { "estado": "no implementado", "evidencias": ["Proyecto nuevo sin código."], "pruebas": ["Pendiente de construcción."] } },
+        { "id": "R-2", "texto": "Cuando María confirme un borrador con stock y sin necesidad de visto bueno (G-1), el sistema deberá generar la factura, apuntar su importe a la cuenta del cliente y avisar al almacén por WhatsApp.", "regla": "G-1", "origen": "usuario", "implementacion": { "estado": "no implementado", "evidencias": ["Proyecto nuevo sin código."], "pruebas": ["Pendiente de construcción."] } },
+        { "id": "R-3", "texto": "Cuando el almacén responda al aviso marcando el pedido como enviado, el sistema deberá registrar la hora del envío.", "origen": "usuario", "implementacion": { "estado": "no implementado", "evidencias": ["Proyecto nuevo sin código."], "pruebas": ["Pendiente de construcción."] } }
       ],
       "criterios": [
         { "id": "C-1", "dado": "que Paco no debe nada y hay 100 sacos de harina en stock", "cuando": "escribe \"40 sacos de harina de 25kg para el jueves\" y María confirma el borrador", "entonces": "se genera la factura, el almacén recibe el aviso por WhatsApp y el pedido queda como facturado", "cubre": "R-2" },
@@ -114,8 +127,8 @@
       "objetivo": "Que ningún pedido con deuda o de más de 1.000€ salga sin aprobación (regla G-1).",
       "estado": "pendiente",
       "requisitos": [
-        { "id": "R-4", "texto": "Cuando María confirme un borrador de un cliente con deuda pendiente o por importe mayor de 1.000€, el sistema deberá retenerlo y pedir aprobación al jefe por WhatsApp, enseñándole la deuda y el importe.", "regla": "G-1" },
-        { "id": "R-5", "texto": "Cuando el jefe apruebe, el sistema deberá continuar hacia la factura; cuando rechace con motivo, el sistema deberá dejar el pedido como anulado y avisar a María con el motivo." }
+        { "id": "R-4", "texto": "Cuando María confirme un borrador de un cliente con deuda pendiente o por importe mayor de 1.000€, el sistema deberá retenerlo y pedir aprobación al jefe por WhatsApp, enseñándole la deuda y el importe.", "regla": "G-1", "origen": "usuario", "implementacion": { "estado": "no implementado", "evidencias": ["Proyecto nuevo sin código."], "pruebas": ["Pendiente de construcción."] } },
+        { "id": "R-5", "texto": "Cuando el jefe apruebe, el sistema deberá continuar hacia la factura; cuando rechace con motivo, el sistema deberá dejar el pedido como anulado y avisar a María con el motivo.", "origen": "usuario", "implementacion": { "estado": "no implementado", "evidencias": ["Proyecto nuevo sin código."], "pruebas": ["Pendiente de construcción."] } }
       ],
       "criterios": [
         { "id": "C-3", "dado": "que Paco debe 300€", "cuando": "María confirma su pedido de 40 sacos", "entonces": "el pedido queda retenido y al jefe le llega la petición con la deuda visible", "cubre": "R-4" },
@@ -232,8 +245,5 @@
     "Cobros y pasarela de pago: se sigue cobrando como hasta ahora.",
     "Control de stock en tiempo real: el stock se comprueba contra la cifra que carga María cada mañana."
   ],
-  "preguntas": [
-    "¿La deuda del cliente sube sola con cada factura y cómo se apuntan los pagos parciales? (hoy 'marcar deuda pagada' es todo o nada)",
-    "Los pedidos por teléfono (un 10%) los registra María a mano: ¿necesitan algo especial o van como cualquier borrador?"
-  ]
+  "preguntas": []
 }

@@ -3,7 +3,7 @@
 determinista, misma estructura siempre. No se edita el spec a mano; se
 edita planos.json y se regenera.
 
-Uso: python3 generar_spec.py --datos <ruta/planos.json> [--salida <ruta/spec.md>]
+Uso: python generar_spec.py --datos <ruta/planos.json> [--salida <ruta/spec.md>]
 (por defecto escribe spec.md junto al planos.json)
 """
 
@@ -69,6 +69,10 @@ def main():
     if d.get("version") != 2 or not d.get("titulo"):
         sys.exit("planos.json debe tener version: 2 y titulo.")
     d["titulo"] = " ".join(str(d["titulo"]).split())
+    no_aplican = set((d.get("definicion") or {}).get("bloques_no_aplican", []))
+
+    def ausencia(bloque, pendiente="(Pendiente.)"):
+        p("(No aplica a este proyecto.)" if bloque in no_aplican else pendiente)
 
     salida = args.salida or os.path.join(os.path.dirname(os.path.abspath(args.datos)), "spec.md")
 
@@ -76,6 +80,27 @@ def main():
     p()
     p("Proyecto `%s`. Generado desde `planos.json` (la fuente de verdad): no editar a mano." % d.get("proyecto", "?"))
     p()
+    if d.get("definicion"):
+        definicion = d["definicion"]
+        p("**Estado del diseño:** %s · **modo:** %s." % (
+            definicion.get("estado", "borrador"),
+            definicion.get("modo", "sin declarar"),
+        ))
+        p()
+    if d.get("cobertura"):
+        p("**Cobertura observada en el código actual:** %s." %
+          d["cobertura"].get("estado", "no verificado"))
+        p()
+    supuestos = (d.get("definicion") or {}).get("supuestos", [])
+    if supuestos:
+        p("Supuestos que el usuario debe revisar:")
+        for supuesto in supuestos:
+            p("- **%s · %s:** %s" % (
+                supuesto.get("id", "supuesto"),
+                supuesto.get("estado", "propuesto"),
+                supuesto.get("texto", ""),
+            ))
+        p()
 
     p("## 1. Propósito")
     p()
@@ -83,7 +108,7 @@ def main():
         p(d["descripcion"])
         p()
     c = d.get("contrato") or {}
-    p(c.get("frase", "(Pendiente: aún sin frase de contrato.)"))
+    p(c.get("frase") or "(Pendiente: aún sin frase de contrato.)")
     exito = c.get("exito")
     if exito:
         p()
@@ -126,7 +151,7 @@ def main():
         for v in d["vocabulario"]:
             p("- \"%s\": %s" % (v["termino"], v["significado"]))
     if not d.get("actores") and not d.get("vocabulario"):
-        p("(Pendiente.)")
+        ausencia("actores")
     p()
 
     p("## 3. El proceso (flujos)")
@@ -139,7 +164,11 @@ def main():
           "son la foto del antes y se incluyen como contexto.")
         p()
     for f in flujos:
-        p("### %s [%s]" % (f["titulo"], "hoy" if f["momento"] == "hoy" else "con la app"))
+        p("### %s [%s%s]" % (
+            f["titulo"],
+            "hoy" if f["momento"] == "hoy" else "con la app",
+            (" · origen: %s" % f["origen"]) if f.get("origen") else "",
+        ))
         if f.get("descripcion"):
             p()
             p(f["descripcion"])
@@ -148,7 +177,7 @@ def main():
             paso_texto(paso, 0)
         p()
     if not d.get("flujos"):
-        p("(Pendiente.)")
+        ausencia("flujos")
         p()
 
     p("## 4. Recorridos, requisitos y criterios de aceptación")
@@ -163,13 +192,33 @@ def main():
             p(r["objetivo"])
         p()
         for q in r.get("requisitos", []):
-            p("- **%s**: %s" % (q["id"], q["texto"]))
+            extras = []
+            if q.get("origen"):
+                extras.append("origen: %s" % q["origen"])
+            implementacion = q.get("implementacion") or {}
+            if implementacion.get("estado"):
+                extras.append("código actual: %s" % implementacion["estado"])
+            p("- **%s**: %s%s" % (
+                q["id"],
+                q["texto"],
+                (" · " + " · ".join(extras)) if extras else "",
+            ))
+            for evidencia in implementacion.get("evidencias", []):
+                if isinstance(evidencia, dict):
+                    evidencia = "%s: %s%s" % (
+                        evidencia.get("tipo", "evidencia"),
+                        evidencia.get("referencia", ""),
+                        (" — " + evidencia["detalle"]) if evidencia.get("detalle") else "",
+                    )
+                p("  - Evidencia: %s" % evidencia)
+            for prueba in implementacion.get("pruebas", []):
+                p("  - Prueba: %s" % prueba)
         p()
         for cr in r.get("criterios", []):
             p("- **%s**: Dado %s / Cuando %s / Entonces %s" % (cr["id"], cr["dado"], cr["cuando"], cr["entonces"]))
         p()
     if not d.get("recorridos"):
-        p("(Pendiente.)")
+        ausencia("recorridos")
         p()
 
     if d.get("episodios"):
@@ -191,7 +240,7 @@ def main():
         if g.get("tabla"):
             tabla_md(g["tabla"]["columnas"], g["tabla"]["filas"])
     if not d.get("reglas"):
-        p("(Ninguna registrada.)")
+        ausencia("reglas", "(Ninguna registrada.)")
         p()
 
     p("## 6. Estados")
@@ -212,7 +261,7 @@ def main():
         tabla_md(["Estado", "Qué se puede hacer (quién, y a qué estado pasa)"],
                  [[x["nombre"], " · ".join(accion_txt(a) for a in x.get("acciones", []))] for x in e["estados"]])
     if not d.get("estados"):
-        p("(Pendiente.)")
+        ausencia("estados")
         p()
 
     p("## 7. Datos e integraciones")
@@ -227,7 +276,10 @@ def main():
     for x in d.get("integraciones", []):
         p("- Habla con **%s**%s" % (x["con"], (": %s" % x["para"]) if x.get("para") else ""))
     if not d.get("datos") and not d.get("integraciones"):
-        p("(Pendiente.)")
+        if "datos" in no_aplican and "integraciones" in no_aplican:
+            p("(No aplica a este proyecto.)")
+        else:
+            p("(Pendiente.)")
     p()
 
     p("## 8. Superficie de uso")
@@ -263,7 +315,7 @@ def main():
             p("- %s" % x)
         p()
     if not sup:
-        p("(Pendiente.)")
+        ausencia("superficie")
         p()
 
     p("## 9. Calidad y límites")
@@ -271,7 +323,7 @@ def main():
     for q in d.get("calidad", []):
         p("- **%s**: %s" % (q["id"], q["criterio"]))
     if not d.get("calidad"):
-        p("(Pendiente.)")
+        ausencia("calidad")
     p()
 
     p("## 10. Fuera de alcance")
@@ -279,7 +331,7 @@ def main():
     for x in d.get("fuera", []):
         p("- %s" % x)
     if not d.get("fuera"):
-        p("(Pendiente.)")
+        ausencia("fuera")
     p()
 
     p("## 11. Preguntas abiertas")

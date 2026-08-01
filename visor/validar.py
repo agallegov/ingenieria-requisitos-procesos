@@ -5,21 +5,26 @@ Comprueba lo que el esquema exige más lo que el método promete: ids únicos
 globales, referencias que existen, tablas cuadradas, fichas completas.
 Ejecútalo tras CADA actualización de planos.json.
 
-Uso: python3 validar.py --datos <ruta/planos.json>
+Uso: python validar.py --datos <ruta/planos.json> [--perfil borrador|revision|congelado]
 Sale con código 0 si no hay errores (los avisos no bloquean), 1 si los hay.
 """
 
 import argparse
 import json
 import re
+import subprocess
 import sys
+from pathlib import Path
 
 TIPOS_ACCION = ("humano", "estatico", "ia", "externo")
-BLOQUES = {"version", "proyecto", "titulo", "descripcion", "contrato", "actores",
-           "vocabulario", "actividades", "flujos", "episodios", "recorridos",
-           "reglas", "estados", "datos", "volumen", "integraciones", "superficie",
-           "calidad", "fuera", "preguntas"}
+BASE = Path(__file__).resolve().parent
 CAMPOS_FICHA = ("quien", "llega", "cuando", "ve", "puede", "nunca")
+ESTADOS_DEFINICION = ("borrador", "listo para revisar", "aprobado", "congelado")
+MODOS_DEFINICION = ("entrevista", "autopropuesto", "analisis de codigo", "mixto")
+ORIGENES = ("usuario", "codigo", "inferido", "mixto")
+ESTADOS_COBERTURA = (
+    "no verificado", "implementado", "parcial", "no implementado", "contradice"
+)
 
 errores = []
 avisos = []
@@ -31,6 +36,127 @@ def err(donde, msg):
 
 def aviso(donde, msg):
     avisos.append("%s: %s" % (donde, msg))
+
+
+def _resolver_ref(esquema_raiz, ref):
+    if not ref.startswith("#/"):
+        raise ValueError("solo se admiten referencias locales en esquema.json: %s" % ref)
+    actual = esquema_raiz
+    for parte in ref[2:].split("/"):
+        actual = actual[parte.replace("~1", "/").replace("~0", "~")]
+    return actual
+
+
+def _es_tipo(valor, tipo):
+    tipos = {
+        "object": lambda x: isinstance(x, dict),
+        "array": lambda x: isinstance(x, list),
+        "string": lambda x: isinstance(x, str),
+        "integer": lambda x: isinstance(x, int) and not isinstance(x, bool),
+        "number": lambda x: isinstance(x, (int, float)) and not isinstance(x, bool),
+        "boolean": lambda x: isinstance(x, bool),
+        "null": lambda x: x is None,
+    }
+    return tipo in tipos and tipos[tipo](valor)
+
+
+def _errores_esquema(valor, regla, raiz, donde="$" ):
+    """Subconjunto Draft 7 usado por nuestro esquema, sin dependencias externas."""
+    if "$ref" in regla:
+        return _errores_esquema(valor, _resolver_ref(raiz, regla["$ref"]), raiz, donde)
+    fallos = []
+    if "anyOf" in regla:
+        opciones = [_errores_esquema(valor, x, raiz, donde) for x in regla["anyOf"]]
+        if not any(not x for x in opciones):
+            fallos.append("%s: no cumple ninguna alternativa" % donde)
+    if "oneOf" in regla:
+        validas = sum(not _errores_esquema(valor, x, raiz, donde) for x in regla["oneOf"])
+        if validas != 1:
+            fallos.append("%s: debe cumplir exactamente una alternativa" % donde)
+
+    tipo = regla.get("type")
+    if tipo and not _es_tipo(valor, tipo):
+        return ["%s: se esperaba %s" % (donde, tipo)]
+    if "const" in regla and valor != regla["const"]:
+        fallos.append("%s: debe ser %r" % (donde, regla["const"]))
+    if "enum" in regla and valor not in regla["enum"]:
+        fallos.append("%s: valor no permitido" % donde)
+    if isinstance(valor, str):
+        if len(valor) < regla.get("minLength", 0):
+            fallos.append("%s: texto demasiado corto" % donde)
+        if regla.get("pattern") and re.search(regla["pattern"], valor) is None:
+            fallos.append("%s: no cumple el patrón %s" % (donde, regla["pattern"]))
+    if isinstance(valor, list):
+        if len(valor) < regla.get("minItems", 0):
+            fallos.append("%s: faltan elementos" % donde)
+        if "items" in regla:
+            for i, item in enumerate(valor):
+                fallos.extend(_errores_esquema(item, regla["items"], raiz, "%s[%d]" % (donde, i)))
+    if isinstance(valor, dict):
+        for nombre in regla.get("required", []):
+            if nombre not in valor:
+                fallos.append("%s: falta %s" % (donde, nombre))
+        propiedades = regla.get("properties", {})
+        if regla.get("additionalProperties") is False:
+            for nombre in valor:
+                if nombre not in propiedades:
+                    fallos.append("%s.%s: campo desconocido" % (donde, nombre))
+        for nombre, subregla in propiedades.items():
+            if nombre in valor:
+                fallos.extend(_errores_esquema(valor[nombre], subregla, raiz,
+                                                "%s.%s" % (donde, nombre)))
+    return fallos
+
+
+def validar_esquema(d):
+    try:
+        esquema = json.loads((BASE / "esquema.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return err("esquema.json", "no se puede leer: %s" % exc)
+    for fallo in _errores_esquema(d, esquema, esquema):
+        err("esquema", fallo)
+
+
+def _identificadores(d):
+    for regla in d.get("reglas", []) or []:
+        yield regla.get("id"), "reglas"
+    for rec in d.get("recorridos", []) or []:
+        yield rec.get("id"), "recorridos"
+        for req in rec.get("requisitos", []) or []:
+            yield req.get("id"), "%s.requisitos" % rec.get("id", "recorrido")
+        for criterio in rec.get("criterios", []) or []:
+            yield criterio.get("id"), "%s.criterios" % rec.get("id", "recorrido")
+    for calidad in d.get("calidad", []) or []:
+        yield calidad.get("id"), "calidad"
+
+
+def validar_ids_del_proyecto(d, ruta_mapa):
+    """Comprueba la promesa de unicidad entre el mapa y todas sus actividades."""
+    if not d.get("actividades"):
+        return
+    raiz = Path(ruta_mapa).resolve().parent
+    documentos = [(Path(ruta_mapa).resolve(), d)]
+    for actividad in d.get("actividades", []):
+        aid = actividad.get("id")
+        ruta = raiz / "actividades" / str(aid) / "planos.json"
+        if not ruta.is_file():
+            continue
+        try:
+            documentos.append((ruta, json.loads(ruta.read_text(encoding="utf-8"))))
+        except (OSError, ValueError) as exc:
+            err("ids globales.%s" % aid, "no se puede leer %s: %s" % (ruta, exc))
+    vistos = {}
+    for ruta, datos in documentos:
+        relativo = str(ruta.relative_to(raiz)) if ruta != raiz else str(ruta)
+        for identificador, lugar in _identificadores(datos):
+            if not identificador:
+                continue
+            actual = "%s:%s" % (relativo, lugar)
+            if identificador in vistos:
+                err("ids globales", 'id duplicado "%s" en %s; ya estaba en %s' %
+                    (identificador, actual, vistos[identificador]))
+            else:
+                vistos[identificador] = actual
 
 
 def validar_paso(p, donde, ids_quien):
@@ -65,9 +191,145 @@ def validar_paso(p, donde, ids_quien):
         err(donde, 'tipo de paso desconocido: "%s"' % tipo)
 
 
+def validar_implementacion(valor, donde):
+    if not isinstance(valor, dict):
+        return err(donde, "falta el objeto de cobertura de implementación")
+    if valor.get("estado") not in ESTADOS_COBERTURA:
+        err(donde, "estado inválido; usa: %s" % ", ".join(ESTADOS_COBERTURA))
+    if not isinstance(valor.get("evidencias", []), list):
+        err(donde, "evidencias debe ser una lista")
+    if not isinstance(valor.get("pruebas", []), list):
+        err(donde, "pruebas debe ser una lista")
+
+
+def exigir_revision(d):
+    """Impide presentar planos parciales como si estuvieran listos."""
+    definicion = d.get("definicion")
+    if not isinstance(definicion, dict):
+        err("perfil revision", "falta definicion")
+        definicion = {}
+    if definicion.get("estado") not in ("listo para revisar", "aprobado", "congelado"):
+        err("perfil revision", 'definicion.estado debe ser "listo para revisar" o posterior')
+    no_aplican = set(definicion.get("bloques_no_aplican", []) or [])
+
+    if d.get("actividades"):
+        for nombre, valor in (
+            ("descripcion", d.get("descripcion")),
+            ("contrato.frase", (d.get("contrato") or {}).get("frase")),
+            ("contrato.exito", (d.get("contrato") or {}).get("exito")),
+            ("actores", d.get("actores")),
+        ):
+            if not valor and nombre.split(".", 1)[0] not in no_aplican:
+                err("perfil revision", "bloque de mapa sin completar: %s" % nombre)
+        if d.get("preguntas"):
+            err("perfil revision", "quedan preguntas abiertas en el mapa")
+        validar_implementacion(d.get("cobertura"), "perfil revision.cobertura")
+        for i, actividad in enumerate(d.get("actividades", [])):
+            donde = "perfil revision.actividades[%d]" % i
+            if actividad.get("estado") not in ("especificada", "en obra", "entregada"):
+                err(donde, "la actividad todavía no está especificada")
+            if actividad.get("origen") not in ORIGENES:
+                err(donde, "falta origen válido")
+            validar_implementacion(actividad.get("cobertura"), donde + ".cobertura")
+        return
+
+    obligatorios = (
+        ("descripcion", d.get("descripcion")),
+        ("contrato.frase", (d.get("contrato") or {}).get("frase")),
+        ("contrato.exito", (d.get("contrato") or {}).get("exito")),
+        ("actores", d.get("actores")),
+        ("flujos", d.get("flujos")),
+        ("recorridos", d.get("recorridos")),
+        ("estados", d.get("estados")),
+        ("datos", d.get("datos")),
+        ("superficie", d.get("superficie")),
+        ("calidad", d.get("calidad")),
+        ("fuera", d.get("fuera")),
+    )
+    for nombre, valor in obligatorios:
+        if not valor and nombre.split(".", 1)[0] not in no_aplican:
+            err("perfil revision", "bloque obligatorio sin completar: %s" % nombre)
+    for nombre in ("episodios", "reglas", "volumen", "integraciones"):
+        if not d.get(nombre) and nombre not in no_aplican:
+            err(
+                "perfil revision",
+                'el bloque "%s" está vacío: complétalo o decláralo en bloques_no_aplican'
+                % nombre,
+            )
+    if d.get("preguntas"):
+        err("perfil revision", "quedan preguntas abiertas")
+    if not any(f.get("momento") == "futuro" for f in d.get("flujos", [])):
+        err("perfil revision", "falta al menos un flujo futuro (el diseño a implementar)")
+    validar_implementacion(d.get("cobertura"), "perfil revision.cobertura")
+
+    for i, f in enumerate(d.get("flujos", [])):
+        if f.get("origen") not in ORIGENES:
+            err("perfil revision.flujos[%d]" % i, "falta origen válido")
+    for i, rec in enumerate(d.get("recorridos", [])):
+        if not rec.get("requisitos"):
+            err("perfil revision.recorridos[%d]" % i, "no contiene requisitos")
+        if not rec.get("criterios"):
+            err("perfil revision.recorridos[%d]" % i, "no contiene criterios comprobables")
+        for j, req in enumerate(rec.get("requisitos", []) or []):
+            donde = "perfil revision.recorridos[%d].requisitos[%d]" % (i, j)
+            if req.get("origen") not in ORIGENES:
+                err(donde, "falta origen válido")
+            validar_implementacion(req.get("implementacion"), donde + ".implementacion")
+
+
+def validar_definicion_y_cobertura(d):
+    definicion = d.get("definicion")
+    if definicion is not None:
+        if not isinstance(definicion, dict):
+            err("definicion", "debe ser un objeto")
+        else:
+            if definicion.get("estado") not in ESTADOS_DEFINICION:
+                err("definicion.estado", "valor inválido; usa: %s" % ", ".join(ESTADOS_DEFINICION))
+            if definicion.get("modo") not in MODOS_DEFINICION:
+                err("definicion.modo", "valor inválido; usa: %s" % ", ".join(MODOS_DEFINICION))
+            for i, supuesto in enumerate(definicion.get("supuestos", []) or []):
+                if supuesto.get("origen") not in ORIGENES:
+                    err("definicion.supuestos[%d]" % i, "falta origen válido")
+                if supuesto.get("estado") not in ("propuesto", "confirmado", "rechazado"):
+                    err("definicion.supuestos[%d]" % i, "estado inválido")
+    cobertura = d.get("cobertura")
+    if cobertura is not None:
+        validar_implementacion(cobertura, "cobertura")
+
+
+def validar_planos_de_actividades(d, ruta_mapa, perfil):
+    if not d.get("actividades"):
+        return
+    base = Path(ruta_mapa).resolve().parent
+    for actividad in d["actividades"]:
+        aid = actividad.get("id")
+        if not aid:
+            continue
+        ruta = base / "actividades" / aid / "planos.json"
+        if not ruta.is_file():
+            if perfil != "borrador":
+                err("perfil %s.actividades.%s" % (perfil, aid), "falta %s" % ruta)
+            continue
+        r = subprocess.run(
+            [sys.executable, __file__, "--datos", str(ruta), "--perfil", perfil],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        if r.returncode:
+            resumen = " | ".join(x.strip() for x in r.stdout.splitlines() if x.strip())
+            err("perfil %s.actividades.%s" % (perfil, aid), resumen)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--datos", required=True)
+    ap.add_argument(
+        "--perfil",
+        choices=("borrador", "revision", "congelado"),
+        default="borrador",
+        help="borrador tolera huecos; revision exige entrega completa; congelado exige aprobación",
+    )
     args = ap.parse_args()
 
     try:
@@ -76,13 +338,13 @@ def main():
     except (OSError, ValueError) as e:
         sys.exit("ERROR: no pude leer el JSON: %s" % e)
 
+    validar_esquema(d)
     if d.get("version") != 2:
         err("version", "debe ser 2")
     if not d.get("titulo"):
         err("titulo", "falta")
-    for k in d:
-        if k not in BLOQUES:
-            aviso(k, "bloque desconocido (no lo pinta el visor ni el spec)")
+    validar_definicion_y_cobertura(d)
+    validar_ids_del_proyecto(d, args.datos)
 
     # actores y quienes válidos
     ids_quien = set()
@@ -122,6 +384,21 @@ def main():
             validar_paso(p, "%s.pasos[%d]" % (donde, j), ids_quien)
         if not f.get("pasos"):
             err(donde, "flujo sin pasos")
+
+    if args.perfil in ("revision", "congelado"):
+        exigir_revision(d)
+    if args.perfil == "congelado":
+        definicion = d.get("definicion") or {}
+        if definicion.get("estado") not in ("aprobado", "congelado"):
+            err("perfil congelado", 'definicion.estado debe ser "aprobado" o "congelado"')
+        for i, supuesto in enumerate(definicion.get("supuestos", []) or []):
+            if supuesto.get("estado") != "confirmado":
+                err(
+                    "perfil congelado",
+                    "el supuesto %s debe estar confirmado antes de congelar"
+                    % supuesto.get("id", i + 1),
+                )
+    validar_planos_de_actividades(d, args.datos, args.perfil)
 
     # ids globales únicos
     ids = {}
@@ -222,7 +499,7 @@ def main():
     if errores:
         print("\n%d error(es), %d aviso(s). Corrige los errores antes de seguir." % (len(errores), len(avisos)))
         sys.exit(1)
-    print("OK: planos válidos (%d aviso(s))." % len(avisos))
+    print("OK: planos válidos para perfil %s (%d aviso(s))." % (args.perfil, len(avisos)))
 
 
 if __name__ == "__main__":

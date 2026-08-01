@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+"""Hook de git AGNÓSTICO al agente (lo ejecuta git, no el agente): bloquea el push de
+ramas de unidad (NNN-slug) cuya especificación no exista o sea de plantilla.
+
+Funciona con Claude, Codex, OpenCode, Antigravity o a mano: git es el mismo para todos.
+Es la red del atajo; la capa fuerte sigue siendo scripts/unidad.py. Ante la duda, pasa.
+"""
+import re
+import sys
+from pathlib import Path
+
+WORKSPACE = Path(__file__).resolve().parents[1]
+UNIDAD = re.compile(r"^\d{3}-[a-z0-9][a-z0-9-]*$")
+NO_PROSA = re.compile(r"^\s*(#{1,6}\s|---\s*$|\w+:\s|[-*]\s*\*\*R\d)|<[^>]+>")
+MIN_PROSA = 200
+
+
+def prosa(unidad):
+    """Prosa real del contrato de la unidad. Los bugs viven en docs/bugs/NNN-slug.md sin
+    carpeta y sin archivarse (ADR-006); el resto, en docs/05-trabajo/ (o en archivo/)."""
+    candidatos = (
+        WORKSPACE / "docs" / "05-trabajo" / unidad / "especificacion.md",
+        WORKSPACE / "docs" / "05-trabajo" / "archivo" / unidad / "especificacion.md",
+        WORKSPACE / "docs" / "bugs" / f"{unidad}.md",
+    )
+    spec = next((c for c in candidatos if c.exists()), None)
+    if spec is None:
+        return -1
+    return sum(len(l.strip()) for l in spec.read_text(encoding="utf-8", errors="replace").splitlines()
+               if l.strip() and not NO_PROSA.search(l))
+
+
+def main():
+    for linea in sys.stdin:
+        partes = linea.split()
+        if len(partes) < 4:
+            continue
+        ref_remota = partes[2]  # refs/heads/<rama>
+        rama = ref_remota.rsplit("/", 1)[-1]
+        if not UNIDAD.fullmatch(rama):
+            continue
+        n = prosa(rama)
+        if n >= MIN_PROSA:
+            continue
+        falta = "no existe" if n < 0 else f"solo tiene {n} caracteres de prosa real"
+        sys.stderr.write(
+            f"\nPUSH BLOQUEADO: el contrato de {rama} {falta} (mínimo {MIN_PROSA}).\n"
+            f"Va ANTES que el trabajo: rellena docs/05-trabajo/{rama}/especificacion.md\n"
+            f"(o docs/bugs/{rama}.md si es un bug) en el meta-repo y vuelve a empujar.\n"
+            "Hotfix: el contrato mínimo son 2 minutos.\n\n")
+        sys.exit(1)
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

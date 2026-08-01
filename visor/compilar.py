@@ -11,7 +11,7 @@ Estructura de salida, siempre la misma:
 
 Se regenera ENTERA en cada ejecución: no se edita a mano. Solo stdlib.
 
-Uso: python3 compilar.py --mapa <ruta/planos.json> [--salida <dir>]
+Uso: python compilar.py --mapa <ruta/planos.json> [--salida <dir>]
 (por defecto escribe en especificaciones/ junto al planos.json)
 """
 
@@ -19,6 +19,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import unicodedata
@@ -49,6 +50,27 @@ def md_constitution(d):
       "qué reglas de calidad se respetan siempre y qué queda fuera. Generado "
       "desde los planos: no editar a mano.")
     a("")
+    definicion = d.get("definicion") or {}
+    cobertura = d.get("cobertura") or {}
+    if definicion or cobertura:
+        a("## Estado y procedencia")
+        a("")
+        if definicion:
+            a("- Diseño: **%s** (modo: %s)." % (
+                definicion.get("estado", "borrador"),
+                definicion.get("modo", "sin declarar"),
+            ))
+        if cobertura:
+            a("- Cobertura observada en el código actual: **%s**." %
+              cobertura.get("estado", "no verificado"))
+        for supuesto in definicion.get("supuestos", []):
+            a("- %s [%s, %s]: %s" % (
+                supuesto.get("id", "Supuesto"),
+                supuesto.get("origen", "inferido"),
+                supuesto.get("estado", "propuesto"),
+                supuesto.get("texto", ""),
+            ))
+        a("")
     if d.get("descripcion"):
         a("## Qué es")
         a("")
@@ -148,14 +170,16 @@ def main():
     out = os.path.abspath(args.salida or os.path.join(raiz, "especificaciones"))
     c1 = os.path.join(out, "01-constitution")
     c2 = os.path.join(out, "02-flows")
+    # Estas rutas son propiedad exclusiva del compilador. Se reconstruyen
+    # completas para que una actividad eliminada no deje archivos residuales.
+    for controlado in (c1, c2):
+        if os.path.isdir(controlado):
+            shutil.rmtree(controlado)
+    indice = os.path.join(out, "README.md")
+    if os.path.isfile(indice):
+        os.remove(indice)
     os.makedirs(c1, exist_ok=True)
     os.makedirs(c2, exist_ok=True)
-
-    # Se regenera entera: fuera los .md de compilaciones anteriores.
-    for dirpath, _, ficheros in os.walk(out):
-        for f in ficheros:
-            if f.endswith(".md"):
-                os.remove(os.path.join(dirpath, f))
 
     with open(os.path.join(c1, "constitution.md"), "w", encoding="utf-8") as f:
         f.write(md_constitution(d))

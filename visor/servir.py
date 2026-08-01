@@ -2,12 +2,12 @@
 """Visor local de los planos (ingeniería de requisitos).
 
 Sirve la plantilla fija (plantilla.html, junto a este script) y los datos del
-proyecto (planos.json) en 127.0.0.1 y se apaga solo pasados N minutos (15
-por defecto). Intenta siempre el puerto 8765: así relanzar conserva la URL y
-la pestaña del usuario revive con recargar. Solo biblioteca estándar.
+proyecto (planos.json) en 127.0.0.1. Es estrictamente de sólo lectura: expone
+planos, documentos, historial y comparación, pero nunca recibe feedback ni
+aprobaciones. No caduca por defecto; ``--minutos`` permite un cierre opcional.
 
 Uso:
-    python3 servir.py --datos <ruta/planos.json> [--minutos 15] [--sin-navegador]
+    python servir.py --datos <ruta/planos.json> [--minutos 0] [--puerto 8765]
 """
 
 import argparse
@@ -20,6 +20,11 @@ import threading
 import time
 import webbrowser
 from urllib.parse import urlsplit
+
+try:
+    from . import revision
+except ImportError:
+    import revision
 
 RUTA_ACTIVIDAD = re.compile(r"^/actividades/([a-z0-9][a-z0-9-]*)/(datos\.json|spec\.md|encargo\.md)$")
 
@@ -34,6 +39,17 @@ def hacer_handler(ruta_datos, estado):
             pedida = urlsplit(self.path).path
             if pedida in ("/", "/index.html"):
                 self._fichero(PLANTILLA, "text/html; charset=utf-8")
+            elif pedida == "/meta.json":
+                self._json(200, {
+                    "datos": ruta_datos,
+                    "proyecto": os.path.basename(os.path.dirname(ruta_datos)),
+                })
+            elif pedida == "/historial.json":
+                self._json(200, revision.listar_historial(ruta_datos))
+            elif pedida == "/comparacion.json":
+                self._json(
+                    200, revision.comparar_ultima_aprobacion(ruta_datos)
+                )
             elif pedida == "/datos.json":
                 # Se relee en cada petición: la página lo sondea sola.
                 self._fichero(ruta_datos, "application/json; charset=utf-8")
@@ -55,7 +71,19 @@ def hacer_handler(ruta_datos, estado):
                 else:
                     self.send_error(404, "Esta actividad aún no tiene " + nombre)
             else:
-                self.send_error(404, "Este visor sirve /, /datos.json, /spec.md, /encargo.md y /actividades/<id>/...")
+                self._json(404, {"error": "ruta inexistente"})
+
+        def do_POST(self):
+            estado["ultimo"] = time.time()
+            return self._json(
+                405,
+                {
+                    "error": (
+                        "visor de solo lectura; comunica cambios al agente "
+                        "y usa requisitos.py"
+                    )
+                },
+            )
 
         def do_HEAD(self):
             estado["ultimo"] = time.time()
@@ -76,6 +104,15 @@ def hacer_handler(ruta_datos, estado):
             self.end_headers()
             self.wfile.write(cuerpo)
 
+        def _json(self, codigo, datos):
+            cuerpo = json.dumps(datos, ensure_ascii=False).encode("utf-8")
+            self.send_response(codigo)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(cuerpo)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(cuerpo)
+
         def log_message(self, *args):
             pass
 
@@ -85,12 +122,17 @@ def hacer_handler(ruta_datos, estado):
 def main():
     p = argparse.ArgumentParser(description="Visor local de los planos")
     p.add_argument("--datos", required=True, help="Ruta al planos.json del proyecto")
-    p.add_argument("--minutos", type=float, default=15, help="Minutos SIN actividad antes de apagarse (defecto: 15)")
+    p.add_argument("--minutos", type=float, default=0,
+                   help="minutos sin actividad antes de apagarse; 0 = no caduca")
+    p.add_argument("--puerto", type=int, default=8765,
+                   help="puerto local; 0 pide uno libre (defecto: 8765)")
     p.add_argument("--sin-navegador", action="store_true", help="No abrir el navegador")
     args = p.parse_args()
 
-    if not (0 < args.minutos <= 1440):
+    if not (0 <= args.minutos <= 1440):
         sys.exit("--minutos debe estar entre 0 y 1440")
+    if not (0 <= args.puerto <= 65535):
+        sys.exit("--puerto debe estar entre 0 y 65535")
 
     ruta_datos = os.path.abspath(args.datos)
     if not os.path.isfile(ruta_datos):
@@ -103,13 +145,13 @@ def main():
     except (OSError, ValueError) as e:
         sys.exit("El fichero de datos no es JSON válido: " + str(e))
 
-    # Puerto fijo 8765 para que relanzar conserve la URL; si está ocupado,
-    # el sistema asigna uno libre.
     estado = {"ultimo": time.time()}
     try:
-        servidor = http.server.ThreadingHTTPServer(("127.0.0.1", 8765), hacer_handler(ruta_datos, estado))
-    except OSError:
-        servidor = http.server.ThreadingHTTPServer(("127.0.0.1", 0), hacer_handler(ruta_datos, estado))
+        servidor = http.server.ThreadingHTTPServer(
+            ("127.0.0.1", args.puerto), hacer_handler(ruta_datos, estado)
+        )
+    except OSError as exc:
+        sys.exit("No pude abrir el puerto %d: %s" % (args.puerto, exc))
     puerto = servidor.server_address[1]
     hilo = threading.Thread(target=servidor.serve_forever, daemon=True)
     hilo.start()
@@ -117,13 +159,18 @@ def main():
     url = "http://127.0.0.1:%d/" % puerto
     print("Visor levantado: %s" % url, flush=True)
     print("Datos: %s (se releen al recargar la página)" % ruta_datos, flush=True)
-    print("Se apaga solo tras %g minutos sin actividad (cada visita o recarga "
-          "reinicia el contador)." % args.minutos, flush=True)
+    if args.minutos:
+        print("Se apaga tras %g minutos sin actividad." % args.minutos, flush=True)
+    else:
+        print("Sesión estable: no se apaga sola.", flush=True)
     if not args.sin_navegador:
         webbrowser.open(url)
 
     try:
         while True:
+            if not args.minutos:
+                time.sleep(15)
+                continue
             restante = args.minutos * 60 - (time.time() - estado["ultimo"])
             if restante <= 0:
                 break
@@ -131,7 +178,7 @@ def main():
     except KeyboardInterrupt:
         pass
     servidor.shutdown()
-    print("Visor cerrado tras un rato sin uso. Para volver a verlo, lanza este comando otra vez.", flush=True)
+    print("Visor cerrado.", flush=True)
 
 
 if __name__ == "__main__":

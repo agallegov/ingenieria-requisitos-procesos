@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
 <title>Planos del proyecto · ingeniería de requisitos</title>
 <style>
-  /* PLANTILLA FIJA v2.1 (pestañas). No se edita nunca: los proyectos solo
+  /* PLANTILLA FIJA v2.2 (lateral obligatorio + pestañas). Los proyectos solo
      aportan datos (planos.json). Colores validados para daltonismo. */
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html { -webkit-text-size-adjust: 100%; }
   body { background: #fcfcfb; color: #0b0b0b; font: 16px/1.5 Arial, Helvetica, sans-serif; }
   .pagina { max-width: 920px; margin: 0 auto; padding: 32px 20px 90px; }
@@ -38,9 +40,11 @@
   .progreso .fila { display: flex; gap: 8px; align-items: baseline; font-size: 14px; margin: 4px 0; }
   .progreso .si { color: #0b0b0b; }
   .progreso .no { color: #898781; }
+  .progreso .na { color: #52514e; }
   .puntito { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
   .puntito.si { background: #1baf7a; }
   .puntito.no { background: #e1e0d9; }
+  .puntito.na { background: #898781; }
 
   .leyenda { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; margin: 4px 0 6px; padding: 12px 16px; border: 1px solid #e1e0d9; border-radius: 10px; background: #f9f9f7; font-size: 12.5px; color: #52514e; }
   .leyenda i { display: inline-block; vertical-align: -3px; margin-right: 7px; font-style: normal; }
@@ -78,16 +82,21 @@
   .cuerpo { display: flex; gap: 24px; align-items: flex-start; }
   .panel { flex: 1; min-width: 0; }
   .menu-actividades { flex: 0 0 235px; position: sticky; top: 0; max-height: 100vh; overflow-y: auto; padding: 14px 6px 20px 0; }
+  .menu-actividades .titulo-menu { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: .12em; color: #52514e; margin: 0 0 8px 10px; }
+  .menu-actividades .menu-vacio { font-size: 12.5px; line-height: 1.4; color: #898781; padding: 7px 10px; }
   .menu-actividades .grupo { font-size: 10.5px; font-weight: bold; text-transform: uppercase; letter-spacing: .1em; color: #898781; margin: 14px 0 4px 10px; }
   .menu-actividades button { display: block; width: 100%; text-align: left; font: 13px/1.35 Arial, Helvetica, sans-serif; padding: 7px 10px; border: 0; background: none; border-radius: 8px; cursor: pointer; color: #0b0b0b; }
   .menu-actividades button:hover { background: #f0efec; }
   .menu-actividades button:focus-visible { outline: 2px solid #d95926; outline-offset: 1px; }
   .menu-actividades button.activo { background: #383835; color: #ffffff; }
+  .menu-filtros { display: grid; gap: 6px; margin: 0 6px 10px; }
+  .menu-filtros input, .menu-filtros select { width: 100%; border: 1px solid #d8d7d0; border-radius: 7px; background: #fff; color: #0b0b0b; padding: 7px 8px; font: 12px Arial, Helvetica, sans-serif; }
+  .menu-filtros input:focus, .menu-filtros select:focus { border-color: #d95926; outline: 2px solid #f9e0d5; }
   @media (max-width: 760px) {
-    .cuerpo { display: block; }
-    .menu-actividades { position: static; max-height: none; display: flex; overflow-x: auto; gap: 4px; padding: 10px 0; }
-    .menu-actividades .grupo { display: none; }
-    .menu-actividades button { width: auto; white-space: nowrap; border: 1px solid #e1e0d9; }
+    .pagina { padding-left: 12px; padding-right: 12px; }
+    .cuerpo { gap: 12px; }
+    .menu-actividades { flex: 0 0 34vw; min-width: 120px; max-width: 180px; }
+    .menu-actividades button { overflow-wrap: anywhere; }
   }
   .flujo .descripcion { font-size: 13.5px; color: #52514e; max-width: 65ch; }
   .lienzo { margin-top: 16px; }
@@ -131,7 +140,6 @@
   .req { display: flex; gap: 8px; align-items: baseline; font-size: 14px; margin: 4px 0; }
   .criterio { background: #fcfcfb; border: 1px solid #e1e0d9; border-radius: 8px; padding: 8px 12px; margin: 6px 0; font-size: 13.5px; }
   .criterio b { color: #52514e; }
-
   .tabla-envoltorio { overflow-x: auto; margin: 8px 0; }
   table { border-collapse: collapse; font-size: 13.5px; }
   th, td { border: 1px solid #e1e0d9; padding: 6px 10px; text-align: left; vertical-align: top; }
@@ -149,7 +157,7 @@
   footer { margin-top: 60px; font-size: 12px; color: #898781; text-align: center; }
 </style>
 </head>
-<body>
+<body class="con-menu">
   <div class="pagina">
     <header>
       <div class="marca">ingeniería de requisitos · planos del proyecto</div>
@@ -157,15 +165,34 @@
       <div class="sub" id="proyecto"></div>
     </header>
 
-    <div class="aviso-flotante" id="banner">⚠ El visor perdió la conexión: el
-    servidor local se apaga solo pasado un rato. Pide a tu IA que lo levante
-    otra vez y recarga esta página.</div>
+    <div class="aviso-flotante" id="banner">⚠ El visor perdió la conexión.
+    Pide a tu IA que vuelva a abrir la sesión y recarga esta página.</div>
     <div class="aviso-flotante" id="bannerDatos">⚠ Los últimos datos guardados
     aún no son válidos; estás viendo la última versión buena. Se actualizará
     solo cuando tu IA termine de escribir.</div>
 
     <div class="cuerpo">
-      <aside class="menu-actividades" id="menuIzq" hidden></aside>
+      <aside class="menu-actividades" id="menuIzq"
+             aria-label="Flujos de la aplicación">
+        <div class="titulo-menu">Flujos</div>
+        <div class="menu-filtros">
+          <input id="buscarFlujos" type="search" placeholder="Buscar flujo…">
+          <select id="filtroFlujos">
+            <option value="">Todos</option>
+            <option value="futuro">Con la app</option>
+            <option value="hoy">Cómo funciona hoy</option>
+            <option value="usuario">Dicho por el usuario</option>
+            <option value="codigo">Leído del código</option>
+            <option value="inferido">Inferido</option>
+            <option value="implementado">Implementado</option>
+            <option value="parcial">Parcial</option>
+            <option value="no implementado">No implementado</option>
+            <option value="especificada">Especificada</option>
+            <option value="sin empezar">Sin empezar</option>
+          </select>
+        </div>
+        <div id="menuEntradas"><div class="menu-vacio">Cargando los flujos…</div></div>
+      </aside>
       <div class="panel">
         <nav class="pestanas" id="pestanas" hidden></nav>
         <main id="contenido"></main>
@@ -173,9 +200,9 @@
       </div>
     </div>
 
-    <footer>Plantilla fija v2.1 · la página se actualiza sola cuando tu IA
-    añade contenido · el servidor local se apaga solo al cabo de un rato; tu
-    IA puede relanzarlo.</footer>
+    <footer>Plantilla fija v2.2 · la página se actualiza sola cuando tu IA
+    añade contenido · la sesión local permanece activa hasta que se cierre
+    el proceso.</footer>
   </div>
 
 <script>
@@ -187,12 +214,24 @@ let docEncargo = null;
 let cargando = false;
 let seleccion = "mapa";
 let pestanaActiva = "resumen";
+let historialActual = [];
+let comparacionActual = { hay_aprobacion: false, identico: false, planos: {} };
 
 function el(tag, clase, texto) {
   const n = document.createElement(tag);
   if (clase) n.className = clase;
   if (texto !== undefined) n.textContent = texto;
   return n;
+}
+
+async function apiJSON(ruta, opciones) {
+  const respuesta = await fetch(ruta, Object.assign(
+    { cache: "no-store" }, opciones || {}
+  ));
+  let datos = {};
+  try { datos = await respuesta.json(); } catch (_) {}
+  if (!respuesta.ok) throw new Error(datos.error || ("HTTP " + respuesta.status));
+  return datos;
 }
 
 function fallo(msg) {
@@ -263,8 +302,9 @@ function conector(discontinuo, etiqueta) {
   return frag;
 }
 
-function pintarPasos(destino, pasos, dentroDeRama) {
-  pasos.forEach(p => {
+function pintarPasos(destino, pasos, dentroDeRama, flujoId, camino) {
+  pasos.forEach((p, indice) => {
+    const posicion = (camino || []).concat(indice);
     destino.appendChild(conector(!!dentroDeRama));
     if (p.tipo === "decision") {
       const borde = el("div", "decision-borde");
@@ -278,10 +318,13 @@ function pintarPasos(destino, pasos, dentroDeRama) {
       borde.appendChild(rombo);
       destino.appendChild(borde);
       const rs = Array.isArray(p.ramas) ? p.ramas : [p.rama];
-      rs.forEach(r => {
+      rs.forEach((r, indiceRama) => {
         const rama = el("div", "rama");
         rama.appendChild(el("div", "titulo-rama", (p.clase === "excepcion" ? "⚠ " : "⚑ ") + r.etiqueta));
-        pintarPasos(rama, r.pasos, true);
+        pintarPasos(
+          rama, r.pasos, true, flujoId,
+          posicion.concat("rama-" + indiceRama)
+        );
         rama.appendChild(el("div", "vuelta", r.termina ? "✕ aquí termina este camino" : "…y vuelve al flujo"));
         destino.appendChild(rama);
       });
@@ -318,6 +361,29 @@ function tabResumen(d, presentes) {
     s.appendChild(el("div", "mini-titulo", "Qué es este proyecto"));
     s.appendChild(el("p", "resumen-desc", d.descripcion));
   }
+  if (d.definicion || d.cobertura) {
+    const estado = el("div", "tarjeta");
+    estado.appendChild(el("div", "mini-titulo", "Estado de estos planos"));
+    if (d.definicion) {
+      estado.appendChild(el("div", "req", "Diseño: " +
+        (d.definicion.estado || "borrador") + " · " +
+        (d.definicion.modo || "sin modo")));
+    }
+    if (d.cobertura) {
+      estado.appendChild(el("div", "req", "Código actual: " +
+        (d.cobertura.estado || "no verificado")));
+    }
+    const supuestos = (d.definicion || {}).supuestos || [];
+    if (supuestos.length) {
+      const det = el("details");
+      det.appendChild(el("summary", null, supuestos.length + " supuesto(s) propuesto(s) para revisar"));
+      const ul = el("ul", "lista");
+      supuestos.forEach(x => ul.appendChild(el("li", null, x.texto + " · " + x.estado)));
+      det.appendChild(ul);
+      estado.appendChild(det);
+    }
+    s.appendChild(estado);
+  }
   s.appendChild(el("div", "mini-titulo", "El objetivo"));
   if (d.contrato && d.contrato.frase) {
     const c = el("div", "contrato");
@@ -337,7 +403,7 @@ function tabResumen(d, presentes) {
   if (Array.isArray(d.actores) && d.actores.length) {
     const a = el("div", "actores");
     a.appendChild(document.createTextNode("Quién aparece: "));
-    d.actores.forEach(x => a.appendChild(el("span", null, x.nombre + (x.rol ? " (" + x.rol + ")" : ""))));
+    d.actores.forEach(x => a.appendChild(el("span", null, x.nombre)));
     s.appendChild(a);
   }
   if (Array.isArray(d.recorridos) && d.recorridos.length) {
@@ -362,10 +428,14 @@ function tabResumen(d, presentes) {
   }
   const prog = el("div", "progreso");
   prog.appendChild(el("div", "mini-titulo", "Qué hay ya en los planos"));
-  presentes.forEach(([titulo, hay, detalle]) => {
-    const fila = el("div", "fila " + (hay ? "si" : "no"));
-    fila.appendChild(el("span", "puntito " + (hay ? "si" : "no")));
-    fila.appendChild(el("span", null, titulo + (hay ? (detalle ? ": " + detalle : "") : " (pendiente)")));
+  presentes.forEach(([titulo, estado, detalle]) => {
+    const clase = estado === "no-aplica" ? "na" : (estado ? "si" : "no");
+    const sufijo = estado === "no-aplica"
+      ? " (no aplica)"
+      : (estado ? (detalle ? ": " + detalle : "") : " (pendiente)");
+    const fila = el("div", "fila " + clase);
+    fila.appendChild(el("span", "puntito " + clase));
+    fila.appendChild(el("span", null, titulo + sufijo));
     prog.appendChild(fila);
   });
   s.appendChild(prog);
@@ -392,6 +462,9 @@ function tabMapa(d) {
     d.actividades.filter(a => a.area === area).forEach(a => {
       const fila = el("div", "req");
       fila.appendChild(el("span", "chip " + (CHIP_ACTIVIDAD[a.estado] || "chip-neutro"), a.estado || "sin empezar"));
+      if (a.cobertura && a.cobertura.estado) {
+        fila.appendChild(el("span", "chip chip-neutro", a.cobertura.estado));
+      }
       const cuerpo = el("span");
       cuerpo.appendChild(document.createTextNode(a.nombre));
       if (a.resumen) cuerpo.appendChild(el("span", "objetivo", " · " + a.resumen));
@@ -429,14 +502,17 @@ function tabEpisodios(d) {
 
 function pintarFlujo(f) {
   const bloc = el("div", "flujo");
+  bloc.id = "flujo-" + f.id;
+  bloc.tabIndex = -1;
   const cab = el("div", "flujo-cabecera");
   cab.appendChild(el("h3", null, f.titulo));
   cab.appendChild(el("span", "chip " + (f.momento === "hoy" ? "chip-hoy" : "chip-futuro"), f.momento === "hoy" ? "hoy" : "con la app"));
+  if (f.origen) cab.appendChild(el("span", "chip chip-neutro", "origen: " + f.origen));
   bloc.appendChild(cab);
   if (f.descripcion) bloc.appendChild(el("p", "descripcion", f.descripcion));
   const lienzo = el("div", "lienzo");
   lienzo.appendChild(el("div", "terminal", "inicio"));
-  pintarPasos(lienzo, f.pasos, false);
+  pintarPasos(lienzo, f.pasos, false, f.id, []);
   lienzo.appendChild(conector(false));
   lienzo.appendChild(el("div", "terminal", "fin"));
   bloc.appendChild(lienzo);
@@ -459,7 +535,7 @@ function tabFlujos(d) {
   if (Array.isArray(d.actores) && d.actores.length) {
     const a = el("div", "actores");
     a.appendChild(document.createTextNode("Quién es quién: "));
-    d.actores.forEach(x => a.appendChild(el("span", null, x.nombre + (x.rol ? " (" + x.rol + ")" : ""))));
+    d.actores.forEach(x => a.appendChild(el("span", null, x.nombre)));
     s.appendChild(a);
   }
   const futuros = d.flujos.filter(f => f.momento === "futuro");
@@ -495,6 +571,10 @@ function tabRecorridos(d) {
         const fila = el("div", "req");
         fila.appendChild(el("span", "idtag", q.id));
         fila.appendChild(el("span", null, q.texto));
+        if (q.origen) fila.appendChild(el("span", "chip chip-neutro", q.origen));
+        if (q.implementacion && q.implementacion.estado) {
+          fila.appendChild(el("span", "chip chip-spec", q.implementacion.estado));
+        }
         c.appendChild(fila);
       });
     }
@@ -680,7 +760,7 @@ function tabActores(d) {
 function tabDocumentos() {
   const s = el("section", "seccion");
   s.appendChild(el("h2", null, "Para el programador"));
-  s.appendChild(el("div", "nota", "Estos dos documentos son lo que le darás a la IA que construya (o revise) tu aplicación: el encargo (las instrucciones) y el documento completo con todo lo acordado. Se generan solos a partir de tus planos; no hace falta que los leas enteros, pero son tuyos."));
+  s.appendChild(el("div", "nota", "Estos dos documentos acompañan el relevo a la IA que construya o revise tu aplicación. spec.md se regenera desde los planos; encargo.md lo prepara el agente con las instrucciones concretas. No hace falta que los leas enteros, pero son tuyos."));
   if (docEncargo) {
     s.appendChild(el("div", "mini-titulo", "encargo.md"));
     s.appendChild(el("pre", "doc", docEncargo));
@@ -727,6 +807,56 @@ function tabPreguntas(d) {
   return s;
 }
 
+function tabHistorial() {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Historial de decisiones"));
+  s.appendChild(el(
+    "div", "nota",
+    "Cada aprobación conserva quién aprobó, cuándo y la huella exacta de los planos. La comparación señala los bloques cambiados después."
+  ));
+  if (!historialActual.length) {
+    s.appendChild(el("div", "tarjeta",
+      "Todavía no se ha aprobado ninguna versión."));
+    return s;
+  }
+  historialActual.slice().reverse().forEach(entrada => {
+    const c = el("div", "tarjeta");
+    const cab = el("div", "tarjeta-cabecera");
+    cab.appendChild(el("span", "nombre", "Versión " + entrada.version));
+    cab.appendChild(el("span", "chip chip-hecho", "aprobada"));
+    c.appendChild(cab);
+    c.appendChild(el(
+      "div", "objetivo",
+      "Por " + (entrada.por || "sin identificar") + " · " +
+      (entrada.fecha || "sin fecha") + " · huella " +
+      (entrada.huella || "").slice(0, 12)
+    ));
+    s.appendChild(c);
+  });
+  if (!comparacionActual.hay_aprobacion ||
+      comparacionActual.identico) {
+    s.appendChild(el("div", "tarjeta",
+      "Sin cambios posteriores a la última aprobación."));
+    return s;
+  }
+  const cambios = el("div", "tarjeta aviso-preguntas");
+  cambios.appendChild(el("div", "nombre", "Cambios posteriores"));
+  const lista = el("ul", "lista");
+  Object.entries(comparacionActual.planos || {}).forEach(([plano, diff]) => {
+    ["anadidos", "eliminados", "cambiados"].forEach(tipo => {
+      (diff[tipo] || []).forEach(bloque =>
+        lista.appendChild(el(
+          "li", null,
+          plano + " · " + tipo + ": " + bloque
+        ))
+      );
+    });
+  });
+  cambios.appendChild(lista);
+  s.appendChild(cambios);
+  return s;
+}
+
 /* ---------- montaje ---------- */
 
 function activar(id) {
@@ -744,25 +874,105 @@ function seleccionar(id) {
   cargar();
 }
 
+function seleccionarFlujo(id) {
+  pestanaActiva = "flujos";
+  activar("flujos");
+  document.querySelectorAll("#menuIzq button").forEach(
+    b => b.classList.toggle("activo", b.dataset.flujo === id)
+  );
+  const destino = document.getElementById("flujo-" + id);
+  if (!destino) return;
+  const plegado = destino.closest("details");
+  if (plegado) plegado.open = true;
+  requestAnimationFrame(() => {
+    document.querySelectorAll(".flujo.fila-resaltada").forEach(
+      x => x.classList.remove("fila-resaltada")
+    );
+    destino.classList.add("fila-resaltada");
+    destino.scrollIntoView({ behavior: "smooth", block: "start" });
+    destino.focus({ preventScroll: true });
+  });
+}
+
+function aplicarFiltrosMenu() {
+  const entradas = document.getElementById("menuEntradas");
+  const consulta = document.getElementById("buscarFlujos").value
+    .trim().toLocaleLowerCase("es");
+  const filtro = document.getElementById("filtroFlujos").value
+    .toLocaleLowerCase("es");
+  entradas.querySelectorAll("button").forEach(b => {
+    const coincideTexto = !consulta ||
+      (b.dataset.busqueda || b.textContent).toLocaleLowerCase("es")
+        .includes(consulta);
+    const coincideFiltro = !filtro ||
+      (b.dataset.filtros || "").toLocaleLowerCase("es").includes(filtro);
+    b.hidden = !(coincideTexto && coincideFiltro);
+  });
+  entradas.querySelectorAll(".grupo").forEach(grupo => {
+    let siguiente = grupo.nextElementSibling;
+    let visible = false;
+    while (siguiente && !siguiente.classList.contains("grupo")) {
+      if (siguiente.tagName === "BUTTON" && !siguiente.hidden) visible = true;
+      siguiente = siguiente.nextElementSibling;
+    }
+    grupo.hidden = !visible;
+  });
+  const visibles = Array.from(entradas.querySelectorAll("button"))
+    .filter(b => !b.hidden);
+  let vacio = entradas.querySelector(".menu-sin-resultados");
+  if (!vacio) {
+    vacio = el("div", "menu-vacio menu-sin-resultados",
+      "No hay flujos que coincidan.");
+    entradas.appendChild(vacio);
+  }
+  vacio.hidden = visibles.length > 0;
+}
+
 function pintarMenu(dRoot) {
   const menu = document.getElementById("menuIzq");
-  menu.textContent = "";
-  const bMapa = el("button", seleccion === "mapa" ? "activo" : null, "🗺 El mapa");
-  bMapa.addEventListener("click", () => seleccionar("mapa"));
-  menu.appendChild(bMapa);
-  const areas = [];
-  dRoot.actividades.forEach(a => { if (!areas.includes(a.area)) areas.push(a.area); });
-  areas.forEach(area => {
-    menu.appendChild(el("div", "grupo", area));
-    dRoot.actividades.filter(a => a.area === area).forEach(a => {
-      const b = el("button", seleccion === a.id ? "activo" : null);
-      b.appendChild(el("span", "pm " + (PM_ESTADO[a.estado] || "pm-sin")));
-      b.appendChild(document.createTextNode(a.nombre));
-      b.title = a.estado || "sin empezar";
-      b.addEventListener("click", () => seleccionar(a.id));
-      menu.appendChild(b);
+  const entradas = document.getElementById("menuEntradas");
+  entradas.textContent = "";
+  const actividades = Array.isArray(dRoot.actividades) ? dRoot.actividades : [];
+  const flujos = Array.isArray(dRoot.flujos) ? dRoot.flujos : [];
+  if (actividades.length) {
+    const bMapa = el("button", seleccion === "mapa" ? "activo" : null, "🗺 El mapa");
+    bMapa.dataset.busqueda = "mapa actividades";
+    bMapa.dataset.filtros = "";
+    bMapa.addEventListener("click", () => seleccionar("mapa"));
+    entradas.appendChild(bMapa);
+    const areas = [];
+    actividades.forEach(a => { if (!areas.includes(a.area)) areas.push(a.area); });
+    areas.forEach(area => {
+      entradas.appendChild(el("div", "grupo", area));
+      actividades.filter(a => a.area === area).forEach(a => {
+        const b = el("button", seleccion === a.id ? "activo" : null);
+        b.appendChild(el("span", "pm " + (PM_ESTADO[a.estado] || "pm-sin")));
+        b.appendChild(document.createTextNode(a.nombre));
+        b.dataset.busqueda = [a.nombre, a.area, a.resumen || ""].join(" ");
+        b.dataset.filtros = [
+          a.estado || "",
+          a.origen || "",
+          (a.cobertura || {}).estado || ""
+        ].join(" ");
+        b.title = a.estado || "sin empezar";
+        b.addEventListener("click", () => seleccionar(a.id));
+        entradas.appendChild(b);
+      });
     });
-  });
+  } else if (flujos.length) {
+    flujos.forEach(f => {
+      const b = el("button", null, f.titulo);
+      b.dataset.flujo = f.id;
+      b.dataset.busqueda = [f.titulo, f.descripcion || ""].join(" ");
+      b.dataset.filtros = [f.momento || "", f.origen || ""].join(" ");
+      b.title = f.momento === "hoy" ? "Flujo de hoy" : "Flujo futuro";
+      b.addEventListener("click", () => seleccionarFlujo(f.id));
+      entradas.appendChild(b);
+    });
+  } else {
+    entradas.appendChild(el("div", "menu-vacio", "Aún no hay flujos definidos."));
+  }
+  aplicarFiltrosMenu();
   menu.hidden = false;
   document.body.classList.add("con-menu");
 }
@@ -802,7 +1012,8 @@ function pintar(d) {
     ["calidad", "Compromisos", Array.isArray(d.calidad) && d.calidad.length > 0, tabCalidad],
     ["fuera", "Lo que NO hará", Array.isArray(d.fuera) && d.fuera.length > 0, tabFuera],
     ["preguntas", "Sin decidir", Array.isArray(d.preguntas) && d.preguntas.length > 0, tabPreguntas],
-    ["documentos", "Para el programador", !!(docSpec || docEncargo), tabDocumentos]
+    ["documentos", "Para el programador", !!(docSpec || docEncargo), tabDocumentos],
+    ["historial", "Historial", true, tabHistorial]
   ];
 
   const cont = document.getElementById("contenido");
@@ -815,7 +1026,9 @@ function pintar(d) {
   const nReq = (d.recorridos || []).reduce((a, r) => a + (r.requisitos || []).length, 0);
   const nCri = (d.recorridos || []).reduce((a, r) => a + (r.criterios || []).length, 0);
   const cuentas = {
-    mapa: (d.actividades || []).length ? (d.actividades || []).length + " actividades, " + (d.actividades || []).filter(a => a.estado === "entregada").length + " entregadas" : "",
+    mapa: (d.actividades || []).length
+      ? (d.actividades || []).length + " actividades especificadas"
+      : "",
     flujos: (d.flujos || []).length ? nHoy + " de hoy, " + nFut + " con la app" : "",
     recorridos: (d.recorridos || []).length ? (d.recorridos || []).length + " entregas, " + nReq + " requisitos, " + nCri + " criterios" : "",
     reglas: (d.reglas || []).map(x => x.id).join(", "),
@@ -825,9 +1038,27 @@ function pintar(d) {
     superficie: ((d.superficie || {}).puntos || []).map(x => x.nombre).join(", "),
     calidad: (d.calidad || []).length ? (d.calidad || []).length + " criterios comprobables" : "",
     fuera: (d.fuera || []).length ? (d.fuera || []).length + " decisiones" : "",
-    preguntas: (d.preguntas || []).length ? (d.preguntas || []).length + " sin decidir" : ""
+    preguntas: (d.preguntas || []).length + " sin decidir"
   };
-  const progreso = defs.map(([id, titulo, presente]) => [titulo, !!presente, cuentas[id] || ""]);
+  const noAplican = new Set(((d.definicion || {}).bloques_no_aplican || []));
+  const bloquePorId = {
+    mapa: "actividades", flujos: "flujos", actores: "actores",
+    recorridos: "recorridos", reglas: "reglas", episodios: "episodios",
+    estados: "estados", datos: "datos", superficie: "superficie",
+    calidad: "calidad", fuera: "fuera", preguntas: "preguntas"
+  };
+  const esMapa = Array.isArray(d.actividades) && d.actividades.length > 0;
+  const soloActividad = new Set(["flujos", "recorridos", "reglas", "episodios", "estados", "superficie"]);
+  const progreso = defs
+    .filter(([id]) => !(esMapa && soloActividad.has(id)))
+    .filter(([id]) => id !== "documentos" && id !== "historial")
+    .map(([id, titulo, presente]) => [
+      titulo,
+      noAplican.has(bloquePorId[id])
+        ? "no-aplica"
+        : (id === "preguntas" ? true : !!presente),
+      cuentas[id] || ""
+    ]);
   const pestañas = [["resumen", "Resumen", true, dd => tabResumen(dd, progreso)]].concat(defs.filter(x => x[2]));
 
   pestañas.forEach(([id, titulo, presente, render]) => {
@@ -905,13 +1136,25 @@ async function cargar() {
     }
     const spec = await txtOpcional(base + "spec.md");
     const encargo = await txtOpcional(base + "encargo.md");
+    const [historial, comparacion] =
+      await Promise.all([
+        apiJSON("historial.json").catch(() => []),
+        apiJSON("comparacion.json").catch(() => ({
+          hay_aprobacion: false, identico: false, planos: {}
+        }))
+      ]);
 
-    const foto = JSON.stringify([seleccion, textoRoot, textoAct, spec, encargo]);
+    const foto = JSON.stringify([
+      seleccion, textoRoot, textoAct, spec, encargo,
+      historial, comparacion
+    ]);
     if (foto === ultimaFoto) return;
 
     document.getElementById("error").hidden = true;
     document.getElementById("bannerDatos").classList.remove("visible");
-    if (esMapa) pintarMenu(dRoot);
+    historialActual = historial;
+    comparacionActual = comparacion;
+    pintarMenu(dRoot);
     docSpec = spec;
     docEncargo = encargo;
     if (dSel) pintar(dSel);
@@ -929,6 +1172,12 @@ if (hash0.includes("::")) {
 } else if (hash0) {
   pestanaActiva = hash0;
 }
+document.getElementById("buscarFlujos").addEventListener(
+  "input", aplicarFiltrosMenu
+);
+document.getElementById("filtroFlujos").addEventListener(
+  "change", aplicarFiltrosMenu
+);
 cargar();
 setInterval(cargar, 3000);
 </script>
