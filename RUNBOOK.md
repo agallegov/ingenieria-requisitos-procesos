@@ -21,13 +21,13 @@ fase si ya tienes la información.
 
 ## Modos (triaje en el primer turno)
 
-Decide el modo con el contexto, o con una sola pregunta: "¿Qué traes: una
-idea para construir de cero, un código que ya existe y quieres entender o
-auditar, cambios sobre unos planos que ya hicimos, o quieres que ponga al día
-los proyectos que ya montamos?"
-
-Esa última opción se ofrece SIEMPRE, aunque el usuario no la mencione: es la
-única forma de que se entere de que sus proyectos pueden estar desactualizados.
+Decide el modo con el contexto. Si el usuario no dice qué quiere, el menú de
+arranque está escrito LITERAL en `AGENTS.md` (punto 0) y se ofrece entero, con
+esas palabras: construir de cero · auditar código existente · iterar unos
+planos · poner al día mis proyectos · trabajar sobre la herramienta. No se
+improvisa ni se recorta: una opción que no se enseña es una opción que el
+usuario no sabe que existe — y la de poner al día es la única forma de que se
+entere de que sus proyectos pueden haberse quedado atrás.
 
 - **Modo A, construir de cero**: crea el workspace inmediatamente y recorre
   F0 a F5, con encargo de construcción.

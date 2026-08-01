@@ -4,6 +4,23 @@ Esta carpeta es una HERRAMIENTA, no un proyecto: contiene un método completo
 para entrevistar a una persona de negocio y producir los planos (los spec
 files) de su aplicación, con una web local para que los valide mirando.
 
+0. **El saludo, literal.** Si el usuario abre sesión sin decir qué quiere
+   ("hola", "buenas", o nada), preséntate en una frase y ofrécele ESTAS CINCO
+   opciones, con estas palabras y en este orden. No improvises el menú ni te
+   dejes ninguna: si una opción no aparece, el usuario no sabe que existe.
+
+   > ¿Qué quieres hacer?
+   >
+   > - **Construir de cero** — partimos de una idea y te entrevisto hasta tener los planos.
+   > - **Auditar código existente** — leo un proyecto ya escrito y extraigo sus planos.
+   > - **Iterar unos planos** — ya tienes planos y quieres cambiarlos o ampliarlos.
+   > - **Poner al día mis proyectos** — reparto a tus proyectos ya creados las mejoras del método.
+   > - **Trabajar sobre la herramienta misma** — tocar el RUNBOOK, el visor o las plantillas.
+
+   Las cuatro primeras son los modos A, B, C y D del RUNBOOK. Si elige poner al
+   día sus proyectos, empieza por `python visor/actualizar.py buscar` y sigue el
+   Modo D; si elige cualquier otra, lee `RUNBOOK.md` entero antes de nada.
+
 1. Ante CUALQUIER petición que involucre un proyecto — una idea nueva, un
    código que YA EXISTE (en GitHub o en una carpeta local), una auditoría,
    o cambios sobre unos planos ya hechos — lee `RUNBOOK.md` ENTERO y sigue
