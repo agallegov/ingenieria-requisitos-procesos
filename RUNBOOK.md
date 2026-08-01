@@ -219,15 +219,26 @@ constitución y flows, conserva `main/` y, si se solicita GitHub, crea
 Dentro de esa operación se vuelve a ejecutar `validar.py --perfil congelado`;
 si falla, no se genera ni publica nada.
 
-Pregúntale al usuario si quiere sus repositorios en GitHub ("¿quieres que tu
-proyecto quede guardado en tu cuenta de GitHub, además de en este
-ordenador?"). Si dice que sí: comprueba `gh auth status` (si no hay sesión,
-guíale por `gh auth login`) y añade `--github <su-cuenta>` — eso crea los DOS
-repos privados (`<nombre>` para el código, `<nombre>-agents` para el meta) y
-deja en `repos.yaml` la dirección del código. Al clonar el meta, `setup.py`
-clona `origin/main` dentro de `main/` o lo actualiza si ya existe. Si dice que no: sin flags —
-todo queda en local, conectable a remotos más adelante (instrucciones en el
-`repos.yaml` del workspace). Si el repo de código ya existía: `--remoto <url>`.
+**`finalizar.py` NO se puede ejecutar sin decidir esto**, y es a propósito: exige
+`--github <cuenta>` o `--sin-github`, y sin una de las dos se niega a terminar.
+Antes se podía olvidar el flag y el proyecto quedaba finalizado, sin remoto y en
+silencio: el usuario se iba creyendo que su trabajo estaba guardado en GitHub
+cuando vivía en un único disco, y nada volvía a mencionarlo nunca.
+
+Así que pregúntaselo SIEMPRE, con estas palabras: "¿quieres que tu proyecto
+quede guardado en tu cuenta de GitHub, además de en este ordenador?".
+
+- **Si dice que sí**: comprueba `gh auth status` (si no hay sesión, guíale por
+  `gh auth login`) y añade `--github <su-cuenta>` — eso crea los DOS repos
+  privados (`<nombre>` para el código, `<nombre>-agents` para el meta) y deja en
+  `repos.yaml` la dirección del código. Al clonar el meta, `setup.py` clona
+  `origin/main` dentro de `main/` o lo actualiza si ya existe.
+- **Si dice que no**: `--sin-github`, y dile en cristiano lo que eso significa:
+  su proyecto entero —planos, código e historial— existe en un solo disco, y si
+  ese disco se rompe no hay copia en ninguna parte. Se puede publicar después
+  ejecutando lo mismo con `--github <cuenta>`. Además, el linter del workspace se
+  lo recordará en cada arranque de sesión hasta que tenga remoto.
+- Si el repo de código ya existía: `--remoto <url>`.
 
 Qué le montas (cuéntaselo así: "te preparo la carpeta del proyecto, con tus
 planos dentro y todo lo necesario para que los agentes construyan con

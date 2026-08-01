@@ -495,7 +495,25 @@ for etiqueta, carpeta in ([("main", RAIZ / "main")]
         else:
             ok(f"{etiqueta}/: Dockerfile con .dockerignore que excluye el .env")
 
-# --- 8. Higiene ---
+# --- 8. ¿Existe este proyecto en algún sitio más que este disco? ---
+# Un workspace sin remoto es un proyecto entero —planos, código e historial— viviendo en un
+# único disco. Es la mayor pérdida posible del método, y hasta ahora no lo decía nadie: si al
+# finalizar no se pidió GitHub, el asunto no se volvía a mencionar jamás. WARN y no FAIL
+# porque quedarse en local es una decisión legítima; pero se dice en CADA arranque de sesión.
+def sin_remoto(repo):
+    return git(repo, "remote")[1].strip() == ""
+
+
+if git(RAIZ, "rev-parse", "--is-inside-work-tree")[0] == 0 and sin_remoto(RAIZ):
+    warn("el meta-repo no tiene remoto: los planos, las decisiones y todo el trabajo de "
+         "documentación existen SOLO en este ordenador. Si el usuario creía que esto estaba "
+         "en GitHub, díselo; para publicarlo: visor/finalizar.py --github <cuenta> desde la "
+         "herramienta de ingeniería de requisitos")
+if hay_repo and sin_remoto(repo_cod):
+    warn(f"el repo de código ({repo_cod.name}/) no tiene remoto: el código existe SOLO en "
+         f"este ordenador y ningún push lo respalda")
+
+# --- 9. Higiene ---
 if (RAIZ / "codebase").exists():
     fail("codebase/ existe (estructura vieja: debe ser main/ + worktrees/)")
 

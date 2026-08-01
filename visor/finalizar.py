@@ -161,7 +161,16 @@ def main():
     )
     ap.add_argument("--workspace", required=True)
     ap.add_argument("--nombre", help="nombre final del repo; por defecto el del workspace")
-    ap.add_argument("--github", metavar="CUENTA", help="crea/publica los dos repos privados")
+    # Una de las dos, OBLIGATORIA. Antes, olvidarse de --github finalizaba el proyecto en
+    # silencio y sin remoto: el usuario se quedaba con todo su trabajo en un solo disco
+    # creyendo que estaba publicado, y nada volvía a mencionarlo jamás. Ahora la decisión
+    # hay que tomarla —y por tanto preguntársela a él— para poder terminar.
+    destino = ap.add_mutually_exclusive_group(required=True)
+    destino.add_argument("--github", metavar="CUENTA",
+                         help="crea/publica los dos repos privados en esa cuenta")
+    destino.add_argument("--sin-github", action="store_true",
+                         help="el usuario ha dicho que NO quiere GitHub: todo queda en este "
+                              "ordenador, sin copia de seguridad, y se le advierte")
     args = ap.parse_args()
 
     workspace = Path(args.workspace).expanduser().resolve()
@@ -220,6 +229,15 @@ def main():
         publicar_github(workspace, args.github, nombre)
     print("Proyecto finalizado en %s" % workspace)
     print("Repo de código conservado en %s" % (workspace / "main"))
+    if args.sin_github:
+        print(
+            "\n" + "=" * 70 + "\n"
+            "AVISO: este proyecto existe SOLO en este ordenador.\n"
+            "No hay copia en ningún otro sitio: si se rompe el disco, se pierde todo —\n"
+            "los planos, el código y el historial. Díselo al usuario con estas palabras.\n"
+            "Cuando quiera publicarlo, se ejecuta esto mismo con --github <su-cuenta>.\n"
+            + "=" * 70
+        )
 
 
 if __name__ == "__main__":
