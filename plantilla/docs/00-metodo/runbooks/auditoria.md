@@ -36,7 +36,7 @@ de código ni worktree.
    Además: confirmado, no reproducible, duplicado o riesgo aceptado.
 9. **Revisión con el usuario.** Se presenta en lenguaje normal: qué puede pasar, a quién
    afecta, evidencia y coste aproximado de corregirlo. El usuario decide cuáles acepta.
-10. **Cierre documental.** El padre marca la unidad `mergeada`, promueve el informe útil a
+10. **Cierre documental** (`runbooks/cierre.md`). El padre marca la unidad `mergeada`, promueve el informe útil a
     `conocimiento/`, crea una unidad `bug`, `refactor`, `documentacion` o `migracion` por cada
     hallazgo aceptado, actualiza ROADMAP/ESTADO y mueve la auditoría a `archivo/`.
 

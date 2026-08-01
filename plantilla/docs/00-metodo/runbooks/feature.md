@@ -85,7 +85,9 @@ territorio desconocido? → carril completo (`investigacion.md` de la unidad). S
    spec cumplida). Commit, push, **pull request** (título con `NNN-slug`), y la rama queda
    PENDIENTE DE APROBACIÓN (estado → `en_revision`). Sorpresas → `hallazgos.md`.
    Contradicción con la spec o el mapa → **PARAR y devolver la tarea**.
-6. **Cierre (el padre, a petición del usuario).** Es el ritual indivisible de 10 pasos de
+6. **Cierre (el padre, a petición del usuario).** Es el ritual indivisible de
+   `runbooks/cierre.md` (con `gh` y sin `gh`), cerrado con `unidad.py cerrar` — aquí solo lo
+   específico de una feature. Resumen de los 10 pasos en
    `00-metodo/README.md` — aquí solo lo específico de una feature. Verificar la evidencia
    (¿el output es real y completo?) → revisor fresco (sesión/subagente nuevo, solo lectura):
    *"Revisa el diff contra especificacion.md: cada R\* implementado, los casos límite con

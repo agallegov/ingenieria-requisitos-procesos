@@ -38,7 +38,7 @@ pegada en la ficha. La urgencia acorta la espera, jamás la verificación. Todo 
    en VERDE sin haberlo tocado, **suite completa verde**, evidencia pegada, commit, push y PR
    (título con `NNN-slug` y `hotfix`). Estado → `en_revision`.
 5. **Merge (el padre en rol CONSTRUCTOR, con el OK del usuario).** Revisor fresco → merge →
-   suite sobre main (el ritual indivisible de `00-metodo/README.md`; aquí la validación del
+   suite sobre main (el ritual indivisible de `runbooks/cierre.md`; aquí la validación del
    usuario llega en el paso 7, sobre producción). **Ahí acaba el constructor: estar en main no
    es estar en producción.** Y estar en main **no es estar cerrado**: el estado sigue
    `en_revision` — igual que en `bug.md`, `mergeada` solo se escribe con el OK del usuario,

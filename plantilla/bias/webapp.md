@@ -89,6 +89,21 @@ El método no obliga a llegar a la etapa 2: hay negocios que viven perfectamente
   máquina de los últimos 15 años. Mismo código, misma app en el navegador. El paso
   SQLite→Postgres es una unidad de migración pequeña cuando el proyecto o el PC lo permitan
   (el ORM aísla casi todo; se hace ANTES de la etapa 1).
+**Higiene obligatoria del esqueleto andante** (lo genera la primera unidad; el linter del
+método comprueba la primera y el revisor fresco las otras dos):
+
+- **`.dockerignore` ANTES del primer build, sin excepción.** El Dockerfile que sale por
+  defecto lleva `COPY . .`, y al lado vive el `.env` que el propio método exige. Sin
+  `.dockerignore` el primer `docker compose build` hornea la `SECRET_KEY` dentro de una capa
+  de la imagen, y de ahí ya no se borra. Mínimo: `.env`, el entorno virtual, `.git/`, la base
+  de datos local, `node_modules/`, `.runtime/`.
+- **Dependencias de producción y de desarrollo, separadas** (`requirements.txt` /
+  `requirements-dev.txt` o equivalente): pytest y Playwright no viajan a la imagen de
+  producción.
+- **El seed de datos de ejemplo no se ejecuta solo ni imprime credenciales.** Un entrypoint
+  que crea el superusuario en cada arranque y escribe su contraseña en los logs es una puerta
+  abierta escrita en un fichero que todo el mundo lee.
+
 - **Regla de tests en ambos peldaños:** pytest corre SIEMPRE en el venv (rápido, sin
   Docker); Playwright corre headless contra el servidor local que haya. Si ni el peldaño
   mínimo entra (PC realmente imposible): entorno de desarrollo remoto — un VPS barato o

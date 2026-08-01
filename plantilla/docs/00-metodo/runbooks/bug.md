@@ -63,6 +63,7 @@ transversal → escalar a decisión con el usuario.
 8. **Pull request.** El subagente hace commit, push y PR a la rama principal (título con
    `NNN-slug`, enlazando el fichero del bug). Estado → `en_revision`.
 9. **Cierre (el padre, a petición del usuario).** Es el ritual indivisible de
+   `runbooks/cierre.md`, cerrado con `unidad.py cerrar`. Resumen de
    `00-metodo/README.md`; aquí solo lo específico del bug.
    `<HARD-GATE>` **Puerta de evidencia, antes de todo lo demás:** si la ficha no lleva pegados
    el output del test en ROJO (sección 2) **y** el del mismo test en VERDE (sección 5), el

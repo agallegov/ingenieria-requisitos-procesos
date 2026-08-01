@@ -13,6 +13,8 @@ Uso (desde cualquier directorio del workspace; la raíz se deriva de la ruta del
   python docs/00-metodo/scripts/unidad.py despachar 004-mi-slug    crea rama + worktree
   python docs/00-metodo/scripts/unidad.py despachar 005-auditoria --documental
                                                                   trabaja solo en su ficha
+  python docs/00-metodo/scripts/unidad.py cerrar 004-mi-slug --ok-usuario 2026-08-01
+                                                                  cierra la unidad ya fusionada
   python docs/00-metodo/scripts/unidad.py estado                   resumen de un vistazo
 
 Solo stdlib. Nada destructivo: este script crea y avisa, jamás borra ni pisa lo escrito.
@@ -21,9 +23,17 @@ Exit 0 si todo bien; exit 1 con mensaje claro si una precondición bloquea.
 import argparse
 import datetime
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+# Windows: en cuanto la salida va a un PIPE —setup.py, la CI, cualquier harness de agente— el
+# encoding deja de ser el de la consola y pasa a ser el local (cp1252), donde un `→` o un `·`
+# mata el script con UnicodeEncodeError. Se fuerza UTF-8 antes de imprimir nada.
+for _salida in (sys.stdout, sys.stderr):
+    if hasattr(_salida, "reconfigure"):
+        _salida.reconfigure(encoding="utf-8", errors="replace")
 
 # Este script vive en docs/00-metodo/scripts/, igual que lint_metodo.py:
 # parents[3] es la raíz del meta-repo sea cual sea el directorio de trabajo.
@@ -663,6 +673,287 @@ def cmd_despachar(args):
     return 0
 
 
+# --------------------------------------------------------------------------- subcomando: cerrar
+
+# La línea de veredicto de hallazgos.md y la de revisión de una ficha de bug. Si el valor
+# conserva el menú de la plantilla ("LIMPIO | HUECOS DE CORRECCIÓN"), nadie ha revisado nada:
+# mismo truco que `severidad_declarada`, porque una plantilla intacta no es una decisión.
+RE_VEREDICTO = re.compile(r"^\s*[-*]?\s*\**\s*(?:Veredicto|Revisi[oó]n)[^:\n]*:\s*(.+)$",
+                          re.M | re.I)
+# Marca de cosecha, tolerante al énfasis markdown: `→ promovido a X` y `→ **descartado** (…)`.
+RE_COSECHA = re.compile(r"→\s*\**\s*(promovido|descartado)", re.I)
+LINEA_OK_USUARIO = "- **Validación del usuario sobre la app corriendo:**"
+
+
+def fecha_ok(valor):
+    """Fecha ISO real y no futura, o None. El OK del usuario no se firma por adelantado."""
+    valor = (valor or "").strip().strip("`'\"")
+    if not RE_FECHA.match(valor):
+        return None
+    try:
+        dia = datetime.date.fromisoformat(valor)
+    except ValueError:
+        return None
+    return None if dia > datetime.date.today() else valor
+
+
+def veredicto_elegido(texto):
+    """El veredicto de la revisión, o None si sigue siendo el menú de la plantilla."""
+    for m in RE_VEREDICTO.finditer(texto):
+        valor = m.group(1).strip().strip("*").strip()   # `**Veredicto:** LIMPIO` → `LIMPIO`
+        if "|" in valor or not valor or valor in {"—", "-"}:
+            continue                                   # menú sin elegir o hueco vacío
+        return valor
+    return None
+
+
+def sin_cosechar(texto):
+    """Viñetas con contenido y sin marca de cosecha en las dos secciones que se cosechan.
+
+    Se mira la viñeta ENTERA —su línea y las indentadas que la continúan—, porque la
+    conclusión ("→ promovido a X") cae de forma natural al final de una viñeta larga.
+    """
+    pendientes, en_seccion, bloque = 0, False, None
+
+    def cerrar_bloque():
+        nonlocal pendientes, bloque
+        if bloque:
+            entero = "\n".join(bloque)
+            contenido = re.sub(r"^\s*[-*]\s+", "", entero).strip()
+            if contenido not in {"—", "-", ""} and not RE_COSECHA.search(entero):
+                pendientes += 1
+        bloque = None
+
+    for linea in texto.splitlines():
+        if linea.startswith("#"):
+            cerrar_bloque()
+            titulo = linea.lstrip("#").strip()
+            en_seccion = titulo.startswith(("Descubrimientos", "Trabajo descubierto"))
+        elif en_seccion and re.match(r"^[-*]\s+\S", linea):
+            cerrar_bloque()
+            bloque = [linea]
+        elif bloque is not None and re.match(r"^\s+\S", linea):
+            bloque.append(linea)
+        elif linea.strip():
+            cerrar_bloque()
+    cerrar_bloque()
+    return pendientes
+
+
+def rama_mergeada(repo, rama, principal):
+    """(mergeada, motivo). Si la rama ya no existe, el merge se da por hecho (cierre a medias)."""
+    if git(repo, "rev-parse", "--verify", "--quiet", f"refs/heads/{rama}", silencioso=True)[0]:
+        return True, "la rama ya no existe (cierre a medias: sigo con lo que falta)"
+    base = principal
+    if git(repo, "rev-parse", "--verify", "--quiet", f"refs/heads/{principal}",
+           silencioso=True)[0]:
+        base = f"origin/{principal}"
+        if git(repo, "rev-parse", "--verify", "--quiet", f"refs/remotes/{base}",
+               silencioso=True)[0]:
+            return False, f"no encuentro la rama principal '{principal}' en el repo de código"
+    if git(repo, "merge-base", "--is-ancestor", rama, base, silencioso=True)[0] == 0:
+        return True, f"la rama está dentro de {base}"
+    return False, (f"la rama '{rama}' NO está fusionada en {base}: cerrar ahora dejaría el "
+                   f"trabajo fuera de la rama principal (que es perderlo)")
+
+
+def escribir_ok_usuario(ruta, fecha):
+    """Deja escrito el OK del usuario donde ya se lee la revisión. Sin vocabulario nuevo."""
+    texto = ruta.read_text(encoding="utf-8")
+    if LINEA_OK_USUARIO in texto:
+        texto = re.sub(re.escape(LINEA_OK_USUARIO) + r".*",
+                       f"{LINEA_OK_USUARIO} OK ({fecha})", texto, count=1)
+    elif re.search(r"^\s*[-*]\s*\**Validaci[oó]n del usuario", texto, flags=re.M | re.I):
+        texto = re.sub(r"^(\s*[-*]\s*\**Validaci[oó]n del usuario[^:\n]*:\**)\s*.*",
+                       rf"\1 OK ({fecha})", texto, count=1, flags=re.M | re.I)
+    else:
+        texto = texto.rstrip("\n") + f"\n{LINEA_OK_USUARIO} OK ({fecha})\n"
+    ruta.write_text(texto, encoding="utf-8")
+
+
+def borrar_worktree(repo, destino):
+    """Quita el worktree. Se ha comprobado antes que no tiene cambios: --force solo vence a
+    los ficheros IGNORADOS (node_modules, .venv, build/), que `git status` no ve y que en un
+    proyecto real siempre están ahí. Sin esto el comando no valdría fuera de un repo de juguete."""
+    if not destino.exists():
+        return True, "ya no existía"
+    codigo, salida = git(repo, "worktree", "remove", str(destino))
+    if codigo == 0:
+        return True, "borrado"
+    codigo, salida = git(repo, "worktree", "remove", "--force", str(destino))
+    if codigo == 0:
+        return True, "borrado (tenía ficheros ignorados dentro)"
+    if destino.exists():
+        shutil.rmtree(destino, ignore_errors=True)
+        git(repo, "worktree", "prune")
+    return (not destino.exists()), salida
+
+
+def cmd_cerrar(args):
+    nombre = args.unidad.strip("/")
+    if not RE_UNIDAD.match(nombre):
+        fail(f"'{nombre}' no tiene forma NNN-slug (tres dígitos, guion, slug)")
+        return 1
+    unidad = buscar_unidad(nombre)
+    if unidad is None:
+        fail(f"no existe la unidad {nombre} (¿ya está cerrada y archivada?)")
+        return 1
+    ruta, fm, clase = unidad["ruta"], unidad["fm"], unidad["clase"]
+    estado = fm.get("estado")
+    if estado not in {"en_revision", "mergeada"}:
+        fail(f"{nombre} está '{estado}': solo se cierra lo que está en_revision "
+             f"(o 'mergeada', para reanudar un cierre que quedó a medias)")
+        return 1
+
+    print(f"== Cerrando {nombre} ({fm.get('tipo')}) ==\n")
+    print("Puertas (lo que NO se puede saltar):")
+    problemas = []
+
+    # --- Puerta 1: el usuario ha probado la app y ha dado su OK -----------------------------
+    ok_usuario = fecha_ok(args.ok_usuario)
+    if not ok_usuario:
+        problemas.append(
+            f"--ok-usuario '{args.ok_usuario}' no es una fecha válida de hoy o anterior. Es el "
+            f"hard-gate del método: el usuario prueba la app CORRIENDO y su OK se escribe con "
+            f"la fecha del día en que lo dio (hoy: {HOY})")
+    else:
+        ok(f"OK del usuario sobre la app corriendo: {ok_usuario}")
+
+    # --- Puerta 2: la revisión fresca existe y dice algo -------------------------------------
+    hallazgos = ruta.parent / "hallazgos.md" if clase == "unidad" else ruta
+    texto_hallazgos = hallazgos.read_text(encoding="utf-8") if hallazgos.exists() else ""
+    fm_hallazgos = frontmatter(hallazgos) or {} if clase == "unidad" else fm
+    if not texto_hallazgos:
+        problemas.append(f"no encuentro {rel(hallazgos)}")
+    else:
+        veredicto = veredicto_elegido(texto_hallazgos)
+        if not veredicto:
+            problemas.append(
+                f"{rel(hallazgos)}: la revisión sigue sin veredicto (la línea conserva el menú "
+                f"de la plantilla). El paso 2 del cierre es un agente FRESCO leyendo el diff "
+                f"contra el contrato; sin eso no hay nada que cerrar")
+        else:
+            ok(f"revisión con veredicto: {veredicto[:60]}")
+        if clase == "unidad":
+            revisor = (fm_hallazgos.get("revisor") or "").strip()
+            revisado = fecha_ok(fm_hallazgos.get("revisado"))
+            if revisor.lower() in {"", "no"} or not revisado:
+                problemas.append(
+                    f"{rel(hallazgos)}: falta 'revisor:' y/o 'revisado: YYYY-MM-DD' en su "
+                    f"cabecera — es lo que distingue una revisión de verdad de un constructor "
+                    f"que se puso un sello a sí mismo")
+            else:
+                ok(f"revisado por {revisor} el {revisado}")
+
+    # --- Puerta 3: un hotfix no se cierra con el contrato a deber ----------------------------
+    # `despachar --force` deja la marca de deuda y hotfix.md da 24 h para pagarla. Si se cierra
+    # sin pagarla nadie vuelve a mirarla: el FAIL del linter se quedaría para siempre sobre una
+    # unidad ya archivada. La puerta va ANTES del cierre, que es cuando aún se puede pagar.
+    if MARCA_DEUDA.split(":")[0] in ruta.read_text(encoding="utf-8"):
+        problemas.append(
+            "esta unidad conserva la DEUDA DE SPEC del hotfix: se despachó sin contrato "
+            "completo y hotfix.md da 24 h para escribirlo. Complétalo y borra la marca antes "
+            "de cerrar — después de cerrar, nadie vuelve a pagarla")
+
+    # --- Puerta 4: no queda trabajo sin guardar en el worktree -------------------------------
+    repo, principal = repo_codigo()
+    destino = WORKTREES / nombre
+    documental = fm.get("ejecucion") == "documental"
+    if destino.exists():
+        codigo, salida = git(destino, "status", "--porcelain")
+        if codigo == 0 and salida:
+            problemas.append(
+                f"worktrees/{nombre} tiene {len(salida.splitlines())} fichero(s) sin commitear: "
+                f"cerrar ahora los borra y no hay copia en ningún sitio")
+        elif codigo == 0:
+            ok(f"worktrees/{nombre} sin cambios pendientes")
+
+    # --- Puerta 5: la rama está fusionada en la principal ------------------------------------
+    hay_repo = git(repo, "rev-parse", "--is-inside-work-tree", silencioso=True)[0] == 0
+    if documental:
+        ok("unidad documental: sin rama ni worktree que comprobar")
+    elif not hay_repo:
+        problemas.append(f"no encuentro el repo de código en {rel(repo)} (repos.yaml)")
+    else:
+        fusionada, motivo = rama_mergeada(repo, nombre, principal)
+        (ok if fusionada else problemas.append)(motivo)
+
+    if problemas:
+        err(f"\n  CIERRE BLOQUEADO ({len(problemas)}):")
+        for p in problemas:
+            err(f"       · {p}")
+        err("\n  El cierre es indivisible: se arregla lo de arriba y se vuelve a ejecutar.")
+        return 1
+
+    # --- Aviso (no bloquea): la cosecha de hallazgos ------------------------------------------
+    pendientes = sin_cosechar(texto_hallazgos)
+    if pendientes:
+        warn(f"{pendientes} hallazgo(s) sin cosechar en {rel(hallazgos)}: marca cada viñeta "
+             f"con '→ promovido a <destino>' o '→ descartado (motivo)' (formato en la propia "
+             f"plantilla). No bloqueo el cierre, pero eso es conocimiento que se pierde")
+
+    # --- Mecánica (lo que el padre tecleaba a mano, en orden) ---------------------------------
+    print("\nMecánica:")
+    escribir_ok_usuario(hallazgos, ok_usuario)
+    ok(f"OK del usuario escrito en {rel(hallazgos)}")
+
+    texto = ruta.read_text(encoding="utf-8")
+    texto = re.sub(r"^estado:\s*\S+", "estado: mergeada", texto, count=1, flags=re.M)
+    texto = re.sub(r"^actualizado:\s*\S+", f"actualizado: {HOY}", texto, count=1, flags=re.M)
+    ruta.write_text(texto, encoding="utf-8")
+    ok(f"{rel(ruta)}: estado → mergeada")
+
+    if not documental and hay_repo:
+        borrado, detalle = borrar_worktree(repo, destino)
+        (ok if borrado else warn)(f"worktree worktrees/{nombre}: {detalle}")
+        if git(repo, "rev-parse", "--verify", "--quiet", f"refs/heads/{nombre}",
+               silencioso=True)[0] == 0:
+            codigo, salida = git(repo, "branch", "-d", nombre)
+            (ok if codigo == 0 else warn)(
+                f"rama local {nombre}: {'borrada' if codigo == 0 else salida}")
+        if git(repo, "remote", "get-url", "origin", silencioso=True)[0] == 0 and \
+                git(repo, "rev-parse", "--verify", "--quiet",
+                    f"refs/remotes/origin/{nombre}", silencioso=True)[0] == 0:
+            codigo, salida = git(repo, "push", "origin", "--delete", nombre)
+            (ok if codigo == 0 else warn)(
+                f"rama remota origin/{nombre}: {'borrada' if codigo == 0 else salida}")
+
+    # Camino B (merge local, sin `gh`): si la principal se queda sin empujar, la SIGUIENTE
+    # unidad nacerá de una `origin/<principal>` vieja y su merge ya no será fast-forward.
+    # Se avisa aquí, que es cuando acaba de pasar, y con el comando exacto.
+    if hay_repo and git(repo, "remote", "get-url", "origin", silencioso=True)[0] == 0:
+        codigo, salida = git(repo, "rev-list", "--count",
+                             f"origin/{principal}..{principal}", silencioso=True)
+        if codigo == 0 and salida.strip().isdigit() and int(salida.strip()) > 0:
+            warn(f"la rama principal local va {salida.strip()} commit(s) por delante de "
+                 f"origin/{principal}: empújala o la siguiente unidad partirá de una base "
+                 f"vieja → git -C {rel(repo)} push origin {principal}")
+
+    if clase == "bug":
+        # ADR-006: la ficha del bug NO se archiva; docs/bugs/ es el historial.
+        ok(f"{rel(ruta)} se queda en docs/bugs/ (los bugs no se archivan, ADR-006)")
+    else:
+        ARCHIVO.mkdir(parents=True, exist_ok=True)
+        final = ARCHIVO / nombre
+        if final.exists():
+            warn(f"{rel(final)} ya existe: no piso nada, muévelo tú")
+        else:
+            shutil.move(str(ruta.parent), str(final))
+            ok(f"unidad archivada en {rel(final)}")
+
+    print("\nLo que queda es tuyo, porque es criterio y no mecánica:")
+    print("    · aplicar los Deltas al mapa (docs/02-flujos/) y pasar el flujo a 'entregada'")
+    print("    · promover los hallazgos a conocimiento/, decisiones/ o al ROADMAP")
+    print("    · actualizar ESTADO.md" + (" e INDICE.md de bugs" if clase == "bug" else ""))
+
+    linter = RAIZ / "docs/00-metodo/scripts/lint_metodo.py"
+    if linter.exists():
+        print()
+        sys.stdout.flush()
+        return subprocess.run([sys.executable, str(linter)]).returncode
+    return 0
+
+
 # --------------------------------------------------------------------------- subcomando: estado
 
 def cmd_estado(_args):
@@ -759,6 +1050,15 @@ def main():
                         help="emergencia declarada por el usuario, en una frase; obligatorio "
                              'con --force (p. ej. --motivo "produccion caida: 500 en el login")')
     p_desp.set_defaults(func=cmd_despachar)
+
+    p_cer = sub.add_parser("cerrar",
+                           help="cierra una unidad revisada y ya fusionada: puertas + los "
+                                "pasos mecánicos del ritual")
+    p_cer.add_argument("unidad", help="nombre completo NNN-slug")
+    p_cer.add_argument("--ok-usuario", default="", metavar="YYYY-MM-DD",
+                       help="OBLIGATORIO: fecha en que el usuario probó la app corriendo y dio "
+                            "su OK. La pone el usuario, igual que 'aprobado:' al despachar")
+    p_cer.set_defaults(func=cmd_cerrar)
 
     p_est = sub.add_parser("estado", help="resumen: unidades, bugs, worktrees y su coherencia")
     p_est.set_defaults(func=cmd_estado)

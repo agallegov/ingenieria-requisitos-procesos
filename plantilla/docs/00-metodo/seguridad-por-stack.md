@@ -15,6 +15,19 @@ escaneo de secretos + `/security-review`).
 tus dependencias (esto es A03:2025, Supply Chain). Ambas por lenguaje, más el **hardening del
 framework** (lo que trae de serie vs. lo que debe poner el dev).
 
+## Transversal a TODOS los stacks: el secreto que se publica sin mostrarse
+
+El método vigila que un secreto no se MUESTRE (regla de oro: nunca secretos ni PII). Estos
+dos canales lo PUBLICAN sin mostrarlo nunca en pantalla, y aplican a cualquier lenguaje:
+
+- **Horneado en la imagen.** `Dockerfile` con `COPY . .` + `.env` al lado = secreto dentro de
+  una capa, que viaja con la imagen a donde vaya. Se corta con un `.dockerignore` que excluya
+  el `.env`, el entorno virtual, `.git/` y los datos locales. `lint_metodo.py` da FAIL si hay
+  Dockerfile sin `.dockerignore`, o si el `.dockerignore` no menciona el `.env`.
+- **Escupido en los logs.** Scripts de datos de ejemplo que crean un usuario administrador y
+  escriben su contraseña por salida estándar. Regla: ningún seed se ejecuta solo, y ninguno
+  imprime credenciales — se leen del entorno o las teclea una persona.
+
 ## El principio de la falsa cobertura invertida
 
 En Django, encontrar `CsrfViewMiddleware` es señal de "bien". En **Flask, FastAPI y Express NO

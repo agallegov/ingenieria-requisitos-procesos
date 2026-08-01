@@ -44,6 +44,12 @@ import sys
 import tempfile
 from pathlib import Path
 
+# Windows: con la salida en un pipe (un harness de agente) el encoding por defecto es cp1252
+# y cualquier carácter fuera de él mata el script con UnicodeEncodeError. Se fuerza UTF-8.
+for _salida in (sys.stdout, sys.stderr):
+    if hasattr(_salida, "reconfigure"):
+        _salida.reconfigure(encoding="utf-8", errors="replace")
+
 # Marcador que deja claro que un valor no se pudo resolver y hay que rellenarlo a mano.
 PLACEHOLDER = "<RESOLVER-A-MANO>"
 

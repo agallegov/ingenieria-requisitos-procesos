@@ -46,7 +46,8 @@ algo cambia. Un exprés mal clasificado es código sin contrato entrando en main
 4. **Pull request.** Commit, push y PR con `expres` en el título. En el cuerpo: la frase del
    cambio y el **output de la suite pegado** — no hay `hallazgos.md`, así que esa es la única
    evidencia que existirá. Sin output pegado no hay merge.
-5. **Cierre (el padre).** Verificar el verde → merge → borrar worktree y rama. Se acabó: **NO
+5. **Cierre (el padre).** Verificar el verde → merge (camino A o B de `runbooks/cierre.md`)
+   → borrar worktree y rama. Se acabó: **NO
    se archiva nada** (no hay unidad) y **NO se toca `02-flujos/`** (si hubiera que tocar el
    mapa, no era exprés). Mientras el worktree exista el linter lo canta como huérfano: es el
    cronómetro del carril — un exprés que sobreviva a un lint del padre no era exprés.

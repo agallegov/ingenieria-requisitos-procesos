@@ -41,7 +41,7 @@ repositorio de código, operación, API o explicación de un proceso.
     - Si es documental: el padre integra el documento en el meta-repo.
 11. **Validación del usuario.** El usuario lee la guía y realiza la tarea prometida. Sin su
     confirmación el trabajo sigue `en_revision`.
-12. **Cierre.** Aplicar deltas aprobados, actualizar ESTADO/ROADMAP, promover aprendizajes,
+12. **Cierre** (`runbooks/cierre.md`). Aplicar deltas aprobados, actualizar ESTADO/ROADMAP, promover aprendizajes,
     archivar la unidad y borrar rama/worktree cuando existan.
 
 ## Puertas de cierre

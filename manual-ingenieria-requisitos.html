@@ -1798,8 +1798,20 @@ python visor/proyectos.py contexto --todos</code></pre>
           <li><code>unidad.py nnn</code>: muestra el siguiente número.</li>
           <li><code>unidad.py nueva feature reservar-existencias</code>: crea documentos, todavía sin mesa.</li>
           <li><code>unidad.py despachar 023-reservar-existencias</code>: comprueba puertas y crea la mesa.</li>
+          <li><code>unidad.py cerrar 023-reservar-existencias --ok-usuario 2026-08-01</code>:
+            comprueba las puertas del cierre y hace sus pasos mecánicos.</li>
           <li><code>unidad.py estado</code>: resume unidades, defectos, mesas y coherencia.</li>
         </ul>
+
+        <h3>Comprobar la máquina antes de prometer nada</h3>
+        <p>
+          <code>doctor.py</code> dice qué hay instalado de verdad en este ordenador (intérprete,
+          control de versiones y su identidad, herramienta de GitHub, contenedores, Node) y qué
+          implica cada ausencia. Se ejecuta solo en el primer arranque y antes de planificar la
+          tecnología, porque la regla es que <strong>el plan no puede fijar una herramienta que
+          el doctor no haya visto funcionando</strong>. Decidir “se desarrolla con contenedores”
+          en una máquina sin contenedores se paga con un plan corregido y trabajo rehecho.
+        </p>
       </section>
 
       <section id="cierre">
@@ -1811,16 +1823,34 @@ python visor/proyectos.py contexto --todos</code></pre>
         </p>
         <ol>
           <li>Ejecutar las comprobaciones y guardar la evidencia real.</li>
-          <li>Pedir a un revisor fresco que compare el cambio con el contrato, no con sus gustos.</li>
-          <li>Devolver los huecos al constructor hasta que la revisión quede limpia.</li>
+          <li>Pedir a un revisor fresco que compare el cambio con el contrato, no con sus gustos.
+            Su nombre y la fecha quedan escritos: es lo que distingue una revisión de verdad de
+            un constructor que se pone un sello a sí mismo.</li>
+          <li>Devolver los huecos al constructor hasta que la revisión quede limpia. Solo vuelven
+            los incumplimientos del contrato de esa unidad, los fallos de seguridad y lo que
+            pierda datos; los riesgos de trabajos futuros se anotan y no reabren nada.</li>
           <li>Integrar el cambio en la rama principal.</li>
           <li>Ejecutar la comprobación completa sobre <code>main/</code>.</li>
           <li>Arrancar una instancia real de la aplicación.</li>
           <li>Pedir a la persona que pruebe con sus ejemplos de negocio.</li>
           <li>Aplicar al mapa los cambios de comportamiento ya acordados.</li>
           <li>Promover aprendizajes y decisiones a sus carpetas duraderas.</li>
-          <li>Actualizar estado e índice, archivar la unidad y borrar mesa y rama.</li>
+          <li>Actualizar estado e índice, archivar la unidad y borrar mesa y rama (también la
+            copia de la rama que vive en el servidor).</li>
         </ol>
+        <p>
+          Los pasos mecánicos —del octavo al décimo— los hace un solo comando,
+          <code>unidad.py cerrar</code>, que además se niega a cerrar si falta el visto bueno de
+          la persona con su fecha, si la revisión no está firmada, si queda trabajo sin guardar
+          en la mesa o si el cambio no está de verdad integrado. Lo que exige criterio sigue
+          siendo del agente que orquesta.
+        </p>
+        <p>
+          Si este ordenador no tiene la herramienta de GitHub, el ritual no se improvisa: existe
+          un segundo camino escrito, donde el revisor mira la comparación de cambios en local y
+          la integración la hace el orquestador. Es la única excepción, con nombre y acotada, a
+          la regla de no tocar nunca la copia principal del código.
+        </p>
 
         <div class="warning">
           <strong>Si la persona dice “esto no es lo que pedí”</strong>

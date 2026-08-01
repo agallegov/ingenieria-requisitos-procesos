@@ -9,6 +9,12 @@ import re
 import sys
 from pathlib import Path
 
+# Windows: git captura la salida del hook, así que el encoding es el local (cp1252) y un
+# carácter fuera de él convertiría un mensaje de bloqueo en un UnicodeEncodeError.
+for _salida in (sys.stdout, sys.stderr):
+    if hasattr(_salida, "reconfigure"):
+        _salida.reconfigure(encoding="utf-8", errors="replace")
+
 WORKSPACE = Path(__file__).resolve().parents[1]
 UNIDAD = re.compile(r"^\d{3}-[a-z0-9][a-z0-9-]*$")
 NO_PROSA = re.compile(r"^\s*(#{1,6}\s|---\s*$|\w+:\s|[-*]\s*\*\*R\d)|<[^>]+>")

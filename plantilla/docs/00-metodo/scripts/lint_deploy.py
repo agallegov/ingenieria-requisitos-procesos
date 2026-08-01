@@ -17,6 +17,12 @@ import time
 from fnmatch import fnmatchcase
 from pathlib import Path
 
+# Windows: con la salida en un pipe (la CI, un harness de agente) el encoding por defecto es
+# cp1252 y cualquier `≤`/`→` mata el script con UnicodeEncodeError. Se fuerza UTF-8.
+for _salida in (sys.stdout, sys.stderr):
+    if hasattr(_salida, "reconfigure"):
+        _salida.reconfigure(encoding="utf-8", errors="replace")
+
 RAIZ = Path(__file__).resolve().parents[3]
 fallos, avisos = [], []
 

@@ -76,8 +76,8 @@ Rutas desde el worktree.>
 - [ ] 4. Tests adicionales que claven el comportamiento (casos límite de los R*) · _Depende de: 3_
 - [ ] 5. Verificación final: suite completa + lint en verde; evidencia pegada en hallazgos.md · _Depende de: todas_
 - [ ] 6. Commit y push de la rama `NNN-slug` · _Depende de: 5_
-- [ ] 7. Abrir el **pull request** contra la rama principal, con `NNN-slug` en el título y enlace a esta especificación · _Depende de: 6_
-- [ ] 8. **PARAR.** La rama queda PENDIENTE DE APROBACIÓN (estado → `en_revision`). Devuelve el control al padre con el enlace del PR y la evidencia. · _Depende de: 7_
+- [ ] 7. Abrir el **pull request** contra la rama principal, con `NNN-slug` en el título y enlace a esta especificación. **Si esta máquina no tiene `gh`** (lo dice `doctor.py`), sáltate el PR: la rama se queda tal cual y el revisor mirará el diff — camino B de `runbooks/cierre.md` · _Depende de: 6_
+- [ ] 8. **PARAR.** La rama queda PENDIENTE DE APROBACIÓN (estado → `en_revision`). Devuelve el control al padre con el enlace del PR (o el nombre de la rama, camino B) y la evidencia. · _Depende de: 7_
 
 <Pasos extra SOLO si esta unidad los necesita (p. ej. migración: backup antes, rollback escrito).>
 
@@ -87,7 +87,8 @@ Rutas desde el worktree.>
   `../../docs/05-trabajo/NNN-slug/hallazgos.md` y marcar las casillas `[x]` del Plan de
   trabajo de esta especificación.
 - Si tu trabajo va a contradecir este contrato o el mapa → **PARA y devuelve la tarea**.
-- **No mergeas tú. Tu trabajo termina en el pull request abierto.** El merge, la suite
+- **No mergeas tú. Tu trabajo termina en el pull request abierto** (o en la rama parada, si
+  no hay `gh`). El merge, la suite
   end-to-end sobre main y el lanzamiento de la instancia para que el usuario valide los hace
   el padre, a petición del usuario. Ni `git merge`, ni `gh pr merge`, ni push a la principal.
 - Los tests escritos no se debilitan ni se borran.
@@ -101,5 +102,5 @@ Rutas desde el worktree.>
 2. Suite completa + lint + typecheck en verde.
 3. Evidencia pegada en `hallazgos.md` (output real, capturas si hay UI).
 4. `hallazgos.md` relleno (aunque sea "sin hallazgos").
-5. Pull request abierto (título con `NNN-slug`) y la rama PARADA, pendiente de aprobación:
-   sin merge por tu parte.
+5. Pull request abierto (título con `NNN-slug`) —o, sin `gh`, la rama con todo commiteado— y
+   PARADA, pendiente de aprobación: sin merge por tu parte.

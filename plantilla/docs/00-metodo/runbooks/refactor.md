@@ -35,7 +35,7 @@ demostrada.
     rendimiento, misma carga y entorno que la medición inicial.
 11. **PR.** Commit, push y pull request `NNN-slug`; el subagente se detiene en
     `en_revision`.
-12. **Cierre del padre.** Revisor fresco compara diff, spec y tests; huecos vuelven al
+12. **Cierre del padre** (`runbooks/cierre.md`). Revisor fresco compara diff, spec y tests; huecos vuelven al
     constructor. Limpio: merge, suite e2e sobre `main`, instancia real y validación del
     usuario de que nada cambió. Después se actualiza estado, se archiva y se elimina
     worktree/rama.

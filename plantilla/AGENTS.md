@@ -34,6 +34,8 @@ y trabajado en `worktrees/` (una copia por unidad de trabajo). Ambos ignorados p
 | Detalle de tu rol (analista · constructor · observabilidad · deploy) | `docs/00-metodo/roles.md` |
 | Trabajar la unidad NNN | `docs/05-trabajo/NNN-*/especificacion.md` (contrato + plan) |
 | Reportar o trabajar un bug | `docs/bugs/NNN-slug.md` + runbook `bug` (ADR-006) |
+| Cerrar una unidad (de cualquier tipo) | `docs/00-metodo/runbooks/cierre.md` |
+| Saber qué hay instalado en esta máquina | `python docs/00-metodo/scripts/doctor.py` |
 | Cambio trivial que no cambia comportamiento | `docs/00-metodo/runbooks/expres.md` |
 | Producción caída / urgencia | `docs/00-metodo/runbooks/hotfix.md` |
 | Añadir, cambiar o aprobar flujos y requisitos | `docs/00-metodo/requisitos/RUNBOOK.md` |
@@ -69,8 +71,10 @@ y trabajado en `worktrees/` (una copia por unidad de trabajo). Ambos ignorados p
    sobre main** → **lanzar una instancia de la app y que el usuario la pruebe** (sin su OK no
    hay cierre) → aplicar los deltas declarados al mapa → promover hallazgos/decisiones →
    actualizar `ESTADO.md` e `INDICE.md` → mover la unidad a `archivo/` → borrar worktree y
-   rama. No existe "mergeado pero sin cerrar". (Único matiz de los bugs: su fichero NO se
-   archiva, permanece en `docs/bugs/` — ADR-006.)
+   rama. No existe "mergeado pero sin cerrar". El ritual completo, sus dos caminos (con `gh`
+   y sin él) y la frontera del revisor: `runbooks/cierre.md`; los pasos mecánicos los hace
+   `unidad.py cerrar`. (Único matiz de los bugs: su fichero NO se archiva, permanece en
+   `docs/bugs/` — ADR-006.)
 8. **Desviación de contrato → PARA y escala.** Si al construir descubres que tu trabajo
    contradiría la especificación o el mapa (eliminar algo, cambiar comportamiento prometido),
    no improvises: detente y devuelve la tarea al padre. Las desviaciones de implementación
@@ -119,6 +123,8 @@ y trabajado en `worktrees/` (una copia por unidad de trabajo). Ambos ignorados p
 ## El repo de código
 
 - `main/` — clon canónico. Solo `git pull`. **Jamás editar, commitear ni crear ramas aquí.**
+  Única excepción, nombrada y acotada (ADR-009): el merge del paso 3 del cierre cuando esta
+  máquina no tiene `gh` — camino B de `runbooks/cierre.md`. Nada más.
 - `worktrees/NNN-slug/` — worktree en rama `NNN-slug`, espejo de `docs/05-trabajo/NNN-slug/`.
   Se crea al despachar la unidad y se borra en el cierre.
 - Todo PR lleva `NNN-slug` en el título y enlaza su unidad.

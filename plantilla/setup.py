@@ -12,6 +12,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Windows: este programa imprime y además CAPTURA la salida de los scripts del método. Las dos
+# direcciones tienen que hablar UTF-8 o el arranque muere con un `charmap codec` que parece un
+# FAIL del método y no lo es: aquí se fuerza la escritura, y en `ejecutar` la lectura.
+for _salida in (sys.stdout, sys.stderr):
+    if hasattr(_salida, "reconfigure"):
+        _salida.reconfigure(encoding="utf-8", errors="replace")
 
 RAIZ = Path(__file__).resolve().parent
 
@@ -21,6 +27,8 @@ def ejecutar(*comando, cwd=RAIZ):
         [str(parte) for parte in comando],
         cwd=cwd,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
@@ -134,6 +142,15 @@ def main():
     if ultimo.returncode:
         morir(f"no pude leer el último commit:\n{ultimo.stdout.strip()}")
     print(f"\n[5/5] último commit del código: {ultimo.stdout.strip()}")
+
+    # Qué hay de verdad en esta máquina. INFORMA, no bloquea (ADR-009): una máquina sin
+    # Docker no es inválida, es una máquina que irá por el peldaño mínimo. Lo que sí evita
+    # es que la fase 4 prometa herramientas que aquí no existen.
+    doctor = RAIZ / "docs" / "00-metodo" / "scripts" / "doctor.py"
+    if doctor.is_file():
+        revision = ejecutar(sys.executable, doctor, "--escribir")
+        print(revision.stdout.rstrip())
+
     print("\n=== Workspace listo ===")
     print(
         "Los secretos de .private/ no viajan por Git; cópialos por un canal seguro."

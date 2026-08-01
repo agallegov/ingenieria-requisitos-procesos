@@ -72,11 +72,12 @@ IGNORAR = {"__pycache__", ".DS_Store"}
 
 # El método se publica mediante una lista cerrada. Así un apunte local o un residuo
 # histórico no puede colarse en todos los workspaces por estar dentro de la carpeta.
-RUNBOOKS = ("adopcion", "auditoria", "bug", "deploy", "documentacion", "expres", "feature",
-            "hotfix", "investigacion", "migracion", "planificacion", "refactor")
-PLANTILLAS = ("bug", "conocimiento", "decision", "despliegue", "especificacion", "hallazgos",
-              "informe", "investigacion", "plano-operativo", "roadmap", "sintesis")
-SCRIPTS = ("lint_deploy.py", "lint_metodo.py", "sandbox_lanzar.py", "unidad.py")
+RUNBOOKS = ("adopcion", "auditoria", "bug", "cierre", "deploy", "documentacion", "expres",
+            "feature", "hotfix", "investigacion", "migracion", "planificacion", "refactor")
+PLANTILLAS = ("agents-repo-codigo", "bug", "conocimiento", "decision", "despliegue",
+              "especificacion", "hallazgos", "informe", "investigacion", "plano-operativo",
+              "roadmap", "sintesis")
+SCRIPTS = ("doctor.py", "lint_deploy.py", "lint_metodo.py", "sandbox_lanzar.py", "unidad.py")
 DECISIONES = (
     "README.md",
     "001-docs-fuera-del-repo.md",
@@ -87,6 +88,7 @@ DECISIONES = (
     "006-bugs-como-fichero-vivo.md",
     "007-planos-canonicos-y-limites.md",
     "008-entrevistas-de-arranque-de-roles-operativos.md",
+    "009-cierre-scriptado-y-entorno-comprobado.md",
 )
 METODO_RAIZ = (
     "README.md", "roles.md", "auditoria-calidad.md", "auditoria-metodo.md",
@@ -509,13 +511,24 @@ def montar_git(destino, nombre_codigo, titulo, remoto_codigo, remoto_meta):
         (main_dir / "README.md").write_text(
             f"# {nombre_codigo}\n\nRepo de código de «{titulo}». Se orquesta desde su "
             "meta-repo (carpeta padre; ver `repos.yaml` allí).\n", encoding="utf-8")
+        # Mínimo y AGNÓSTICO del lenguaje: solo secretos y ruido. Los ignores del stack
+        # (entorno virtual, node_modules, build) los añade el esqueleto andante, que es quien
+        # sabe cuál es el stack. Sin esto, el `.env` que el método exige tener en el repo de
+        # código entra en el PRIMER commit y se queda en el historial para siempre.
+        (main_dir / ".gitignore").write_text(
+            "# Secretos: NUNCA en git (el método los quiere en .env, fuera del repo).\n"
+            ".env\n.env.*\n!.env.example\n*.pem\n*.key\n\n"
+            "# Ruido del sistema.\n.DS_Store\nThumbs.db\n\n"
+            "# Lo generado en local (logs, capturas, dumps).\n.runtime/\n", encoding="utf-8")
         flujos = main_dir / ".github" / "workflows"
         flujos.mkdir(parents=True)
         (flujos / "tests.yml").write_text(
             "name: tests\n"
+            # También en push a CUALQUIER rama: sin `gh` no hay pull requests, y una CI que
+            # solo corre en PR no corre jamás en las máquinas que van por el camino B.
             "on:\n"
             "  pull_request:\n"
-            "  push: { branches: [main] }\n"
+            "  push:\n"
             "jobs:\n"
             "  tests:\n"
             "    runs-on: ubuntu-latest\n"
@@ -539,8 +552,9 @@ def montar_git(destino, nombre_codigo, titulo, remoto_codigo, remoto_meta):
             "          else\n"
             "            echo 'Aún no hay tests: llegan con el esqueleto (primera unidad).'\n"
             "          fi\n", encoding="utf-8")
-        git(main_dir, "add", "README.md", ".github")
-        rc, out = git(main_dir, "commit", "-m", "Inicial: README + CI de tests (establece main)")
+        git(main_dir, "add", "README.md", ".gitignore", ".github")
+        rc, out = git(main_dir, "commit", "-m",
+                      "Inicial: README + .gitignore + CI de tests (establece main)")
         if rc != 0:
             avisos.append(f"no pude hacer el commit inicial de main/ ({out})")
         if remoto_codigo:

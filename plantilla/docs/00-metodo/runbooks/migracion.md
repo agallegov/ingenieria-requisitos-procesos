@@ -37,7 +37,7 @@ probada y destino verificado.
 12. **Verificación.** Suite completa, flujos críticos, integridad de datos y compatibilidad
     con integraciones en verde.
 13. **PR.** Commit, push y pull request `NNN-slug`; el subagente para en `en_revision`.
-14. **Cierre de código.** Revisor fresco, correcciones, merge, suite e2e sobre `main`,
+14. **Cierre de código** (`runbooks/cierre.md`). Revisor fresco, correcciones, merge, suite e2e sobre `main`,
     instancia local y validación del usuario.
 
 ## Subir de etapa o desplegar

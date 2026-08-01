@@ -15,7 +15,12 @@ construcción con el esqueleto andante primero.
    (**Los informes y la `SINTESIS.md` los produce la fase 3**, `runbooks/investigacion.md`; aún
    no existen: si faltan, correr la fase 3 es el paso previo y esta fase no arranca. En
    brownfield la fase 3 va acotada — `runbooks/adopcion.md` §6 — pero va.)
-2. **Preparar las decisiones.** Por cada decisión a tomar (lenguaje, framework, librerías,
+2. **Preparar las decisiones.** `<HARD-GATE>` **Antes de proponer tecnología, mirar la
+   máquina:** `python docs/00-metodo/scripts/doctor.py --escribir`. **El ROADMAP no fija una
+   herramienta que el doctor no haya visto en verde** — si no hay Docker, el plan no dice
+   "se desarrolla con contenedores"; si no hay `gh`, el cierre va por el camino B de
+   `runbooks/cierre.md` y eso se escribe AQUÍ, no se descubre en el paso del pull request.
+   Por cada decisión a tomar (lenguaje, framework, librerías,
    integraciones, dónde corre): una opción recomendada y sus alternativas, con pros y
    contras EN CRISTIANO — cero jerga técnica; si un término técnico es inevitable, se
    explica en una frase. Entre las decisiones SIEMPRE está el **entorno de ejecución y
@@ -76,7 +81,9 @@ construcción con el esqueleto andante primero.
 5. **No duplica estado:** el estado vivo está en `ESTADO.md` y en los frontmatters.
 6. **El entorno decidido se materializa en el AGENTS.md del repo de código**, con los
    comandos exactos y copiables: levantar el entorno, correr la suite completa, correr los
-   e2e y lanzar una instancia local para que el usuario pruebe. Sin esos comandos escritos,
+   e2e, lanzar una instancia local para que el usuario pruebe y la comprobación de seguridad.
+   Sin esos comandos escritos,
    los pasos del método que dicen "suite en verde" o "lanzar instancia" no son ejecutables
-   por un agente fresco — esta regla es la que lo garantiza. (Ese AGENTS.md lo crea la
+   por un agente fresco — esta regla es la que lo garantiza. **No se escribe desde cero: se
+   copia `plantillas/agents-repo-codigo.md`**, que ya trae los huecos fijos. (Lo crea la
    primera unidad del esqueleto andante y es lo que los constructores leen como "Contexto".)

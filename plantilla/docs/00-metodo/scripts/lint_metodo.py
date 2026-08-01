@@ -8,8 +8,17 @@ Sin dependencias: solo stdlib. El disco es la verdad; este script solo la compru
 """
 import datetime
 import re
+import subprocess
 import sys
 from pathlib import Path
+
+# Windows: en cuanto la salida va a un PIPE —setup.py, la CI, cualquier harness de agente— el
+# encoding deja de ser el de la consola y pasa a ser el local (cp1252), donde un `≤` o un `→`
+# mata el script con UnicodeEncodeError. Es decir: el fallo no era una consola rara, era el
+# camino normal. Se fuerza UTF-8 antes de imprimir nada.
+for _salida in (sys.stdout, sys.stderr):
+    if hasattr(_salida, "reconfigure"):
+        _salida.reconfigure(encoding="utf-8", errors="replace")
 
 RAIZ = Path(__file__).resolve().parents[3]
 fallos, avisos = [], []
@@ -148,6 +157,32 @@ def revisar_deuda_hotfix(nombre, ruta, fm):
     else:
         warn(f"{nombre}: DEUDA DE SPEC del hotfix sin pagar (dentro del plazo de 24 h desde "
              f"{actualizado}): completa la ficha y borra la marca")
+
+
+def repo_codigo():
+    """Ruta y rama principal del repo de código, leídas de repos.yaml (igual que unidad.py)."""
+    ruta_local, rama = "main/", "main"
+    cfg = RAIZ / "repos.yaml"
+    if cfg.exists():
+        texto = cfg.read_text(encoding="utf-8")
+        m = re.search(r"^\s*ruta_local:\s*(\S+)", texto, flags=re.M)
+        if m:
+            ruta_local = m.group(1)
+        m = re.search(r"^\s*rama_principal:\s*(\S+)", texto, flags=re.M)
+        if m:
+            rama = m.group(1)
+    return (RAIZ / ruta_local.rstrip("/")).resolve(), rama
+
+
+def git(repo, *args):
+    """git acotado a un repo. Devuelve (codigo, salida); jamás lanza: sin git no hay veredicto."""
+    try:
+        p = subprocess.run(["git", "-C", str(repo), *args],
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", check=False)
+    except OSError:
+        return 1, ""
+    return p.returncode, (p.stdout + p.stderr).strip()
 
 
 def frontmatter(path):
@@ -346,6 +381,34 @@ if wt and not (wt - set(unidades)):
 elif not wt:
     ok("sin worktrees")
 
+# --- 5b. Trabajo huérfano: que las casillas `[x]` no sean la única prueba de que existe ---
+# Un constructor se queda sin contexto, se cancela o petan sus llamadas: eso pasa en todos los
+# proyectos. Hasta aquí el método tenía dos señales de progreso —las casillas del plan y
+# hallazgos.md— y NINGUNA se cruzaba con el disco: una unidad podía declararse terminada con
+# todo el código sin commitear dentro de su worktree, que es la única forma de perder trabajo
+# de verdad (nada más lo respalda). Estas dos comprobaciones cruzan las dos señales con git.
+repo_cod, rama_principal = repo_codigo()
+hay_repo = git(repo_cod, "rev-parse", "--is-inside-work-tree")[0] == 0
+for nombre in sorted(en_obra):
+    estado_unidad = unidades[nombre].get("estado")
+    if nombre in wt:
+        codigo, salida = git(worktrees / nombre, "status", "--porcelain")
+        if codigo == 0 and salida:
+            sucios = len(salida.splitlines())
+            aviso = (f"{nombre}: {sucios} fichero(s) sin commitear en worktrees/{nombre} — "
+                     f"un worktree es lo ÚNICO que no respalda nadie")
+            if estado_unidad == "en_revision":
+                fail(f"{aviso}. Una unidad que se declara terminada y no ha commiteado nada "
+                     f"no ha terminado: recupera el trabajo antes de cerrar")
+            else:
+                warn(f"{aviso}: pide commits al constructor")
+    if estado_unidad == "en_revision" and hay_repo:
+        codigo, salida = git(repo_cod, "rev-list", "--count", f"{rama_principal}..{nombre}")
+        if codigo == 0 and salida.strip() == "0":
+            fail(f"{nombre}: en_revision y su rama no tiene NI UN commit por encima de "
+                 f"{rama_principal} — no hay nada que revisar ni que mergear (¿el constructor "
+                 f"murió a mitad?)")
+
 # --- 6. Archivo: lo archivado debe estar mergeada/descartada ---
 archivo = trabajo / "archivo"
 for carpeta in sorted(p for p in archivo.iterdir() if p.is_dir()) if archivo.is_dir() else []:
@@ -357,29 +420,82 @@ for carpeta in sorted(p for p in archivo.iterdir() if p.is_dir()) if archivo.is_
         revisar_deuda_hotfix(f"archivo/{carpeta.name}", spec_archivada, fm)
 
 # --- 6b. Cosecha de hallazgos en unidades archivadas ---
-# Convención: en el cierre, el padre marca CADA bullet de "Descubrimientos" y "Trabajo
-# descubierto" con "→ promovido a <destino>" o "→ descartado (motivo)". Un bullet con
-# contenido real sin marca = conocimiento sin cosechar → WARN (no bloquea).
+# Convención: en el cierre, el padre marca CADA viñeta de "Descubrimientos" y "Trabajo
+# descubierto" con "→ promovido a <destino>" o "→ descartado (motivo)". Está escrita en
+# plantillas/hallazgos.md, que es el fichero que uno tiene DELANTE mientras escribe: una
+# convención que solo vive dentro de este script es una convención que nadie puede cumplir.
+# Se mira la viñeta ENTERA (su línea más las indentadas que la continúan) y se tolera el
+# énfasis markdown, porque `→ **promovido a** X` es como se escribe de verdad en un markdown.
+# Misma implementación que en unidad.py, a propósito: los scripts del método son autónomos.
+RE_COSECHA = re.compile(r"→\s*\**\s*(promovido|descartado)", re.IGNORECASE)
+
+
+def hallazgos_sin_cosechar(texto):
+    pendientes, en_seccion, bloque = 0, False, None
+
+    def cerrar_bloque():
+        nonlocal pendientes, bloque
+        if bloque:
+            entero = "\n".join(bloque)
+            contenido = re.sub(r"^\s*[-*]\s+", "", entero).strip()
+            if contenido not in {"—", "-", ""} and not RE_COSECHA.search(entero):
+                pendientes += 1
+        bloque = None
+
+    for linea in texto.splitlines():
+        if linea.startswith("#"):
+            cerrar_bloque()
+            titulo = linea.lstrip("#").strip()
+            en_seccion = titulo.startswith(("Descubrimientos", "Trabajo descubierto"))
+        elif en_seccion and re.match(r"^[-*]\s+\S", linea):
+            cerrar_bloque()
+            bloque = [linea]
+        elif bloque is not None and re.match(r"^\s+\S", linea):
+            bloque.append(linea)
+        elif linea.strip():
+            cerrar_bloque()
+    cerrar_bloque()
+    return pendientes
+
+
 for carpeta in sorted(p for p in archivo.iterdir() if p.is_dir()) if archivo.is_dir() else []:
     hallazgos = carpeta / "hallazgos.md"
     if not hallazgos.exists():
         continue
-    seccion, sin_cosechar = None, 0
-    for linea in hallazgos.read_text(encoding="utf-8").splitlines():
-        if linea.startswith("## "):
-            titulo = linea[3:].strip()
-            seccion = titulo if titulo.startswith(("Descubrimientos", "Trabajo descubierto")) else None
-        elif seccion and re.match(r"^-\s+\S", linea):
-            contenido = re.sub(r"^-\s+", "", linea).strip()
-            if contenido in {"—", "-", ""}:
-                continue  # bullet placeholder de la plantilla
-            if "→ promovido" not in linea and "→ descartado" not in linea:
-                sin_cosechar += 1
-    if sin_cosechar:
-        warn(f"archivo/{carpeta.name}: hallazgos sin cosechar "
-             f"(marca cada bullet con '→ promovido a …' o '→ descartado (motivo)')")
+    pendientes = hallazgos_sin_cosechar(hallazgos.read_text(encoding="utf-8"))
+    if pendientes:
+        warn(f"archivo/{carpeta.name}: {pendientes} hallazgo(s) sin cosechar. Formato exacto: "
+             f"'→ promovido a <destino>' o '→ descartado (motivo)', en cualquier punto de la "
+             f"viñeta (admite negrita). El ejemplo está en plantillas/hallazgos.md")
 
-# --- 7. Higiene ---
+# --- 7. Que un secreto no se hornee dentro de una imagen ---
+# El método invierte mucho en que los secretos no se MUESTREN (regla de oro: nunca secretos
+# ni PII) y nada en que no se PUBLIQUEN dentro de un artefacto. Es el mismo fallo por otro
+# canal: un Dockerfile con `COPY . .` —que es lo que sale por defecto— mete el `.env` que el
+# propio método exige tener ahí al lado dentro de una capa de la imagen, y de ahí no se borra.
+# Solo se comprueba si el proyecto usa contenedores: para los demás, esta sección no existe.
+IGNORAR_IMAGEN = (".env",)
+for etiqueta, carpeta in ([("main", RAIZ / "main")]
+                          + [(f"worktrees/{p.name}", p)
+                             for p in (sorted(worktrees.iterdir()) if worktrees.is_dir() else [])
+                             if p.is_dir()]):
+    if not (carpeta / "Dockerfile").is_file():
+        continue
+    ignore = carpeta / ".dockerignore"
+    if not ignore.is_file():
+        fail(f"{etiqueta}/ tiene Dockerfile y NO tiene .dockerignore: el primer build hornea "
+             f"el .env (y .git, y la base de datos local) dentro de la imagen. Créalo antes "
+             f"de construir nada, con .env, la carpeta del entorno, .git/ y los datos locales")
+    else:
+        contenido = ignore.read_text(encoding="utf-8")
+        faltan = [p for p in IGNORAR_IMAGEN if p not in contenido]
+        if faltan:
+            fail(f"{etiqueta}/.dockerignore no menciona {faltan}: los secretos acabarían "
+                 f"dentro de la imagen")
+        else:
+            ok(f"{etiqueta}/: Dockerfile con .dockerignore que excluye el .env")
+
+# --- 8. Higiene ---
 if (RAIZ / "codebase").exists():
     fail("codebase/ existe (estructura vieja: debe ser main/ + worktrees/)")
 

@@ -66,7 +66,7 @@ actualizado: YYYY-MM-DD
 - **Tests de regresión añadidos:** <cuáles y qué comportamiento fijan para que NO vuelva> —
   comprobados en ROJO sin el arreglo y en VERDE con él (un test que pasa en los dos casos no vale)
 - **Suite completa:** VERDE — output pegado
-- **Pull request:** <rama `NNN-slug` → main; título con NNN-slug>
+- **Pull request:** <rama `NNN-slug` → main; título con NNN-slug. Sin `gh`: el nombre de la rama>
 
 ### Plan de trabajo del subagente (esqueleto fijo; marcar `[x]` al completar)
 
@@ -76,14 +76,15 @@ actualizado: YYYY-MM-DD
 - [ ] 4. Tests de regresión contraprobados (rojo sin el arreglo, verde con él) · _Depende de: 3_
 - [ ] 5. Suite completa + lint en verde; evidencia pegada arriba · _Depende de: 4_
 - [ ] 6. Commit y push de la rama `NNN-slug` · _Depende de: 5_
-- [ ] 7. Abrir el **pull request** contra la rama principal, con `NNN-slug` en el título y enlace a esta ficha · _Depende de: 6_
-- [ ] 8. **PARAR.** La rama queda PENDIENTE DE APROBACIÓN (estado → `en_revision`). Devuelve el control al padre con el enlace del PR y la evidencia. · _Depende de: 7_
+- [ ] 7. Abrir el **pull request** contra la rama principal, con `NNN-slug` en el título y enlace a esta ficha. **Si esta máquina no tiene `gh`** (lo dice `doctor.py`), sáltate el PR: la rama se queda tal cual y el revisor mirará el diff — camino B de `runbooks/cierre.md` · _Depende de: 6_
+- [ ] 8. **PARAR.** La rama queda PENDIENTE DE APROBACIÓN (estado → `en_revision`). Devuelve el control al padre con el enlace del PR (o el nombre de la rama, camino B) y la evidencia. · _Depende de: 7_
 
 ### Reglas del constructor (fijas)
 
 - Escribes SOLO en tu worktree y en esta ficha. El resto de la documentación se lee, jamás se toca.
 - Si tu trabajo va a contradecir el mapa o el alcance del bug → **PARA y devuelve la tarea**.
-- **No mergeas tú. Tu trabajo termina en el pull request abierto.** El merge, la suite
+- **No mergeas tú. Tu trabajo termina en el pull request abierto** (o en la rama parada, si
+  no hay `gh`). El merge, la suite
   end-to-end sobre main y el lanzamiento de la instancia para que el usuario valide los hace
   el padre, a petición del usuario. Ni `git merge`, ni `gh pr merge`, ni push a la principal.
 - Los tests escritos no se debilitan ni se borran. Arreglas el defecto y NADA más.

@@ -12,3 +12,4 @@ actualiza aquí y en el programa o plantilla que la aplica.
 - `006`: ficha viva para cada bug.
 - `007`: planos canónicos y límites del workspace.
 - `008`: arranque documentado de Observabilidad y Deploy.
+- `009`: cierre scriptado, entorno comprobado y frontera del revisor.
