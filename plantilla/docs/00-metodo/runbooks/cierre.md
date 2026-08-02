@@ -55,6 +55,13 @@ Sin esta excepción escrita, el método obligaba a improvisar justo en el paso m
    ejemplos reales de sus criterios. `<HARD-GATE>` **Sin su OK no hay cierre**; "no es lo que
    pedí" no se discute: se abre una unidad tipo `bug`. La fecha de ese OK es lo que se le
    pasa al comando del paso 6.
+
+   **Si el usuario no está disponible ahora** (ADR-010): ejecuta el paso 6 SIN `--ok-usuario`.
+   Aplica todas las demás puertas y, si están en verde, deja la unidad en `en_validacion`:
+   fusionada y terminada, esperando solo a una persona. Deja de contar para el tope de trabajo
+   en vuelo —puedes despachar otra— pero NO está cerrada: no se archiva, no se borra worktree
+   ni rama, y el linter la recuerda en cada arranque. Cuando llegue el OK, el mismo comando
+   con su fecha termina el ritual.
 6. **Los pasos mecánicos, con el script:**
 
    `python docs/00-metodo/scripts/unidad.py cerrar NNN-slug --ok-usuario YYYY-MM-DD`
@@ -71,7 +78,8 @@ Sin esta excepción escrita, el método obligaba a improvisar justo en el paso m
 
 ## Puertas que no se negocian
 
-- Sin OK del usuario sobre la app corriendo, no hay cierre. Ni con los tests en verde.
+- Sin OK del usuario sobre la app corriendo, no hay cierre. Ni con los tests en verde. Lo que
+  `en_validacion` permite es seguir trabajando mientras se espera, no dar por cerrado.
 - Sin revisor distinto del constructor, no hay cierre.
 - Nada sin guardar en el worktree: es lo único del método que no respalda nadie.
 - Nada se cierra sin estar fusionado en la rama principal.

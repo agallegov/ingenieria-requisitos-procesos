@@ -46,7 +46,12 @@ WORKTREES = RAIZ / "worktrees"
 
 # Vocabulario cerrado: el mismo que valida lint_metodo.py. No se crean variantes.
 TIPOS = ["bug", "feature", "refactor", "migracion", "auditoria", "investigacion", "documentacion"]
-ESTADOS = {"planificada", "en_obra", "en_revision", "mergeada", "bloqueada", "descartada"}
+ESTADOS = {"planificada", "en_obra", "en_revision", "en_validacion", "mergeada", "bloqueada",
+           "descartada"}
+# `en_validacion` NO está en vuelo (ADR-010): su rama ya está fusionada y el trabajo de
+# construcción terminó; lo único pendiente es que el usuario pruebe la app. Ocupaba cupo de
+# paralelismo sin consumir atención de nadie, y eso obligaba a subir el tope para seguir
+# trabajando: el problema no era el tope, era un estado que no existía.
 EN_VUELO = {"en_obra", "en_revision"}
 RE_SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 RE_UNIDAD = re.compile(r"^(\d{3})-([a-z0-9][a-z0-9-]*)$")
@@ -98,6 +103,19 @@ def frontmatter(path):
     """Parseo mínimo del frontmatter YAML (clave: valor). Devuelve dict o None.
 
     Idéntico al de lint_metodo.py a propósito: si el linter lo acepta, este script también.
+
+    Admite las DOS formas en que se escribe una lista de verdad:
+
+        ficheros: [api/rutas.py, api/modelos.py]      en línea
+        ficheros:                                     multilínea
+          - api/rutas.py
+          - api/modelos.py
+
+    Sin esto el parseo era línea a línea y una lista multilínea dejaba `ficheros` en cadena
+    VACÍA: la comprobación de ficheros disjuntos comparaba conjuntos vacíos y daba el visto
+    bueno siempre. Un guardián que mira de menos es peor que ninguno, porque da permiso con
+    cara de haber mirado. Las listas se normalizan a "a, b" para que quien lea el valor no
+    tenga que cambiar.
     """
     try:
         lineas = Path(path).read_text(encoding="utf-8").splitlines()
@@ -106,13 +124,36 @@ def frontmatter(path):
     if not lineas or lineas[0].strip() != "---":
         return None
     datos = {}
+    clave_abierta, items = None, []
+
+    def cerrar_lista():
+        nonlocal clave_abierta, items
+        if clave_abierta and items:
+            datos[clave_abierta] = ", ".join(items)
+        clave_abierta, items = None, []
+
     for linea in lineas[1:]:
         if linea.strip() == "---":
+            cerrar_lista()
             return datos
         m = re.match(r"^(\w+):\s*(.*)$", linea)
         if m:
-            datos[m.group(1)] = m.group(2).split("#")[0].strip()
+            cerrar_lista()
+            valor = m.group(2).split("#")[0].strip()
+            datos[m.group(1)] = valor
+            if not valor:
+                clave_abierta = m.group(1)      # puede venir una lista debajo
+            continue
+        item = re.match(r"^\s+-\s*(.+)$", linea)
+        if item and clave_abierta:
+            items.append(item.group(1).split("#")[0].strip().strip("'\""))
     return None
+
+
+def ficheros_de(fm):
+    """Conjunto de rutas que declara una unidad. Mismo criterio que lint_metodo.py."""
+    crudos = (fm.get("ficheros") or "").strip("[]").split(",")
+    return {f.strip().strip("'\"") for f in crudos if f.strip().strip("'\"")}
 
 
 def aprobacion(fm):
@@ -457,6 +498,40 @@ def marcar_en_obra(ruta, documental=False):
     ruta.write_text(texto, encoding="utf-8")
 
 
+def preparar_worktree(destino):
+    """Gancho OPCIONAL del proyecto: `worktree-listo` en la raíz del meta-repo.
+
+    Un worktree recién creado es código sin entorno: sin dependencias instaladas, sin base de
+    datos de pruebas, sin lo que el stack necesite. El constructor que aterriza ahí ve fallar
+    tests que en main pasan, y los usa como vara de medir durante horas antes de descubrir que
+    medía el entorno. El método no sabe montar eso —depende del stack— pero sí sabe CUÁNDO hay
+    que montarlo: justo aquí.
+
+    Si el proyecto deja `worktree-listo` (ejecutable) o `worktree-listo.py` en la raíz, se
+    ejecuta con el worktree como argumento y como directorio de trabajo. Es del proyecto, no
+    del método: ninguna actualización del método lo toca.
+    """
+    for nombre in ("worktree-listo", "worktree-listo.py"):
+        gancho = RAIZ / nombre
+        if not gancho.is_file():
+            continue
+        orden = [sys.executable, str(gancho)] if gancho.suffix == ".py" else [str(gancho)]
+        print(f"\n  Preparando el entorno del worktree con {nombre}…", flush=True)
+        try:
+            codigo = subprocess.run([*orden, str(destino)], cwd=str(destino)).returncode
+        except OSError as e:
+            warn(f"no pude ejecutar {nombre} ({e}): el worktree existe pero su entorno no "
+                 f"está preparado")
+            return
+        if codigo:
+            warn(f"{nombre} terminó con código {codigo}: el worktree existe, pero su entorno "
+                 f"puede estar a medias — arréglalo ANTES de lanzar al constructor, o medirá "
+                 f"el entorno y creerá que mide su código")
+        else:
+            ok(f"entorno del worktree preparado por {nombre}")
+        return
+
+
 def cmd_despachar(args):
     nombre = args.unidad.strip("/")
     if not RE_UNIDAD.match(nombre):
@@ -599,9 +674,33 @@ def cmd_despachar(args):
         fail(f"{len(activas)} unidades en vuelo: {', '.join(activas)} — tope absoluto "
              f"{TOPE_EN_VUELO}, ni con --paralelo")
         return 1
-    if activas:
-        warn(f"despacho en paralelo con: {', '.join(activas)} — comprueba que NO compartís "
-             f"ningún fichero (frontmatter 'ficheros'); los hotspots son siempre secuenciales")
+    # La regla "en paralelo jamás se comparten ficheros" la comprobaba un WARN dirigido a un
+    # humano, o sea a nadie: se despachaban dos unidades sobre el mismo fichero sin que nada
+    # avisara. Aquí se verifica y se bloquea. Una unidad --documental no toca el repo de
+    # código, así que no tiene ficheros que declarar y queda fuera de la comprobación.
+    if activas and not args.documental:
+        mios = ficheros_de(fm)
+        censo_actual = censo()
+        if not mios:
+            fail(f"{rel(ruta)}: 'ficheros:' vacío y hay trabajo en vuelo ({', '.join(activas)})")
+            err("\n  Para trabajar en paralelo hay que declarar qué ficheros POSEE esta unidad:\n"
+                "  sin declaración no hay forma de comprobar que no pisáis lo mismo, y el\n"
+                "  guardián daría el visto bueno sin haber mirado nada.\n"
+                "      ficheros: [ruta/uno.py, ruta/dos.py]")
+            return 1
+        for otra in activas:
+            comunes = mios & ficheros_de(censo_actual[otra]["fm"])
+            if comunes:
+                fail(f"{nombre} y {otra} comparten ficheros declarados: {sorted(comunes)}")
+                err("\n  Dos unidades en paralelo JAMÁS comparten fichero: el segundo merge\n"
+                    "  llega a un fichero que ya no es el que leyó su constructor. Los hotspots\n"
+                    "  (migraciones, rutas, modelos compartidos, manifiestos, lockfiles) van\n"
+                    "  SIEMPRE en secuencia: cierra una, o quítale el fichero a esta unidad y\n"
+                    "  que lo proponga en hallazgos.md para que lo aplique el padre al cerrar.")
+                return 1
+        ok(f"ficheros disjuntos de {', '.join(activas)} ({len(mios)} declarado(s))")
+    elif activas:
+        warn(f"despacho documental en paralelo con: {', '.join(activas)} (no toca código)")
     else:
         ok("no hay ninguna otra unidad en vuelo")
 
@@ -662,6 +761,7 @@ def cmd_despachar(args):
         fail(f"git worktree add falló:\n{salida}")
         return 1
     ok(f"worktree {rel(destino)} en la rama {nombre}")
+    preparar_worktree(destino)
     marcar_en_obra(ruta)
     ok(f"{rel(ruta)}: estado → en_obra · actualizado → {HOY}")
 
@@ -800,9 +900,9 @@ def cmd_cerrar(args):
         return 1
     ruta, fm, clase = unidad["ruta"], unidad["fm"], unidad["clase"]
     estado = fm.get("estado")
-    if estado not in {"en_revision", "mergeada"}:
+    if estado not in {"en_revision", "en_validacion", "mergeada"}:
         fail(f"{nombre} está '{estado}': solo se cierra lo que está en_revision "
-             f"(o 'mergeada', para reanudar un cierre que quedó a medias)")
+             f"(o 'en_validacion'/'mergeada', para reanudar un cierre que quedó a medias)")
         return 1
 
     print(f"== Cerrando {nombre} ({fm.get('tipo')}) ==\n")
@@ -810,13 +910,11 @@ def cmd_cerrar(args):
     problemas = []
 
     # --- Puerta 1: el usuario ha probado la app y ha dado su OK -----------------------------
+    # No entra en `problemas` a propósito (ADR-010): es lo único de esta lista que no depende
+    # del agente. Si TODO lo demás está en verde y solo falta esto, la unidad no se queda
+    # bloqueada ocupando cupo: pasa a `en_validacion` y libera el sitio.
     ok_usuario = fecha_ok(args.ok_usuario)
-    if not ok_usuario:
-        problemas.append(
-            f"--ok-usuario '{args.ok_usuario}' no es una fecha válida de hoy o anterior. Es el "
-            f"hard-gate del método: el usuario prueba la app CORRIENDO y su OK se escribe con "
-            f"la fecha del día en que lo dio (hoy: {HOY})")
-    else:
+    if ok_usuario:
         ok(f"OK del usuario sobre la app corriendo: {ok_usuario}")
 
     # --- Puerta 2: la revisión fresca existe y dice algo -------------------------------------
@@ -884,6 +982,28 @@ def cmd_cerrar(args):
             err(f"       · {p}")
         err("\n  El cierre es indivisible: se arregla lo de arriba y se vuelve a ejecutar.")
         return 1
+
+    # --- Cierre parcial: todo hecho salvo lo que solo puede hacer el usuario ------------------
+    if not ok_usuario:
+        if estado != "en_validacion":
+            texto = ruta.read_text(encoding="utf-8")
+            texto = re.sub(r"^estado:\s*\S+", "estado: en_validacion", texto, count=1, flags=re.M)
+            texto = re.sub(r"^actualizado:\s*\S+", f"actualizado: {HOY}", texto, count=1,
+                           flags=re.M)
+            ruta.write_text(texto, encoding="utf-8")
+            ok(f"{rel(ruta)}: estado → en_validacion")
+        else:
+            ok(f"{nombre} ya estaba en_validacion: sigue esperando al usuario")
+        print(f"\n  CIERRE A MEDIAS, Y ES LO CORRECTO. Todo lo que depende de un agente está\n"
+              f"  hecho y comprobado; falta lo único que no puede hacer: que el usuario pruebe\n"
+              f"  la aplicación CORRIENDO y diga que sí.\n\n"
+              f"  · La unidad DEJA de contar para el tope de trabajo en vuelo: puedes despachar\n"
+              f"    otra sin tocar el tope ni inventarte un ADR.\n"
+              f"  · No está cerrada: no se archiva, no se borra el worktree ni la rama, y el\n"
+              f"    linter la enseñará en cada arranque hasta que se termine.\n"
+              f"  · Cuando el usuario dé el OK, con la fecha del día en que lo dio:\n"
+              f"        python {rel(__file__)} cerrar {nombre} --ok-usuario {HOY}")
+        return 0
 
     # --- Aviso (no bloquea): la cosecha de hallazgos ------------------------------------------
     pendientes = sin_cosechar(texto_hallazgos)
@@ -994,6 +1114,11 @@ def cmd_estado(_args):
     else:
         warn(f"{len(activas)} unidades en vuelo: {', '.join(activas)} "
              f"(default 1; en paralelo jamás comparten ficheros)")
+    esperando = sorted(n for n, u in unidades.items()
+                       if u["fm"].get("estado") == "en_validacion")
+    if esperando:
+        warn(f"{len(esperando)} unidad(es) esperando a que el usuario pruebe la app: "
+             f"{', '.join(esperando)} — no cuentan para el tope, pero tampoco están cerradas")
     for huerfano in sorted(set(wt) - set(unidades)):
         fail(f"worktree sin unidad: worktrees/{huerfano} (¿cierre a medias?)")
     requieren_wt = [
@@ -1056,8 +1181,10 @@ def main():
                                 "pasos mecánicos del ritual")
     p_cer.add_argument("unidad", help="nombre completo NNN-slug")
     p_cer.add_argument("--ok-usuario", default="", metavar="YYYY-MM-DD",
-                       help="OBLIGATORIO: fecha en que el usuario probó la app corriendo y dio "
-                            "su OK. La pone el usuario, igual que 'aprobado:' al despachar")
+                       help="fecha en que el usuario probó la app corriendo y dio su OK. La "
+                            "pone el usuario, igual que 'aprobado:' al despachar. Sin ella, si "
+                            "todo lo demás está en verde, la unidad pasa a 'en_validacion': "
+                            "deja de contar para el tope pero NO queda cerrada")
     p_cer.set_defaults(func=cmd_cerrar)
 
     p_est = sub.add_parser("estado", help="resumen: unidades, bugs, worktrees y su coherencia")

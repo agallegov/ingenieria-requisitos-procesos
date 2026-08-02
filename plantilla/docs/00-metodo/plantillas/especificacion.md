@@ -6,9 +6,11 @@ estado: planificada
 aprobado: no             # LO PONE EL USUARIO, jamás el agente: `no` | fecha YYYY-MM-DD del día
                          # que aprueba el contrato. Sin fecha, `unidad.py despachar` bloquea.
 actividad: <id del INDICE de flujos>
-ficheros: []             # rutas del repo de código que esta unidad POSEE. Dos unidades
-                         # paralelas jamás comparten ficheros. Los hotspots (migraciones,
-                         # rutas, modelos/tipos compartidos, lockfiles) son SIEMPRE secuenciales.
+ficheros: []             # rutas del repo de código que esta unidad POSEE (lista en línea o
+                         # multilínea). Dos unidades paralelas jamás comparten ficheros y el
+                         # despacho lo BLOQUEA, así que con trabajo en vuelo es obligatoria.
+                         # Los hotspots (migraciones, rutas, modelos compartidos, manifiestos,
+                         # lockfiles) son SIEMPRE secuenciales.
 actualizado: YYYY-MM-DD
 ---
 
@@ -86,6 +88,10 @@ Rutas desde el worktree.>
 - Escribes SOLO en tu worktree. La documentación se lee, jamás se toca. Dos excepciones:
   `../../docs/05-trabajo/NNN-slug/hallazgos.md` y marcar las casillas `[x]` del Plan de
   trabajo de esta especificación.
+- **Esas dos excepciones están en el META-repo, otro repositorio, y ahí no haces git jamás**:
+  ni `add`, ni `commit`, ni `push`. Escribes el fichero y ya. Tu `git` es el de tu worktree.
+- Lo que no está en `ficheros:` no se edita, aunque tu cambio lo necesite (manifiestos y
+  config compartida): propones el cambio exacto en `hallazgos.md` y lo aplica el padre.
 - Si tu trabajo va a contradecir este contrato o el mapa → **PARA y devuelve la tarea**.
 - **No mergeas tú. Tu trabajo termina en el pull request abierto** (o en la rama parada, si
   no hay `gh`). El merge, la suite
@@ -99,7 +105,10 @@ Rutas desde el worktree.>
 ## Definición de hecho (no negociable)
 
 1. Todos los R* en verde (tests intactos desde que se escribieron).
-2. Suite completa + lint + typecheck en verde.
+2. Suite completa + lint + typecheck en verde. Si el criterio es "no empeorar", la línea base
+   se mide contra la rama principal EN ESE MOMENTO, nunca de una foto guardada (main avanza
+   mientras trabajas). Y si nunca se ha medido, se mide la primera vez que se exija: una
+   casilla que nadie ha podido cumplir jamás no es un criterio.
 3. Evidencia pegada en `hallazgos.md` (output real, capturas si hay UI).
 4. `hallazgos.md` relleno (aunque sea "sin hallazgos").
 5. Pull request abierto (título con `NNN-slug`) —o, sin `gh`, la rama con todo commiteado— y

@@ -89,6 +89,7 @@ DECISIONES = (
     "007-planos-canonicos-y-limites.md",
     "008-entrevistas-de-arranque-de-roles-operativos.md",
     "009-cierre-scriptado-y-entorno-comprobado.md",
+    "010-estado-en-validacion-y-guardianes-que-miran.md",
 )
 METODO_RAIZ = (
     "README.md", "roles.md", "auditoria-calidad.md", "auditoria-metodo.md",

@@ -63,13 +63,15 @@ y trabajado en `worktrees/` (una copia por unidad de trabajo). Ambos ignorados p
    que el worktree, y bloquea el despacho si la spec sigue vacía o si ya hay trabajo en
    vuelo. `--force` (solo hotfix) salta la puerta dejando la deuda escrita.
 5. **Trabajo en vuelo: UNA unidad por defecto.** Paralelo solo para unidades que no comparten
-   ningún fichero (declarado en cada especificación), tope 2-3.
+   ningún fichero (`ficheros:`, que el script exige y cruza), tope 2-3. Las `en_validacion` no
+   cuentan.
 6. **Búsquedas de código: dentro de `main/` o de tu worktree.** Desde la raíz no verás código
    (el gitignore lo oculta a las herramientas de búsqueda); eso es intencional.
 7. **Merge y cierre son indivisibles.** Cerrar CUALQUIER unidad = verificar con evidencia →
    revisar (agente fresco, diff contra especificación) → merge → **suite end-to-end completa
    sobre main** → **lanzar una instancia de la app y que el usuario la pruebe** (sin su OK no
-   hay cierre) → aplicar los deltas declarados al mapa → promover hallazgos/decisiones →
+   hay cierre; si aún no lo ha dado, `cerrar` sin `--ok-usuario` deja `en_validacion` y libera
+   cupo) → aplicar los deltas declarados al mapa → promover hallazgos/decisiones →
    actualizar `ESTADO.md` e `INDICE.md` → mover la unidad a `archivo/` → borrar worktree y
    rama. No existe "mergeado pero sin cerrar". El ritual completo, sus dos caminos (con `gh`
    y sin él) y la frontera del revisor: `runbooks/cierre.md`; los pasos mecánicos los hace
@@ -89,7 +91,9 @@ y trabajado en `worktrees/` (una copia por unidad de trabajo). Ambos ignorados p
 11. **Fuentes en investigación:** doc oficial > más reciente; toda afirmación con fuente y
     fecha. Sin fuente = se declara como opinión.
 12. **Evidencia, no afirmación.** Nada se da por hecho sin el output del check que lo
-    demuestra (tests, capturas). "Hecho" sin evidencia no es hecho.
+    demuestra (tests, capturas). "Hecho" sin evidencia no es hecho. Las líneas base se miden
+    al vuelo, no de una foto; un fallo repetido no se normaliza; lo que solo se ve mirando, se
+    mira.
 13. **El método también se lintea.** Al arrancar sesión del padre y como último paso de todo
     cierre: `python docs/00-metodo/scripts/lint_metodo.py`. Un FAIL se arregla antes de
     seguir; la estructura solo cambia con ADR.
@@ -109,6 +113,7 @@ y trabajado en `worktrees/` (una copia por unidad de trabajo). Ambos ignorados p
 - **Fusionar main NO despliega.**
 - **Nunca mostrar secretos ni PII.** Viven en `.private/` (referencia por ruta, jamás copia);
   lo generado (logs, capturas, dumps), en `.runtime/`. Ambos fuera de git.
+- **Escribir sobre material del usuario se anuncia y se deja escrito** (su instancia, sus datos).
 - **Antes de afirmar que algo funciona, ejecutar la verificación que lo demuestra.**
 
 ## Autoridad de la información (qué fuente manda en conflicto)

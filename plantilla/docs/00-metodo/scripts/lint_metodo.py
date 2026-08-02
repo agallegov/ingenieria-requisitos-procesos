@@ -39,7 +39,8 @@ def fail(msg):
     print(f"  FAIL {msg}")
 
 
-ESTADOS_UNIDAD = {"planificada", "en_obra", "en_revision", "mergeada", "bloqueada", "descartada"}
+ESTADOS_UNIDAD = {"planificada", "en_obra", "en_revision", "en_validacion", "mergeada",
+                  "bloqueada", "descartada"}
 TIPOS = {"bug", "feature", "refactor", "migracion", "auditoria", "investigacion", "documentacion"}
 CARRILES = {"normal", "completo"}
 DOCS_PERMITIDOS = {"00-metodo", "01-constitucion", "02-flujos", "03-investigacion",
@@ -186,7 +187,14 @@ def git(repo, *args):
 
 
 def frontmatter(path):
-    """Parseo mínimo del frontmatter YAML (clave: valor). Devuelve dict o None."""
+    """Parseo mínimo del frontmatter YAML (clave: valor). Devuelve dict o None.
+
+    Admite lista en línea (`ficheros: [a, b]`) y lista multilínea (`ficheros:` y debajo
+    `  - a`), que es como se escribe cuando son más de dos rutas. Antes solo se leía la
+    primera línea, así que una lista multilínea quedaba en cadena vacía y la comprobación
+    de ficheros disjuntos de la sección 4b comparaba conjuntos vacíos: pasaba siempre.
+    Misma implementación que en unidad.py, a propósito: si uno lo acepta, el otro también.
+    """
     try:
         lineas = path.read_text(encoding="utf-8").splitlines()
     except OSError:
@@ -194,12 +202,29 @@ def frontmatter(path):
     if not lineas or lineas[0].strip() != "---":
         return None
     datos = {}
+    clave_abierta, items = None, []
+
+    def cerrar_lista():
+        nonlocal clave_abierta, items
+        if clave_abierta and items:
+            datos[clave_abierta] = ", ".join(items)
+        clave_abierta, items = None, []
+
     for linea in lineas[1:]:
         if linea.strip() == "---":
+            cerrar_lista()
             return datos
         m = re.match(r"^(\w+):\s*(.*)$", linea)
         if m:
-            datos[m.group(1)] = m.group(2).split("#")[0].strip()
+            cerrar_lista()
+            valor = m.group(2).split("#")[0].strip()
+            datos[m.group(1)] = valor
+            if not valor:
+                clave_abierta = m.group(1)
+            continue
+        item = re.match(r"^\s+-\s*(.+)$", linea)
+        if item and clave_abierta:
+            items.append(item.group(1).split("#")[0].strip().strip("'\""))
     return None
 
 
@@ -354,7 +379,17 @@ elif len(activas) > 1:
 
 
 def ficheros_de(fm):
-    return {f.strip() for f in fm.get("ficheros", "").strip("[]").split(",") if f.strip()}
+    crudos = (fm.get("ficheros") or "").strip("[]").split(",")
+    return {f.strip().strip("'\"") for f in crudos if f.strip().strip("'\"")}
+
+
+# Esperando al usuario: ni en vuelo ni cerradas (ADR-010). Se dicen en CADA arranque, porque
+# una unidad que espera a una persona es justo la que se olvida.
+esperando = sorted(n for n, fm in unidades.items() if fm.get("estado") == "en_validacion")
+if esperando:
+    warn(f"{len(esperando)} unidad(es) en_validacion (fusionadas, esperando a que el usuario "
+         f"pruebe la app): {esperando} — termínalas con `unidad.py cerrar NNN-slug "
+         f"--ok-usuario FECHA` en cuanto dé el OK")
 
 
 nombres_activas = sorted(activas)
@@ -494,6 +529,29 @@ for etiqueta, carpeta in ([("main", RAIZ / "main")]
                  f"dentro de la imagen")
         else:
             ok(f"{etiqueta}/: Dockerfile con .dockerignore que excluye el .env")
+
+# --- 7b. Git sabe quién eres, y este repo tiene historia ---
+# El bootstrap avisa una vez si no pudo cerrar el commit inicial (falta identidad de git en la
+# máquina) y ese aviso se pierde entre veinte líneas de salida. Después, durante días, todo
+# parece normal: los commits fallan en silencio, cada uno en su comando, hasta que alguien va
+# a hacer push y se estrella. Un aviso de una vez no es una comprobación; esto sí, y se repite
+# en cada arranque de sesión hasta que se arregla.
+if git(RAIZ, "rev-parse", "--is-inside-work-tree")[0] == 0:
+    identidad = [c for c in ("user.name", "user.email")
+                 if not git(RAIZ, "config", "--get", c)[1].strip()]
+    if identidad:
+        fail(f"git no tiene {' ni '.join(identidad)} en esta máquina: ningún commit puede "
+             f"completarse y cada intento falla por su cuenta, en silencio. Arréglalo antes "
+             f'de trabajar: git config --global user.name "Tu Nombre" · '
+             f'git config --global user.email "tu@correo"')
+    else:
+        ok("git tiene identidad configurada (user.name y user.email)")
+    if git(RAIZ, "rev-parse", "--verify", "--quiet", "HEAD")[0] != 0:
+        fail("el meta-repo no tiene NI UN commit: el bootstrap no pudo cerrar el inicial y "
+             "todo lo escrito desde entonces —planos, decisiones, unidades— vive sin respaldo "
+             "de git. Configura la identidad y haz el commit inicial antes de seguir")
+    else:
+        ok("el meta-repo tiene historia (al menos un commit)")
 
 # --- 8. ¿Existe este proyecto en algún sitio más que este disco? ---
 # Un workspace sin remoto es un proyecto entero —planos, código e historial— viviendo en un
