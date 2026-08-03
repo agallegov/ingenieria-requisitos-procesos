@@ -79,4 +79,9 @@ principal integra y responde por el mapa final.
 5. **El entorno local se DESCUBRE, no se decide.** En un proyecto de cero el entorno de
    ejecución y testing se decide en la fase 4; aquí ya existe: sale de los pasos 2-3 y se
    documenta tal cual en `SINTESIS.md`. Solo si está roto o falta se abre decisión con el
-   usuario (y entonces sí, por `planificacion.md`).
+   usuario (y entonces sí, por `planificacion.md`). **Cuando no hay entorno NINGUNO** —ni
+   fichero de dependencias, ni contenedor, ni README de arranque—, no se reconstruye la
+   infraestructura que el código insinúa: se le pregunta («¿lo va a usar más gente a la vez, o
+   lo corres tú en tu máquina?») y el punto de partida por defecto es lo mínimo que arranque
+   en la máquina que ya usa. Los servicios que el código nombre (bases de datos, índices,
+   colas) se comprueban PRIMERO en esa máquina: si ya están, se usan tal cual.

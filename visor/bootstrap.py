@@ -62,6 +62,10 @@ ESTADOS = {
 # receta completa; los demás tipos viajan con el bias genérico (la fase 3 decide el
 # stack con investigación + ADR). Cuando un tipo gane su receta, se añade su fichero
 # en plantilla/bias/ y se apunta aquí.
+# El defecto es NEUTRO a propósito: si nadie dice el tipo, no se presupone web. Un proceso
+# por lotes que naciera clasificado como `webapp` arrastraría Django + PostgreSQL + Compose
+# a su bias, y la fase 3 investiga con el bias delante (runbooks/investigacion.md, paso 2):
+# el defecto equivocado no se corrige después, envenena toda la investigación.
 BIAS_POR_TIPO = {
     "webapp": "webapp.md",          # aplicación web de gestión (la receta completa)
     "automatizacion": "generico.md",  # pipelines, informes, procesos por lotes
@@ -93,6 +97,8 @@ DECISIONES = (
     "009-cierre-scriptado-y-entorno-comprobado.md",
     "010-estado-en-validacion-y-guardianes-que-miran.md",
     "011-salida-del-trabajo-probada-y-deploy-sin-stack.md",
+    "012-entorno-minimo-por-defecto-y-tipo-no-presupuesto.md",
+    "013-se-escribe-segun-se-hace.md",
 )
 METODO_RAIZ = (
     "README.md", "roles.md", "auditoria-calidad.md", "auditoria-metodo.md",
@@ -213,6 +219,90 @@ def generar_readme(titulo, frase, url_meta, carpeta):
             .replace("{{CITA}}", f"> {frase}\n\n" if frase else "")
             .replace("{{URL_META}}", url_meta or "<url-del-meta-repo>")
             .replace("{{CARPETA}}", carpeta))
+
+
+# Los dos planos operativos (ADR-008) gobiernan los roles OBSERVABILIDAD y DEPLOY con un
+# hard-gate, y hasta ahora simplemente NO EXISTÍAN al nacer el workspace: el agente se
+# encontraba una puerta cerrada sin nada escrito al lado, y el usuario un fichero fantasma.
+# Nacen, pues, como el hueco que se explica a sí mismo: quién lo llena, con qué preguntas y
+# que se sobrescribe entero. No es relleno —no simula ninguna decisión y los gates lo siguen
+# viendo en rojo, que es lo correcto— y por eso no cae en lo que prohíbe el ROADMAP de relleno.
+PLANOS_OPERATIVOS = {
+    "deploy": {
+        "gate": "el rol DEPLOY no toca ninguna máquina",
+        "preguntas": [
+            "¿Dónde corre esto hoy, y dónde debería correr? (tu ordenador, un equipo de la "
+            "oficina, internet)",
+            "¿Qué etapas hay? (¿existe un sitio donde probar antes de que lo usen los demás, "
+            "o solo hay uno y es el bueno?)",
+            "¿Cómo se despliega ahora? (qué haces exactamente para que un cambio llegue a la "
+            "gente)",
+            "¿Hay copia de seguridad, dónde está, y se ha restaurado alguna vez de verdad?",
+            "¿Quién da el OK antes de que algo llegue a producción? (nombre de persona)",
+            "¿Qué pasa si hay que volver atrás? (cómo se deshace y cuánto se tarda)",
+        ],
+        "nota": "Si el usuario no ha desplegado NUNCA nada, estas preguntas no tienen "
+                "respuesta y no se le puede pedir que decida a ciegas: se empieza por "
+                "`docs/00-metodo/runbooks/primer-despliegue.md`, que pregunta por su negocio "
+                "y deduce lo técnico.",
+        "mientras": "`docs/00-metodo/scripts/lint_deploy.py` seguirá en rojo, y hace bien: "
+                    "nadie ha decidido todavía cómo se despliega esto",
+    },
+    "observabilidad": {
+        "gate": "el rol OBSERVABILIDAD no mira nada y no informa de nada",
+        "preguntas": [
+            "¿Qué se vigila hoy, y con qué? (¿hay algo que avise si la aplicación se cae?)",
+            "¿Dónde están los logs? (si algo falla, ¿dónde se mira?)",
+            "¿Dónde se ven los errores? (¿alguien se entera cuando un usuario ve una pantalla "
+            "rota?)",
+            "¿Qué significa para ti que «va bien»? (qué tiene que funcionar sí o sí, y a qué "
+            "hora del día importa más)",
+            "¿A quién se avisa cuando algo se rompe, y cómo? (persona, canal, y si es de noche)",
+            "¿En qué etapa está el proyecto: local, red local (LAN) o internet (VPS)?",
+        ],
+        "nota": "Lo que el usuario no sepa pero exista, el rol lo DERIVA con evidencia y se lo "
+                "confirma. Lo que NO exista no lo construye: es un hallazgo, y va a la sección "
+                "«Lo que NO existe todavía» del plano.",
+        "mientras": "cualquier informe de estado sería una opinión: sin saber qué se vigila y "
+                    "qué significa «va bien» para el usuario, no hay nada contra lo que "
+                    "comparar",
+    },
+}
+
+
+def generar_plano_pendiente(rol):
+    """docs/conocimiento/plano-<rol>.md: el hueco que dice cómo se llena (ADR-008)."""
+    ficha = PLANOS_OPERATIVOS[rol]
+    preguntas = "\n".join(f"   {i}. {p}" for i, p in enumerate(ficha["preguntas"], 1))
+    return f"""---
+rol: {rol}
+actualizado: PENDIENTE
+---
+
+# Plano operativo · {rol.upper()} — SIN ENTREVISTAR
+
+> **Este fichero está vacío a propósito y no se rellena de memoria ni "a ojo".** Es la salida
+> escrita de la entrevista de arranque del rol (ADR-008), y mientras siga así:
+> `<HARD-GATE>` **{ficha['gate']}**.
+
+## Cómo se llena (una vez, y ya)
+
+1. Sesión nueva con el rol {rol.upper()}. Un rol = una sesión: no se mezcla con la de
+   construir.
+2. Preguntar al usuario, en su idioma y **una por una** (ficha del rol en
+   `docs/00-metodo/roles.md`):
+
+{preguntas}
+
+3. **Sobrescribir este fichero ENTERO** desde
+   `docs/00-metodo/plantillas/plano-operativo.md` (`rol: {rol}`), con las respuestas en
+   palabras del usuario. De este texto no se conserva nada: no es una plantilla que rellenar
+   hueco a hueco, es un cartel de "aquí todavía no hay nada".
+
+{ficha['nota']}
+
+Mientras tanto, {ficha['mientras']}.
+"""
 
 
 def generar_indice_bugs():
@@ -600,8 +690,10 @@ def main():
     ap.add_argument("--planos", required=True,
                     help="carpeta del proyecto de la entrevista (contiene planos.json)")
     ap.add_argument("--destino", required=True, help="carpeta nueva del workspace (no debe existir)")
-    ap.add_argument("--tipo", choices=sorted(BIAS_POR_TIPO), default="webapp",
-                    help="tipo de proyecto (decide el bias tecnológico que viaja; defecto: webapp)")
+    ap.add_argument("--tipo", choices=sorted(BIAS_POR_TIPO), default="otro",
+                    help="tipo de proyecto (decide el bias tecnológico que viaja). Sin --tipo "
+                         "viaja el bias NEUTRO y el stack lo decide la fase 3 con "
+                         "investigación y ADR: nunca se presupone que esto es una web")
     ap.add_argument("--remoto", help="URL del repo de código (existente o vacío)")
     ap.add_argument("--remoto-meta", help="URL del repo del meta (vacío)")
     ap.add_argument("--github", metavar="CUENTA",
@@ -681,9 +773,15 @@ def main():
     shutil.copyfile(constitucion, docs / "01-constitucion" / "manifiesto.md")
     shutil.copyfile(PLANTILLA / "bias" / fichero_bias,
                     docs / "01-constitucion" / "bias.md")
-    for vacio in ("03-investigacion", "conocimiento", "decisiones"):
+    for vacio in ("03-investigacion", "decisiones"):
         (docs / vacio).mkdir()
         (docs / vacio / ".gitkeep").write_text("")
+    # conocimiento/ ya no nace del todo vacía: los dos planos operativos nacen como el hueco
+    # que explica quién lo llena y con qué preguntas (ver PLANOS_OPERATIVOS).
+    (docs / "conocimiento").mkdir()
+    for rol in PLANOS_OPERATIVOS:
+        (docs / "conocimiento" / f"plano-{rol}.md").write_text(
+            generar_plano_pendiente(rol), encoding="utf-8")
     # docs/bugs/: parte del árbol congelado que el linter EXIGE (ADR-006). Un bug es un
     # fichero vivo NNN-slug.md aquí, y su índice nace vacío.
     (docs / "bugs").mkdir()

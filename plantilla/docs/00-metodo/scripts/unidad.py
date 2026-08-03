@@ -1038,7 +1038,9 @@ def cmd_cerrar(args):
                 problemas.append(
                     f"{rel(hallazgos)}: falta 'revisor:' y/o 'revisado: YYYY-MM-DD' en su "
                     f"cabecera — es lo que distingue una revisión de verdad de un constructor "
-                    f"que se puso un sello a sí mismo")
+                    f"que se puso un sello a sí mismo. Si la revisión ocurrió pero nadie firmó, "
+                    f"NO rellenes la cabecera de memoria: eso es inventarse la firma. Se vuelve "
+                    f"a revisar con un agente fresco")
             else:
                 ok(f"revisado por {revisor} el {revisado}")
 

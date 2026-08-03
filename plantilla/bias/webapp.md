@@ -79,16 +79,19 @@ El método no obliga a llegar a la etapa 2: hay negocios que viven perfectamente
 
 **El entorno local de desarrollo, en dos peldaños (para que NINGÚN PC quede fuera):**
 
-- **Peldaño Compose (el normal):** el esqueleto andante genera el `docker-compose.yml` del
-  proyecto — Django + PostgreSQL (y Celery + Redis SOLO cuando el proyecto tenga tareas en
-  segundo plano; antes, no existen). La app corre en contenedores y se prueba en el
-  navegador local; los e2e de Playwright atacan ese servidor. Pide un PC razonable
-  (~8 GB RAM, o Linux donde Docker es casi gratis).
-- **Peldaño mínimo (PC flojo o sin Docker):** Django no necesita Docker para desarrollar —
-  venv + `manage.py runserver` + **SQLite** (el default de Django) corren en cualquier
-  máquina de los últimos 15 años. Mismo código, misma app en el navegador. El paso
+- **Peldaño mínimo (el punto de partida por defecto):** Django no necesita Docker para
+  desarrollar — venv + `manage.py runserver` + **SQLite** (el default de Django) corren en
+  cualquier máquina de los últimos 15 años. Mismo código, misma app en el navegador. El paso
   SQLite→Postgres es una unidad de migración pequeña cuando el proyecto o el PC lo permitan
   (el ORM aísla casi todo; se hace ANTES de la etapa 1).
+- **Peldaño Compose (cuando lo use más gente a la vez o corra fuera de tu máquina):** el
+  esqueleto andante genera el `docker-compose.yml` del proyecto — Django + PostgreSQL (y
+  Celery + Redis SOLO cuando el proyecto tenga tareas en segundo plano; antes, no existen).
+  La app corre en contenedores y se prueba en el navegador local; los e2e de Playwright
+  atacan ese servidor. Pide un PC razonable (~8 GB RAM, o Linux donde Docker es casi gratis).
+
+Cuál de los dos toca no lo decide el agente: sale de la respuesta del usuario a **«¿esto lo va
+a usar más gente a la vez, o lo corres tú en tu máquina?»**.
 **Higiene obligatoria del esqueleto andante** (lo genera la primera unidad; el linter del
 método comprueba la primera y el revisor fresco las otras dos):
 

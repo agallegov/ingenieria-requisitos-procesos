@@ -32,14 +32,25 @@ Sin esta excepción escrita, el método obligaba a improvisar justo en el paso m
 
 ## El ritual (indivisible: no existe "fusionado pero sin cerrar")
 
+**Se escribe según se hace.** Cada paso se marca en la §Bitácora del cierre de `hallazgos.md`
+NADA MÁS terminarlo, con fecha y con quién lo hizo. Indivisible no significa que la sesión no
+se pueda morir a mitad: significa que si se muere, la siguiente lo retoma leyendo esas
+casillas — lo marcado no se repite, lo no marcado no se da por hecho— en vez de deducir de
+`git log` qué pasó. Lo que solo está en el contexto de la sesión, está perdido.
+
 1. **Verificar con evidencia.** El output real de los checks pegado en `hallazgos.md`
    (o en la ficha, si es un bug). "Hecho" sin output no es hecho.
 2. **Revisor fresco.** Sesión o subagente NUEVO, solo lectura, con el diff y la
    especificación delante: cada criterio implementado, casos límite con test, nada fuera de
    los ficheros declarados, los tests no tocados después de crearse, y ningún módulo
    duplicado de lo que ya existía. Su veredicto va a la sección **Revisión** de
-   `hallazgos.md`, y su nombre y la fecha al frontmatter (`revisor:`, `revisado:`).
+   `hallazgos.md`, y su nombre y la fecha al frontmatter (`revisor:`, `revisado:`) **en la
+   misma escritura que el veredicto** — es el único que sabe quién es; el despacho del revisor
+   se lo pide con esas palabras.
    `<HARD-GATE>` **El revisor no puede ser quien construyó.**
+   `<HARD-GATE>` **Una firma que falta no se rellena después.** Si al cerrar `revisor:` sigue
+   vacío, ya nadie puede saber quién revisó: se vuelve a revisar con un agente fresco. El padre
+   escribiendo un nombre plausible es justo el auto-sello que este campo existe para impedir.
 
    **Frontera del revisor (regla, no preferencia).** Devuelven el trabajo al constructor, y
    solo ellos: los incumplimientos del contrato de ESTA unidad, los fallos de seguridad y
@@ -104,3 +115,5 @@ Sin esta excepción escrita, el método obligaba a improvisar justo en el paso m
 - Sin revisor distinto del constructor, no hay cierre.
 - Nada sin guardar en el worktree: es lo único del método que no respalda nadie.
 - Nada se cierra sin estar fusionado en la rama principal.
+- Sin un resumen que el usuario entienda, no hay cierre: si para pedirle el OK hay que
+  explicarle el método, el mensaje está mal escrito (`AGENTS.md` §Cómo se le informa).

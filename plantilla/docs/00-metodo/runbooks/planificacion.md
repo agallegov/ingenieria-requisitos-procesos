@@ -24,11 +24,20 @@ construcción con el esqueleto andante primero.
    integraciones, dónde corre): una opción recomendada y sus alternativas, con pros y
    contras EN CRISTIANO — cero jerga técnica; si un término técnico es inevitable, se
    explica en una frase. Entre las decisiones SIEMPRE está el **entorno de ejecución y
-   testing local**: ¿Docker/compose o directo sin Docker (venv/node)? Criterio: Docker
-   cuando hay varios servicios (BD, colas, workers) o cuando importa el aislamiento por
-   rama/worktree; directo cuando es un script o automatización simple donde Docker solo
-   añade fricción. La complejidad de terminal NO es argumento en contra (la maneja un
-   agente).
+   testing local**, y esa se decide PREGUNTANDO al usuario antes de mirar el código, con
+   estas palabras: **«¿esto lo va a usar más gente a la vez, o lo corres tú en tu máquina?»**
+   y **«¿la máquina donde corre es la que ya usas?»**.
+   - Si lo corre él en su máquina: **por defecto, lo mínimo que arranque** — entorno nativo
+     (venv o equivalente) y los servicios que esa máquina YA tenga instalados.
+   - Docker/compose se PROPONE, con su porqué escrito, cuando lo vaya a usar más de una
+     persona a la vez, cuando corra en una máquina que no es la suya, o cuando el usuario
+     pida aislamiento.
+
+   Que el código nombre varios servicios (BD, colas, índices) no decide por sí solo: un
+   Postgres ya instalado en esa máquina vale igual. **La complejidad de manejo no es argumento
+   ni a favor ni en contra: los comandos los ejecuta un agente y al usuario no le llegan.** Lo
+   que sí le llega es lo que queda encendido en su máquina cuando el agente se va, y eso es lo
+   que se pesa.
 
    **Antes de proponer NADA, mirar qué ya existe.** `<HARD-GATE>` Buscar en el código
    (`main/`) si YA hay un módulo o componente que haga eso o algo parecido: **no se duplica
@@ -36,6 +45,11 @@ construcción con el esqueleto andante primero.
    ese módulo si hace falta), JAMÁS levantando un sistema paralelo; solo se propone módulo
    nuevo cuando ninguno existente es su sitio, y se dice a qué capa pertenece. Lo encontrado
    —módulos que se tocan y por qué no se duplica— se escribe en el ROADMAP.
+
+   **Si la decisión toca dónde corre esto para OTROS**, se hace primero la pregunta de
+   `runbooks/primer-despliegue.md` §1 —«¿quién tiene que poder usar esto?»— y su respuesta se
+   anota en el ROADMAP. Es la misma pregunta y con las mismas palabras: no se reformula en
+   jerga, no se deduce del código y no la contesta el agente por él.
 
    **Principios innegociables del diseño** (mandan al trocear en unidades y al decidir la
    arquitectura; cada unidad los vuelve a aplicar en su fase 5, `runbooks/feature.md`):
@@ -67,7 +81,10 @@ construcción con el esqueleto andante primero.
 - **Cero overengineering:** lo más sencillo que cumpla, rápido de implementar y que aguante
   en el tiempo.
 - **Sin SaaS. Tecnología libre y ecosistemas abiertos SIEMPRE** (máximas libertades).
-- **Destino por defecto: un VPS propio** (self-hosted).
+- **Destino por defecto: un VPS propio o una máquina de la red del usuario** (self-hosted
+  siempre, nunca nube ajena). Puede quedarse en su máquina local si con eso le vale: quién
+  tiene que poder usarlo lo dice él (`runbooks/primer-despliegue.md` §1), no lo supone el
+  método. Lo que no se hace es dar por hecho que hace falta un servidor.
 
 ## Reglas fijas
 

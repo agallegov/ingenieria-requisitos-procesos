@@ -18,6 +18,12 @@ fechadas y su nivel. Una investigación que no deja documento no existió.
    `01-constitucion/bias.md` (perfil del usuario, tecnologías preferidas, filosofía:
    sin SaaS, stack preferido salvo que el proyecto pida otra cosa) y los flujos de
    `02-flujos/`. El encargo = qué es este proyecto + qué acota el bias.
+
+   **Lo primero que responde esta fase es QUÉ ES esto** —aplicación web, cadena de procesado
+   de datos, automatización, agente…— **y dónde va a correr**. No se presupone. Si el bias que
+   viajó es el genérico, es que nadie lo ha decidido todavía: no se rellena con "lo de
+   siempre", se decide aquí, con la investigación delante y preguntándole al usuario a quién
+   sirve y en qué máquina («¿lo va a usar más gente a la vez, o lo corres tú en la tuya?»).
 2. **Diseñar los enfoques: 10 subagentes investigadores**, cada uno con un objetivo
    y una estrategia de búsqueda DISTINTOS. **El encargo de CADA investigador lleva el bias
    delante** (`01-constitucion/bias.md`): sin él busca en el vacío. (Único caso con otro

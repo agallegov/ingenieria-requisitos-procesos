@@ -1,7 +1,10 @@
 ---
 unidad: NNN-slug
-revisor: no              # LO ESCRIBE EL PADRE en el cierre: quién hizo la revisión fresca
-                         # (sesión/subagente nuevo). El constructor jamás se pone aquí.
+revisor: no              # LO ESCRIBE EL REVISOR, en la MISMA escritura que su veredicto: quién
+                         # revisó (persona con nombre, o agente fresco con su sesión y fecha).
+                         # Nadie más puede saberlo después. El constructor jamás se pone aquí, y
+                         # el padre NO lo rellena en el cierre: si llega vacío, la firma se
+                         # perdió y toca volver a revisar (`runbooks/cierre.md`, paso 2).
 revisado: no             # `no` | fecha YYYY-MM-DD de esa revisión. `unidad.py cerrar` la exige.
 ---
 
@@ -53,11 +56,13 @@ que se puso un sello a sí mismo.>
 
 - —
 
-## Revisión (la rellena el padre en el cierre)
+## Revisión (la rellena EL REVISOR, en el momento de revisar)
 
 <Paso 2 del ritual de cierre: veredicto del revisor fresco (sesión/subagente nuevo, solo
-lectura) sobre el diff contra la especificación. El constructor NO escribe aquí; su nombre y
-la fecha van al frontmatter (`revisor:`, `revisado:`) y sin ellos `unidad.py cerrar` bloquea.>
+lectura) sobre el diff contra la especificación. Lo escribe él, de una sentada y antes de
+soltar la tarea: su veredicto aquí y su nombre y la fecha en el frontmatter (`revisor:`,
+`revisado:`), que es lo que `unidad.py cerrar` exige. Ni el constructor ni el padre escriben
+en esta sección: el padre solo la lee. Una revisión sin firma no se firma después — se repite.>
 
 - **Veredicto:** LIMPIO | HUECOS DE CORRECCIÓN
 - **Huecos** (si los hay; cada uno vuelve al constructor antes del merge):
@@ -70,3 +75,17 @@ incumplimientos del contrato de ESTA unidad, los fallos de seguridad y la pérdi
 Un riesgo de un flujo futuro, una mejora o un "esto convendría prepararlo para cuando…" NO
 reabre la unidad: se anota arriba como trabajo descubierto y sigue su camino. Solo un fallo
 crítico permite una segunda ronda.>
+
+## Bitácora del cierre (se marca AL TERMINAR CADA PASO, nunca al final)
+
+<Si la sesión que cierra se corta a la mitad, esto es lo único que sabrá la siguiente: lo
+marcado está hecho y no se repite; lo NO marcado no se da por hecho aunque el git lo insinúe.
+Cada línea lleva su fecha y, si lo hizo otro (revisor, usuario, script), quién.>
+
+- [ ] 1 · Evidencia de verificación pegada arriba — —
+- [ ] 2 · Revisión fresca con veredicto y firma en el frontmatter — —
+- [ ] 3 · Fusionado en la rama principal (commit: —) — —
+- [ ] 4 · Suite end-to-end en verde sobre la rama principal — —
+- [ ] 5 · App lanzada y OK del usuario (o `en_validacion` si no estaba) — —
+- [ ] 6 · `unidad.py cerrar` ejecutado — —
+- [ ] 7 · Deltas al mapa, hallazgos promovidos, `ESTADO.md` al día — —

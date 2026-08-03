@@ -57,7 +57,10 @@ completa:
 - `plantilla/`: el molde del proyecto de trabajo que monta el bootstrap
   (el método de desarrollo por fases). No se toca; su README lo explica.
 - [`manual-ingenieria-requisitos.html`](manual-ingenieria-requisitos.html):
-  el manual completo, autocontenido y explicado desde cero.
+  **el documento único**, autocontenido y sin conexión. Tres partes: cómo se
+  usa esto desde cero (lo que estás leyendo aquí, con más detalle), cómo
+  trabajan los agentes después, y el croquis técnico del workspace —cada
+  runbook, cada estado y cada comprobación con su umbral exacto—.
 
 ## Actualizar proyectos creados anteriormente
 

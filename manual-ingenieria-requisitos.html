@@ -3,30 +3,78 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <title>Método Nate — Manual completo de Ingeniería de Requisitos</title>
+  <meta name="color-scheme" content="light dark">
+  <title>Método Nate — Manual completo + croquis del workspace</title>
   <meta name="author" content="Nate Gentile">
   <meta name="creator" content="Nate Gentile">
-  <meta name="description" content="Manual completo del Método Nate de Ingeniería de Requisitos, creado, pensado y desarrollado por Nate Gentile a partir de su experiencia trabajando con agentes de inteligencia artificial.">
+  <meta name="description" content="Manual completo del Método Nate de Ingeniería de Requisitos: cómo se usa desde cero, cómo trabajan los agentes después, y el croquis técnico del workspace con todas sus comprobaciones. Creado, pensado y desarrollado por Nate Gentile.">
   <style>
+    /* =========================================================================
+       Sistema de estilo «croquis»: papel de delineante, tinta azul, anotación
+       en monoespaciada. Cubre el vocabulario de clases del manual original y el
+       del croquis del workspace, para que ambas partes se lean como un documento.
+       ====================================================================== */
+
     :root {
-      --ink: #172033;
-      --muted: #5d6678;
-      --paper: #fbfaf6;
-      --panel: #ffffff;
-      --line: #d8dce5;
-      --blue: #2457d6;
-      --blue-soft: #edf3ff;
-      --green: #147a55;
-      --green-soft: #eaf8f1;
-      --orange: #a54d08;
-      --orange-soft: #fff2e6;
-      --red: #a22a2a;
-      --red-soft: #fff0f0;
-      --violet: #6842ad;
-      --violet-soft: #f3edff;
-      --shadow: 0 10px 30px rgba(25, 36, 58, .08);
-      --radius: 18px;
+      --paper:      #F3F5F1;
+      --sheet:      #FBFCFA;
+      --panel:      #FBFCFA;
+      --ink:        #16202A;
+      --muted:      #4A5A66;
+      --faint:      #7C8C96;
+      --line:       #CDD5CE;
+      --line-soft:  #E1E7E0;
+      --accent:     #1F5673;
+      --accent-bg:  #E4EDF2;
+      --ok:         #3D6B4C;
+      --ok-bg:      #E3EDE4;
+      --warn:       #8E6410;
+      --warn-bg:    #F2EBDA;
+      --fail:       #A03127;
+      --fail-bg:    #F4E4E1;
+      --alt:        #5B4A78;
+      --alt-bg:     #ECE8F3;
+      --grid:       rgba(31, 86, 115, .055);
+
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --serif: ui-serif, "Iowan Old Style", "Hoefler Text", "Palatino Linotype", Palatino, Georgia, serif;
+      --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --paper: #0F1418; --sheet: #141B21; --panel: #141B21;
+        --ink: #DEE6E9; --muted: #9DAEB8; --faint: #6E7F8A;
+        --line: #2B363E; --line-soft: #202A31;
+        --accent: #7FB4D4; --accent-bg: #16242E;
+        --ok: #77B189; --ok-bg: #17251C;
+        --warn: #CE9F45; --warn-bg: #251F12;
+        --fail: #E08578; --fail-bg: #2A1815;
+        --alt: #A99AC8; --alt-bg: #1E1A26;
+        --grid: rgba(127, 180, 212, .05);
+      }
+    }
+    :root[data-theme="dark"] {
+      --paper: #0F1418; --sheet: #141B21; --panel: #141B21;
+      --ink: #DEE6E9; --muted: #9DAEB8; --faint: #6E7F8A;
+      --line: #2B363E; --line-soft: #202A31;
+      --accent: #7FB4D4; --accent-bg: #16242E;
+      --ok: #77B189; --ok-bg: #17251C;
+      --warn: #CE9F45; --warn-bg: #251F12;
+      --fail: #E08578; --fail-bg: #2A1815;
+      --alt: #A99AC8; --alt-bg: #1E1A26;
+      --grid: rgba(127, 180, 212, .05);
+    }
+    :root[data-theme="light"] {
+      --paper: #F3F5F1; --sheet: #FBFCFA; --panel: #FBFCFA;
+      --ink: #16202A; --muted: #4A5A66; --faint: #7C8C96;
+      --line: #CDD5CE; --line-soft: #E1E7E0;
+      --accent: #1F5673; --accent-bg: #E4EDF2;
+      --ok: #3D6B4C; --ok-bg: #E3EDE4;
+      --warn: #8E6410; --warn-bg: #F2EBDA;
+      --fail: #A03127; --fail-bg: #F4E4E1;
+      --alt: #5B4A78; --alt-bg: #ECE8F3;
+      --grid: rgba(31, 86, 115, .055);
     }
 
     * { box-sizing: border-box; }
@@ -34,431 +82,495 @@
     body {
       margin: 0;
       color: var(--ink);
-      background: var(--paper);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.65;
+      background-color: var(--paper);
+      background-image:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 44px 44px, 44px 44px;
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.58;
+      -webkit-font-smoothing: antialiased;
     }
 
-    a { color: var(--blue); }
-    code, pre {
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-    }
+    a { color: var(--accent); }
+    a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    code, pre { font-family: var(--mono); }
     code {
-      padding: .12rem .35rem;
-      border-radius: 6px;
-      background: #f0f2f7;
-      font-size: .92em;
+      padding: 1px 5px;
+      border-radius: 2px;
+      background: var(--accent-bg);
+      color: var(--ink);
+      font-size: .87em;
       overflow-wrap: anywhere;
     }
     pre {
-      margin: 1rem 0;
-      padding: 1rem 1.2rem;
+      margin: 16px 0;
+      padding: 16px 18px;
       overflow-x: auto;
-      color: #f5f7ff;
-      background: #172033;
-      border-radius: 12px;
+      color: var(--muted);
+      background: var(--sheet);
+      border: 1px solid var(--line);
+      font-size: 12.5px;
       line-height: 1.5;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
     }
-    pre code { padding: 0; color: inherit; background: transparent; }
+    pre code { padding: 0; color: inherit; background: transparent; font-size: inherit; }
 
-    .layout {
-      display: grid;
-      grid-template-columns: 300px minmax(0, 1fr);
-      min-height: 100vh;
-    }
+    /* ------------------------------------------------ estructura ---------- */
+
+    .layout { display: grid; grid-template-columns: 268px minmax(0, 1fr); min-height: 100vh; }
+
     .sidebar {
       position: sticky;
       top: 0;
       height: 100vh;
       overflow-y: auto;
-      padding: 28px 22px;
-      color: #eef3ff;
-      background: #172033;
+      padding: 26px 20px 40px;
+      background: var(--sheet);
+      border-right: 1px solid var(--line);
     }
-    .sidebar .brand {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      margin-bottom: 22px;
-    }
+    .sidebar .brand { display: flex; gap: 12px; align-items: center; margin-bottom: 22px; }
     .sidebar .brand-mark {
       display: grid;
       place-items: center;
-      width: 44px;
-      height: 44px;
-      flex: 0 0 44px;
-      border-radius: 14px;
-      color: #172033;
-      background: #f6c945;
-      font-size: 24px;
-      font-weight: 900;
+      width: 40px; height: 40px; flex: 0 0 40px;
+      color: var(--accent);
+      background: var(--accent-bg);
+      border: 1px solid var(--line);
+      font-family: var(--mono);
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: .02em;
     }
-    .sidebar strong { display: block; line-height: 1.2; }
-    .sidebar small { color: #b7c3dc; }
-    .sidebar nav { display: grid; gap: 4px; }
+    .sidebar strong { display: block; line-height: 1.2; font-size: 15px; }
+    .sidebar small { color: var(--faint); font-size: 12px; }
+    .sidebar nav { display: grid; gap: 1px; }
     .sidebar nav a {
-      padding: 8px 10px;
-      color: #dce5fa;
+      padding: 4px 8px;
+      color: var(--muted);
       text-decoration: none;
-      border-radius: 8px;
-      font-size: 14px;
-      line-height: 1.3;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      line-height: 1.4;
     }
-    .sidebar nav a:hover,
-    .sidebar nav a:focus {
-      color: white;
-      background: rgba(255,255,255,.1);
-      outline: none;
-    }
+    .sidebar nav a:hover, .sidebar nav a:focus { color: var(--accent); background: var(--accent-bg); outline: none; }
     .sidebar .nav-group {
-      margin: 17px 10px 5px;
-      color: #8fa3cc;
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: .11em;
+      margin: 16px 8px 5px;
+      color: var(--faint);
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: .15em;
       text-transform: uppercase;
     }
     .sidebar .version {
-      margin-top: 25px;
-      padding: 12px;
-      color: #bdc9e1;
-      background: rgba(255,255,255,.06);
-      border-radius: 10px;
-      font-size: 12px;
+      margin-top: 24px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line-soft);
+      color: var(--faint);
+      font-family: var(--mono);
+      font-size: 11px;
+      line-height: 1.5;
     }
 
-    main {
-      width: min(1120px, 100%);
-      padding: 42px clamp(24px, 5vw, 72px) 90px;
-    }
-    section { scroll-margin-top: 24px; }
+    main { width: min(1080px, 100%); padding: 40px clamp(20px, 4vw, 60px) 90px; }
+    section { scroll-margin-top: 20px; }
+
+    /* ------------------------------------------------ rótulo -------------- */
+
     .hero {
       position: relative;
-      overflow: hidden;
-      padding: clamp(28px, 5vw, 58px);
-      color: white;
-      background:
-        radial-gradient(circle at 85% 10%, rgba(246,201,69,.35), transparent 28%),
-        linear-gradient(135deg, #1e4eb8, #233773 70%);
-      border-radius: 26px;
-      box-shadow: var(--shadow);
+      padding: clamp(26px, 4vw, 42px);
+      background: var(--sheet);
+      border: 1px solid var(--line);
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 7px;
+      border: 1px dashed var(--line-soft);
+      pointer-events: none;
     }
     .hero .eyebrow {
       margin: 0 0 8px;
-      color: #d8e5ff;
-      font-size: 13px;
-      font-weight: 800;
-      letter-spacing: .13em;
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: .15em;
       text-transform: uppercase;
+      display: block;
     }
+    .hero .eyebrow::after { display: none; }
     .hero h1 {
-      max-width: 820px;
+      max-width: 22ch;
       margin: 0;
-      font-size: clamp(35px, 6vw, 65px);
-      line-height: 1.03;
-      letter-spacing: -.045em;
+      font-family: var(--serif);
+      font-size: clamp(32px, 5.2vw, 54px);
+      font-weight: 600;
+      line-height: 1.04;
+      letter-spacing: -.018em;
+      text-wrap: balance;
     }
     .hero .lead {
-      max-width: 760px;
-      margin: 24px 0 0;
-      color: #edf3ff;
-      font-size: clamp(18px, 2.2vw, 23px);
+      max-width: 68ch;
+      margin: 20px 0 0;
+      color: var(--muted);
+      font-size: clamp(16px, 1.6vw, 19px);
       line-height: 1.5;
     }
     .hero .stamp {
       display: inline-block;
-      margin-top: 24px;
-      padding: 9px 13px;
-      color: #20315d;
-      background: #f6c945;
-      border-radius: 999px;
-      font-weight: 800;
+      margin-top: 22px;
+      padding: 5px 10px;
+      color: var(--accent);
+      background: var(--accent-bg);
+      border: 1px solid var(--line);
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: .06em;
     }
+
+    /* ------------------------------------------------ tipografía ---------- */
 
     h2 {
-      margin: 70px 0 16px;
-      font-size: clamp(29px, 4vw, 42px);
-      line-height: 1.15;
-      letter-spacing: -.025em;
+      margin: 62px 0 12px;
+      font-family: var(--serif);
+      font-size: clamp(23px, 3.2vw, 32px);
+      font-weight: 600;
+      line-height: 1.14;
+      letter-spacing: -.012em;
+      text-wrap: balance;
     }
-    h3 {
-      margin: 34px 0 10px;
-      font-size: 23px;
-      line-height: 1.25;
-    }
-    h4 { margin: 24px 0 8px; font-size: 18px; }
-    p { margin: .7rem 0 1rem; }
-    .intro {
-      max-width: 850px;
+    h3 { margin: 32px 0 8px; font-size: 17px; font-weight: 700; letter-spacing: -.005em; }
+    h4 {
+      margin: 24px 0 8px;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      font-weight: 500;
+      letter-spacing: .09em;
+      text-transform: uppercase;
       color: var(--muted);
-      font-size: 19px;
     }
-    .kicker {
-      display: inline-block;
-      margin-bottom: 4px;
-      color: var(--blue);
-      font-size: 12px;
-      font-weight: 900;
-      letter-spacing: .13em;
+    p { margin: .6rem 0 .9rem; }
+    p, li { max-width: 76ch; }
+    ul, ol { padding-left: 20px; }
+    li { margin-bottom: 5px; }
+
+    .intro, .lede {
+      max-width: 74ch;
+      color: var(--muted);
+      font-size: 17px;
+    }
+    .mini { color: var(--muted); font-size: 13.5px; }
+
+    .kicker, .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 6px;
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 10.5px;
+      font-weight: 400;
+      letter-spacing: .16em;
       text-transform: uppercase;
     }
+    .kicker::after, .eyebrow::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 
-    .card-grid {
+    /* ------------------------------------------------ tarjetas ----------- */
+
+    .card-grid, .cards {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 18px;
-      margin: 22px 0;
+      gap: 14px;
+      margin: 20px 0;
     }
+    .cards { grid-template-columns: 1fr; }
+    .cards.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .card-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .card {
-      padding: 22px;
+      padding: 16px 18px;
       background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: 0 4px 16px rgba(26,36,58,.045);
     }
     .card h3, .card h4 { margin-top: 0; }
-    .card p:last-child, .card ul:last-child { margin-bottom: 0; }
+    .card h5 {
+      margin: 0 0 4px;
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 12.5px;
+      font-weight: 500;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .card .sub { margin: 0 0 10px; color: var(--muted); font-size: 13px; }
+    .card ol, .card ul { font-size: 13.5px; padding-left: 18px; margin: 0; }
+    .card li { max-width: none; }
+    .card p:last-child, .card ul:last-child, .card ol:last-child { margin-bottom: 0; }
+    .card .foot-line {
+      margin-top: 10px;
+      padding-top: 9px;
+      border-top: 1px dashed var(--line);
+      font-size: 12.5px;
+      color: var(--muted);
+    }
     .number {
       display: inline-grid;
       place-items: center;
-      width: 34px;
-      height: 34px;
-      margin-bottom: 12px;
-      color: white;
-      background: var(--blue);
-      border-radius: 50%;
-      font-weight: 900;
+      width: 28px; height: 24px;
+      margin-bottom: 10px;
+      color: var(--accent);
+      background: var(--accent-bg);
+      border: 1px solid var(--line);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 500;
     }
 
-    .note, .warning, .success, .plain {
-      margin: 22px 0;
-      padding: 18px 20px;
-      border-left: 5px solid;
-      border-radius: 0 14px 14px 0;
+    /* ------------------------------------------------ avisos -------------- */
+
+    .note, .warning, .success, .plain, .gate {
+      margin: 18px 0;
+      padding: 13px 16px;
+      border-left: 3px solid;
     }
-    .note { background: var(--blue-soft); border-color: var(--blue); }
-    .warning { background: var(--orange-soft); border-color: var(--orange); }
-    .success { background: var(--green-soft); border-color: var(--green); }
-    .plain { background: var(--violet-soft); border-color: var(--violet); }
+    .note    { background: var(--accent-bg); border-color: var(--accent); }
+    .warning { background: var(--warn-bg);   border-color: var(--warn); }
+    .success { background: var(--ok-bg);     border-color: var(--ok); }
+    .plain   { background: var(--alt-bg);    border-color: var(--alt); }
+    .gate    { background: var(--fail-bg);   border-color: var(--fail); }
     .note strong, .warning strong, .success strong, .plain strong { display: block; margin-bottom: 4px; }
+    .note p, .gate p { margin: 0; max-width: 72ch; }
+    .note p + p, .gate p + p { margin-top: 9px; }
+    .gate .tag {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--fail);
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
 
-    .flow {
-      display: grid;
-      gap: 12px;
-      margin: 26px 0;
+    .chip {
+      display: inline-block;
+      padding: 1px 6px;
+      border: 1px solid currentColor;
+      border-radius: 2px;
+      font-family: var(--mono);
+      font-size: 10.5px;
+      letter-spacing: .06em;
+      white-space: nowrap;
     }
-    .flow-row {
-      display: grid;
-      grid-template-columns: 58px minmax(0, 1fr);
-      align-items: stretch;
-    }
-    .flow-rail {
-      position: relative;
-      display: grid;
-      place-items: start center;
-    }
+    .c-ok   { color: var(--ok);     background: var(--ok-bg); }
+    .c-warn { color: var(--warn);   background: var(--warn-bg); }
+    .c-fail { color: var(--fail);   background: var(--fail-bg); }
+    .c-acc  { color: var(--accent); background: var(--accent-bg); }
+
+    /* ------------------------------------------------ flujos -------------- */
+
+    .flow { display: grid; gap: 10px; margin: 24px 0; }
+    .flow-row { display: grid; grid-template-columns: 50px minmax(0, 1fr); align-items: stretch; }
+    .flow-rail { position: relative; display: grid; place-items: start center; }
     .flow-rail::after {
       content: "";
       position: absolute;
-      top: 34px;
-      bottom: -13px;
-      width: 3px;
-      background: #cbd5e7;
+      top: 28px; bottom: -11px;
+      width: 1px;
+      background: var(--line);
     }
     .flow-row:last-child .flow-rail::after { display: none; }
     .flow-dot {
       z-index: 1;
       display: grid;
       place-items: center;
-      width: 36px;
-      height: 36px;
-      color: white;
-      background: var(--blue);
-      border: 4px solid var(--paper);
-      border-radius: 50%;
-      font-weight: 900;
-      box-shadow: 0 0 0 2px #b6c7ec;
-    }
-    .flow-box {
-      padding: 16px 18px;
-      background: white;
+      width: 28px; height: 24px;
+      color: var(--accent);
+      background: var(--accent-bg);
       border: 1px solid var(--line);
-      border-radius: 13px;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
     }
-    .flow-box strong { display: block; font-size: 17px; }
+    .flow-box { padding: 13px 16px; background: var(--sheet); border: 1px solid var(--line); }
+    .flow-box strong { display: block; font-size: 15px; }
     .flow-box span { color: var(--muted); }
+
+    /* pasos numerados del croquis */
+    .steps { list-style: none; padding: 0; margin: 16px 0 22px; counter-reset: st; }
+    .steps > li {
+      position: relative;
+      margin: 0;
+      padding: 0 0 16px 40px;
+      max-width: 78ch;
+      counter-increment: st;
+    }
+    .steps > li::before {
+      content: counter(st, decimal-leading-zero);
+      position: absolute;
+      left: 0; top: 1px;
+      display: grid;
+      place-items: center;
+      width: 26px; height: 22px;
+      color: var(--accent);
+      background: var(--accent-bg);
+      border: 1px solid var(--line);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+    .steps > li::after {
+      content: "";
+      position: absolute;
+      left: 13px; top: 25px; bottom: 0;
+      width: 1px;
+      background: var(--line);
+    }
+    .steps > li:last-child::after { display: none; }
 
     .diagram-two {
       display: grid;
-      grid-template-columns: 1fr 70px 1fr;
+      grid-template-columns: 1fr 60px 1fr;
       align-items: stretch;
       gap: 12px;
-      margin: 25px 0;
+      margin: 22px 0;
     }
-    .diagram-box {
-      padding: 22px;
-      background: white;
-      border: 2px solid #bdcae4;
-      border-radius: 16px;
-    }
-    .diagram-box.blue { background: var(--blue-soft); border-color: #9db7ef; }
-    .diagram-box.green { background: var(--green-soft); border-color: #9ed6c0; }
+    .diagram-box { padding: 18px; background: var(--sheet); border: 1px solid var(--line); }
+    .diagram-box.blue  { background: var(--accent-bg); border-color: var(--accent); }
+    .diagram-box.green { background: var(--ok-bg);     border-color: var(--ok); }
+    .diagram-box h3 { margin-top: 0; }
     .diagram-arrow {
       display: grid;
       place-items: center;
-      color: var(--blue);
-      font-size: 36px;
-      font-weight: 900;
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 26px;
     }
 
-    .tree {
-      margin: 22px 0;
-      padding: 22px;
-      color: #eaf0ff;
-      background: #172033;
-      border-radius: 16px;
-      overflow-x: auto;
-      white-space: pre;
-      font-family: "SFMono-Regular", Consolas, monospace;
-      font-size: 14px;
-      line-height: 1.6;
-    }
-    .tree b { color: #f6c945; }
+    /* ------------------------------------------------ hojas y tablas ------ */
 
-    .table-wrap {
-      margin: 22px 0;
-      overflow-x: auto;
+    .tree, .sheet {
+      margin: 16px 0 22px;
+      padding: 18px 20px;
+      background: var(--sheet);
       border: 1px solid var(--line);
-      border-radius: 14px;
-      background: white;
+      overflow-x: auto;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 15px;
+    .tree {
+      white-space: pre;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.55;
     }
-    th, td {
-      padding: 13px 14px;
-      text-align: left;
-      vertical-align: top;
-      border-bottom: 1px solid var(--line);
+    .tree b { color: var(--accent); font-weight: 500; }
+    .sheet pre { margin: 0; padding: 0; border: 0; background: transparent; white-space: pre; }
+    .sheet .cap {
+      margin: 0 0 12px;
+      color: var(--faint);
+      font-family: var(--mono);
+      font-size: 10.5px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
     }
+
+    .table-wrap, .tablewrap {
+      margin: 14px 0 22px;
+      overflow-x: auto;
+      background: var(--sheet);
+      border: 1px solid var(--line);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    th, td { padding: 8px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line-soft); }
     th {
-      color: #31415f;
-      background: #f0f3f9;
-      font-size: 13px;
-      letter-spacing: .02em;
+      color: var(--faint);
+      background: transparent;
+      border-bottom: 1px solid var(--line);
+      font-family: var(--mono);
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      white-space: nowrap;
     }
     tr:last-child td { border-bottom: 0; }
+    td code { padding: 0; background: transparent; color: var(--accent); }
+    .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    td.mono, th.mono { font-family: var(--mono); font-size: 12px; }
 
-    .checks {
-      padding: 0;
-      list-style: none;
-    }
-    .checks li {
-      position: relative;
-      margin: 10px 0;
-      padding-left: 34px;
-    }
+    /* ------------------------------------------------ listas marcadas ----- */
+
+    .checks { padding: 0; list-style: none; }
+    .checks li { position: relative; margin: 9px 0; padding-left: 30px; }
     .checks li::before {
       content: "✓";
       position: absolute;
-      left: 0;
-      top: .05em;
+      left: 0; top: .1em;
       display: grid;
       place-items: center;
-      width: 23px;
-      height: 23px;
-      color: white;
-      background: var(--green);
-      border-radius: 50%;
-      font-size: 13px;
-      font-weight: 900;
+      width: 20px; height: 20px;
+      color: var(--ok);
+      background: var(--ok-bg);
+      border: 1px solid currentColor;
+      font-family: var(--mono);
+      font-size: 11px;
     }
-    .crosses li::before { content: "×"; background: var(--red); }
+    .crosses li::before { content: "×"; color: var(--fail); background: var(--fail-bg); }
 
-    details {
-      margin: 12px 0;
-      background: white;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-    }
-    summary {
-      padding: 15px 18px;
-      cursor: pointer;
-      font-weight: 750;
-    }
-    details > div { padding: 0 18px 16px; color: #3e485c; }
+    details { margin: 12px 0; background: var(--sheet); border: 1px solid var(--line); }
+    summary { padding: 12px 16px; cursor: pointer; font-weight: 600; }
+    details > div { padding: 0 16px 14px; color: var(--muted); }
 
-    .glossary {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-    .term {
-      padding: 16px;
-      background: white;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-    }
-    .term dt { color: var(--blue); font-weight: 850; }
-    .term dd { margin: 5px 0 0; color: var(--muted); }
+    .glossary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .term { padding: 14px 16px; background: var(--sheet); border: 1px solid var(--line); }
+    .term dt { color: var(--accent); font-weight: 700; font-size: 14px; }
+    .term dd { margin: 4px 0 0; color: var(--muted); font-size: 13.5px; }
 
-    .mini {
-      color: var(--muted);
-      font-size: 14px;
-    }
     .source-box {
-      margin-top: 60px;
-      padding: 22px;
-      color: #4a556b;
-      background: #f0f2f6;
-      border-radius: 16px;
-      font-size: 14px;
+      margin-top: 50px;
+      padding: 18px 20px;
+      color: var(--muted);
+      background: var(--sheet);
+      border: 1px solid var(--line);
+      font-size: 13.5px;
     }
     footer {
-      margin-top: 50px;
-      padding-top: 24px;
-      color: var(--muted);
+      margin-top: 46px;
+      padding-top: 20px;
+      color: var(--faint);
       border-top: 1px solid var(--line);
     }
 
+    /* ------------------------------------------------ responsive ---------- */
+
     @media (max-width: 940px) {
       .layout { grid-template-columns: minmax(0, 1fr); }
-      .sidebar {
-        position: relative;
-        height: auto;
-        max-height: none;
-        min-width: 0;
-        max-width: 100%;
-      }
-      .sidebar nav {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
+      .sidebar { position: relative; height: auto; max-height: none; border-right: 0; border-bottom: 1px solid var(--line); }
+      .sidebar nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       main { min-width: 0; max-width: 100%; margin: 0 auto; }
       .card-grid.three { grid-template-columns: 1fr; }
     }
     @media (max-width: 680px) {
-      .sidebar nav, .card-grid, .glossary { grid-template-columns: 1fr; }
+      .sidebar nav, .card-grid, .cards.two, .glossary { grid-template-columns: 1fr; }
       .diagram-two { grid-template-columns: 1fr; }
-      .diagram-arrow { transform: rotate(90deg); min-height: 44px; }
+      .diagram-arrow { transform: rotate(90deg); min-height: 40px; }
       main { padding: 20px 16px 60px; }
-      .hero { border-radius: 18px; }
-      h2 { margin-top: 54px; }
+      h2 { margin-top: 48px; }
     }
     @media print {
-      body { background: white; }
+      body { background: white; background-image: none; }
       .layout { display: block; }
       .sidebar { display: none; }
       main { width: auto; padding: 0; }
-      .hero { color: var(--ink); background: white; border: 2px solid var(--line); box-shadow: none; }
-      .hero .lead, .hero .eyebrow { color: var(--ink); }
-      .hero .stamp { border: 1px solid #777; }
+      .hero { border: 1px solid #999; }
       h2 { break-after: avoid; }
-      .card, .flow-box, details, .table-wrap { break-inside: avoid; box-shadow: none; }
+      .card, .flow-box, details, .table-wrap, .tablewrap, .sheet, .tree { break-inside: avoid; }
       a { color: inherit; text-decoration: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      * { animation: none !important; transition: none !important; }
     }
   </style>
 </head>
@@ -473,7 +585,9 @@
         </div>
       </div>
       <nav>
-        <div class="nav-group">Empezar</div>
+        <div class="nav-group">Empezar aquí</div>
+        <a href="#empezar">0. Qué es y qué haces tú</a>
+        <div class="nav-group">La idea</div>
         <a href="#resumen">1. La idea en dos minutos</a>
         <a href="#piezas">2. Qué es cada pieza</a>
         <a href="#historia">3. Historia completa</a>
@@ -507,8 +621,26 @@
         <a href="#checklist">26. Listas de comprobación</a>
         <a href="#faq">27. Preguntas frecuentes</a>
         <a href="#glosario">28. Diccionario llano</a>
-        <a href="#runbooks-completos">29. Los 12 runbooks</a>
+        <a href="#runbooks-completos">29. Los 14 runbooks</a>
         <a href="#metodo-validado">30. Método validado por fuentes</a>
+        <div class="nav-group">El workspace, a fondo</div>
+        <a href="#croquis">Croquis: cómo se lee</a>
+        <a href="#w1">W1. Nacimiento del workspace</a>
+        <a href="#w2">W2. El árbol congelado</a>
+        <a href="#w3">W3. Arranque de sesión</a>
+        <a href="#w4">W4. Los cuatro roles</a>
+        <a href="#w5">W5. Las siete fases, exactas</a>
+        <a href="#w6">W6. Carriles y tipos</a>
+        <a href="#w7">W7. Vida de una unidad</a>
+        <a href="#w8">W8. Los 14 runbooks</a>
+        <a href="#w9">W9. El ritual de cierre</a>
+        <a href="#w10">W10. unidad.py</a>
+        <a href="#w11">W11. lint_metodo.py</a>
+        <a href="#w12">W12. Deploy y su gate</a>
+        <a href="#w13">W13. Guardianes automáticos</a>
+        <a href="#w14">W14. Modo D</a>
+        <a href="#w15">W15. Todas las constantes</a>
+        <a href="#w16">W16. Los 11 ADRs</a>
       </nav>
       <div class="version">
         Creado y desarrollado por Nate Gentile. Documento autocontenido: no usa internet,
@@ -527,6 +659,153 @@
         </p>
         <span class="stamp">Pensado y desarrollado por Nate Gentile desde su experiencia real</span>
       </header>
+
+      <section id="empezar">
+        <span class="kicker">Empezar aquí · si es tu primera vez</span>
+        <h2>0. Qué es esto y qué tienes que hacer</h2>
+        <p class="intro">
+          Esto convierte lo que sabes de tu negocio en unos planos que una IA puede construir
+          sin inventarse nada. <strong>Tú no escribes requisitos</strong>: cuentas tu negocio,
+          la IA te entrevista, y validas mirando una web que se va rellenando sola.
+        </p>
+
+        <div class="success">
+          <strong>La metáfora que lo ordena todo</strong>
+          Nadie construye una casa sin planos. Aquí se hacen los planos; la obra la hace otro
+          agente, y una obra ya construida se compara contra los planos.
+        </div>
+
+        <h3>Qué necesitas antes de empezar</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Necesitas</th><th>Por qué</th><th>Si no lo tienes</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><strong>Un ordenador con Python 3</strong></td>
+                <td>Es lo que levanta la web donde miras tus planos</td>
+                <td>Tu propia IA lo comprueba al empezar y lo instala contigo. macOS lo trae de serie</td>
+              </tr>
+              <tr>
+                <td><strong>Git</strong></td>
+                <td>Guarda el historial y separa el repositorio padre del código</td>
+                <td>Se instala desde <code>git-scm.com</code>; el método avisa si falta</td>
+              </tr>
+              <tr>
+                <td><strong>Un agente de IA con terminal</strong></td>
+                <td>Tiene que poder ejecutar comandos en tu ordenador</td>
+                <td><strong>Un chat web normal no vale</strong>: no puede levantar el visor</td>
+              </tr>
+              <tr>
+                <td><strong>Tu negocio en la cabeza</strong></td>
+                <td>El proceso de memoria, con nombres y números reales</td>
+                <td>Sin eso no hay planos que hacer; se pausa y se retoma cuando quieras</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Los cinco pasos, sin más</h3>
+        <div class="flow">
+          <div class="flow-row">
+            <div class="flow-rail"><div class="flow-dot">1</div></div>
+            <div class="flow-box">
+              <strong>Descarga este repositorio y abre una terminal dentro</strong>
+              <span>Es una caja de herramientas reutilizable, no un proyecto.</span>
+            </div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-rail"><div class="flow-dot">2</div></div>
+            <div class="flow-box">
+              <strong>Lanza aquí tu agente de IA</strong>
+              <span><code>AGENTS.md</code> es el enrutador; <code>CLAUDE.md</code> y <code>GEMINI.md</code> lo redirigen al mismo sitio. El agente leerá <code>RUNBOOK.md</code>.</span>
+            </div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-rail"><div class="flow-dot">3</div></div>
+            <div class="flow-box">
+              <strong>Te ofrece cinco opciones y eliges</strong>
+              <span>Construir de cero · auditar código existente · iterar unos planos · poner al día tus proyectos · trabajar sobre la herramienta.</span>
+            </div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-rail"><div class="flow-dot">4</div></div>
+            <div class="flow-box">
+              <strong>En cuanto sepa el nombre, crea tu carpeta FUERA de aquí</strong>
+              <span>Una carpeta visible <code>&lt;nombre&gt;-agents</code>. Ahí ocurre toda la entrevista: en esta carpeta no se guarda nada tuyo, nunca.</span>
+            </div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-rail"><div class="flow-dot">5</div></div>
+            <div class="flow-box">
+              <strong>Tú cuentas y corriges mirando; la IA estructura y escribe</strong>
+              <span>Se te abre una página en el navegador con tus planos, y se actualiza sola según avanza la entrevista. No hace falta que recargues.</span>
+            </div>
+          </div>
+        </div>
+
+        <h3>Qué obtienes</h3>
+        <div class="card-grid">
+          <div class="card">
+            <span class="number">A</span>
+            <h4>Una carpeta de trabajo completa</h4>
+            <p><code>&lt;nombre&gt;-agents/</code> es el repositorio padre: método, decisiones y documentación. <code>&lt;nombre&gt;-agents/main/</code> es el repositorio hijo, y solo contiene el código de tu aplicación.</p>
+          </div>
+          <div class="card">
+            <span class="number">B</span>
+            <h4>Tu proyecto como datos</h4>
+            <p><code>docs/02-flujos/planos/planos.json</code> es lo que pinta la web y lo que leen los agentes. En aplicaciones grandes, un mapa general más una carpeta por actividad.</p>
+          </div>
+          <div class="card">
+            <span class="number">C</span>
+            <h4>Una web local de solo lectura</h4>
+            <p>Donde revisas todos los flujos. No tiene formularios ni botones de aprobar: todo el feedback se lo das al agente hablando.</p>
+          </div>
+          <div class="card">
+            <span class="number">D</span>
+            <h4>Un taller listo para construir</h4>
+            <p>Constitución y flujos compilados —siempre regenerables desde <code>planos.json</code>— y el método completo de trabajo por fases dentro.</p>
+          </div>
+        </div>
+
+        <h3>Cómo está organizado este manual</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Parte</th><th>De qué va</th><th>Cuándo la necesitas</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><strong>1 · La entrevista</strong><br><span class="mini">capítulos 1-15</span></td>
+                <td>Qué es cada pieza, los modos de entrada, las seis fases de entrevista, el visor, la aprobación y el bootstrap</td>
+                <td>Ahora. Es lo que vas a vivir tú, en primera persona</td>
+              </tr>
+              <tr>
+                <td><strong>2 · La construcción</strong><br><span class="mini">capítulos 16-30</span></td>
+                <td>Cómo trabajan los agentes después: fases, roles, unidades, cierre, despliegue, seguridad, ejemplo completo, glosario y las fuentes que avalan el método</td>
+                <td>Cuando la entrevista termine y empiece la obra</td>
+              </tr>
+              <tr>
+                <td><strong>3 · El croquis</strong><br><span class="mini">capítulos W1-W16</span></td>
+                <td>El plano técnico del taller: cada runbook, cada estado, cada comprobación con su umbral exacto</td>
+                <td>Cuando quieras saber <em>exactamente</em> qué impide que algo salga mal, o discutir una regla</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Las tres reglas de oro (para ti, no para la IA)</h3>
+        <ul class="checks">
+          <li><strong>Tú nunca redactas: cuentas y corriges leyendo.</strong> Si te pide que escribas un requisito, algo va mal.</li>
+          <li><strong>Si algo cambia después, se cambian los planos y se regenera.</strong> Nunca le pidas cambios «de palabra» a la IA que construye.</li>
+          <li><strong>La validación final es usar la aplicación</strong> con los ejemplos reales de tus planos («haz el pedido de Paco con la deuda de 300 €»), no mirar pantallas bonitas.</li>
+        </ul>
+
+        <div class="note">
+          <strong>Una cosa que conviene saber desde el principio</strong>
+          Puedes saltarte la entrevista. Eso no autoriza una entrega incompleta: el agente completa
+          todos los bloques por su cuenta, pero marca cada decisión como <em>inferido</em> y cada
+          supuesto como <em>propuesto</em>, y la web te enseña con claridad qué fue dicho por ti,
+          qué se leyó del código y qué se inventó él para que lo apruebes.
+        </div>
+      </section>
 
       <section id="resumen">
         <span class="kicker">La idea central</span>
@@ -628,6 +907,9 @@
       <section id="piezas">
         <span class="kicker">Primera distinción importante</span>
         <h2>2. La caja de herramientas y el proyecto del usuario no son lo mismo</h2>
+        <p class="intro">
+          La herramienta es el taller; tu proyecto es lo que sale de él. Se separan porque el taller se reutiliza con cada negocio y tu proyecto es solo tuyo: si guardas uno dentro del otro, acabas versionando tu negocio dentro de una herramienta compartida y sin saber cuál de las dos cosas estás tocando.
+        </p>
         <p>
           Hay dos carpetas con funciones muy diferentes. Mezclarlas provoca casi todas las
           confusiones.
@@ -669,6 +951,9 @@
       <section id="historia">
         <span class="kicker">Vista panorámica</span>
         <h2>3. La historia completa, de principio a fin</h2>
+        <p class="intro">
+          Antes del detalle conviene ver el recorrido entero, porque cada pieza suelta parece burocracia hasta que sabes en qué punto encaja. Son cinco tiempos: entender, dibujar, aprobar, preparar y construir. Si te pierdes más adelante, vuelve aquí y localiza en cuál estás.
+        </p>
         <div class="card-grid three">
           <article class="card">
             <div class="number">A</div>
@@ -711,6 +996,9 @@
       <section id="modos">
         <span class="kicker">El primer cruce de caminos</span>
         <h2>4. Los tres modos de entrada</h2>
+        <p class="intro">
+          No todo el mundo llega igual: unos traen una idea, otros una aplicación que ya funciona y otros unos planos que quieren cambiar. Se separan en tres modos porque el primer movimiento del agente es distinto en cada caso, y equivocarse ahí contamina todo lo demás: inventar de cero lo que ya estaba escrito, o buscar código que todavía no existe.
+        </p>
 
         <div class="table-wrap">
           <table>
@@ -868,6 +1156,9 @@
       <section id="fases-entrevista">
         <span class="kicker">La conversación ordenada</span>
         <h2>6. Las seis fases de la entrevista</h2>
+        <p class="intro">
+          La entrevista está troceada para que nadie tenga que redactar requisitos. Se pregunta de una en una y en lenguaje normal, y cada fase cierra algo antes de pasar a la siguiente. Preguntarlo todo a la vez obligaría a sostener el negocio entero en la cabeza, y es ahí donde se olvidan las excepciones, que son justo las que rompen las aplicaciones.
+        </p>
         <p>
           El agente pregunta de una en una, con lenguaje normal. La persona cuenta y corrige;
           no tiene que redactar requisitos. Si decide saltarse la entrevista, el agente debe
@@ -1039,6 +1330,9 @@
       <section id="salidas">
         <span class="kicker">Los entregables de la definición</span>
         <h2>8. Qué sale exactamente de la entrevista</h2>
+        <p class="intro">
+          De hablar una tarde tiene que quedar algo que se pueda leer, corregir y firmar; si no, mañana solo queda tu recuerdo de la conversación. Estas son las piezas que quedan escritas y quién puede tocar cada una: separar eso es lo que impide que quien construye reescriba el encargo a su conveniencia.
+        </p>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Pieza</th><th>Para qué sirve</th><th>Quién la modifica</th></tr></thead>
@@ -1088,6 +1382,9 @@
       <section id="visor">
         <span class="kicker">Revisar mirando</span>
         <h2>9. El visor web y la aprobación</h2>
+        <p class="intro">
+          Nadie aprueba lo que no entiende, y un documento técnico no se entiende: se firma por cansancio. Por eso los planos se enseñan como una web que se lee mirando, en tu propio ordenador. Y aprobar no es decir «vale»: es dejar un recibo con fecha de qué versión exacta viste.
+        </p>
         <p>
           El visor es una página local ya preparada. No se genera una web nueva para cada
           cliente: la misma plantilla lee los datos de <code>planos.json</code>. Se abre en
@@ -1138,6 +1435,9 @@
       <section id="validacion">
         <span class="kicker">Comprobar antes de enseñar</span>
         <h2>10. Las validaciones automáticas</h2>
+        <p class="intro">
+          Un plano puede estar bonito y estar roto a la vez: un flujo que apunta a una actividad que no existe, un estado que nadie definió. Las comprobaciones automáticas cazan eso mientras todavía es texto y cuesta un minuto arreglarlo, no cuando ya es código.
+        </p>
 
         <h3>Validación de datos</h3>
         <p><code>validar.py</code> tiene tres niveles:</p>
@@ -1256,6 +1556,9 @@
       <section id="estructura">
         <span class="kicker">La carpeta resultante</span>
         <h2>12. Qué contiene el workspace generado</h2>
+        <p class="intro">
+          Un workspace ordenado no es manía: es lo que permite que un agente que nunca ha estado aquí sepa en dos minutos dónde está el estado, dónde el contrato y qué no puede tocar. Cada carpeta de esta lista existe porque alguien, sin ella, se inventó dónde escribir.
+        </p>
 
         <div class="tree" role="img" aria-label="Árbol de carpetas del workspace"><b>cafeteria-agents/</b>
 ├── AGENTS.md                 reglas y mapa de lectura para cualquier agente
@@ -1411,6 +1714,9 @@
       <section id="python">
         <span class="kicker">Sin scripts de Bash para el usuario</span>
         <h2>13. Los programas Python y para qué sirve cada uno</h2>
+        <p class="intro">
+          El método no depende de que el agente se acuerde de los pasos delicados: esos están escritos como programas. Un programa hace lo mismo hoy que dentro de seis meses, y no se salta una comprobación porque «se ve que ya estaba hecha».
+        </p>
         <p>
           Los puntos de entrada operativos son Python. El nombre del intérprete cambia según
           el ordenador: <code>python3</code> suele usarse en macOS y Linux;
@@ -1505,6 +1811,9 @@ python visor/proyectos.py contexto --todos</code></pre>
       <section id="git">
         <span class="kicker">Dos cajas con responsabilidades distintas</span>
         <h2>15. El meta-repo y el repositorio de código</h2>
+        <p class="intro">
+          Son dos repositorios porque son dos cosas distintas: uno guarda el pensamiento y otro el producto. Separarlos evita que quien construye pueda retocar el contrato con el que se le va a juzgar, y que quien clone tu aplicación se lleve además todos los papeles del método.
+        </p>
         <p>
           El workspace padre es un repositorio Git. Guarda el pensamiento: planos, decisiones,
           estado, contratos, hallazgos y método. Dentro, <code>main/</code> es otro repositorio
@@ -1558,6 +1867,9 @@ python visor/proyectos.py contexto --todos</code></pre>
       <section id="metodo">
         <span class="kicker">Lo que ocurre tras la entrevista</span>
         <h2>16. Las siete fases del proyecto de construcción</h2>
+        <p class="intro">
+          Construir sin fases es empezar por lo divertido y descubrir tarde lo que no se sabía. Cada fase responde UNA pregunta y deja un documento, y la siguiente no arranca hasta que esa pregunta está contestada. Parece lento el primer día y sale rápido el primer mes.
+        </p>
         <p>
           La entrevista deja hechas las dos primeras. Después, una nueva sesión dentro del
           workspace continúa desde <code>AGENTS.md</code> y
@@ -1647,6 +1959,9 @@ python visor/proyectos.py contexto --todos</code></pre>
       <section id="roles">
         <span class="kicker">Cada gorra tiene límites</span>
         <h2>17. Los roles de trabajo</h2>
+        <p class="intro">
+          Un rol es un permiso, no un disfraz. El que construye no despliega y el que mira no arregla. No es burocracia: casi todos los destrozos salen de alguien que hacía dos cosas a la vez y se saltó la comprobación de una de ellas. Obligar a abrir sesión nueva para tocar producción mete una pausa donde antes había impulso, y esa pausa es la seguridad.
+        </p>
         <p>
           Un rol ocupa una sesión. Cambiar de rol significa abrir otra sesión. Esto evita que
           quien vigila se ponga a arreglar o que quien construye despliegue por impulso.
@@ -1692,6 +2007,9 @@ python visor/proyectos.py contexto --todos</code></pre>
       <section id="carriles">
         <span class="kicker">No todo trabajo pesa lo mismo</span>
         <h2>18. Los tres carriles y los tipos de unidad</h2>
+        <p class="intro">
+          No todo cambio merece el mismo papeleo: exigir un contrato firmado para corregir una errata enseña a saltarse el método entero. Los carriles ponen el precio en proporción al riesgo, y fijan la única frontera que no se negocia: si cambia lo que la gente ve, deja de ser trivial.
+        </p>
 
         <h3>Carriles</h3>
         <div class="table-wrap">
@@ -1731,6 +2049,9 @@ python visor/proyectos.py contexto --todos</code></pre>
       <section id="unidades">
         <span class="kicker">Una petición, un contrato, una mesa</span>
         <h2>19. Unidades de trabajo y worktrees</h2>
+        <p class="intro">
+          El trabajo se parte en trozos numerados para que cada uno tenga su contrato, su sitio y su final. Y cada trozo se construye en una copia aparte del código, para que dos trabajos simultáneos no se pisen y para que abandonar uno no deje el proyecto a medio hacer.
+        </p>
         <p>
           Una unidad es un trozo numerado como <code>023-reservar-existencias</code>.
           <code>unidad.py</code> asigna el número, crea los documentos desde plantillas y
@@ -1817,6 +2138,9 @@ python visor/proyectos.py contexto --todos</code></pre>
       <section id="cierre">
         <span class="kicker">“Hecho” necesita pruebas</span>
         <h2>20. Cómo se termina una unidad</h2>
+        <p class="intro">
+          Terminar no es que el código funcione en tu máquina. Es un ritual que no se puede partir: comprobar, revisar, integrar, que tú lo pruebes y recoger lo aprendido. Existe porque «ya está mezclado, luego ordenamos los papeles» es exactamente el estado en el que se pierde el trabajo.
+        </p>
         <p>
           Integrar el cambio y cerrar la unidad forman un único ritual. No existe un estado
           cómodo de “ya está mezclado, luego ordenaremos los papeles”.
@@ -1878,6 +2202,9 @@ python visor/proyectos.py contexto --todos</code></pre>
       <section id="deploy">
         <span class="kicker">Integrar no es publicar</span>
         <h2>21. Producción, copias y despliegue</h2>
+        <p class="intro">
+          Que algo esté terminado no significa que la gente lo esté usando: son dos hechos distintos, y confundirlos es dar por entregado un pedido porque está empaquetado. Desplegar tiene su propia sesión, su plan escrito y su vuelta atrás preparada ANTES de tocar nada.
+        </p>
         <p>
           Que un cambio esté en <code>main</code> no significa que esté funcionando para
           usuarios reales. El despliegue es otro hecho, realizado por el rol Deploy en una
@@ -1909,6 +2236,9 @@ python visor/proyectos.py contexto --todos</code></pre>
       <section id="iteracion">
         <span class="kicker">Los planos siguen vivos</span>
         <h2>22. Cómo se mantiene el negocio cuando cambia</h2>
+        <p class="intro">
+          Un negocio no se queda quieto, así que los planos tampoco pueden ser un PDF muerto. Cuando cambia algo de verdad —un canal nuevo, una regla nueva—, primero se cambia el dibujo y lo apruebas tú; el código va después. Al revés, la documentación se vuelve mentira en tres meses y ya nadie la mira.
+        </p>
         <p>
           Después de entregar, los flujos no se convierten en un PDF muerto. Viven en
           <code>docs/02-flujos/planos/</code>. Cualquier cambio observable vuelve al rol de
@@ -1935,6 +2265,9 @@ python visor/proyectos.py contexto --todos</code></pre>
       <section id="seguridad">
         <span class="kicker">Barandillas del sistema</span>
         <h2>23. Seguridad, privacidad y límites</h2>
+        <p class="intro">
+          Las reglas de esta sección no protegen a la aplicación: te protegen a ti de que un agente publique por descuido lo que no debe. Contraseñas y datos de personas viven fuera de Git y se citan por su ruta, nunca copiados.
+        </p>
 
         <div class="card-grid">
           <article class="card">
@@ -1976,6 +2309,9 @@ python visor/proyectos.py contexto --todos</code></pre>
       <section id="que-se-entrega">
         <span class="kicker">Producto limpio</span>
         <h2>24. Qué se entrega y qué queda fuera</h2>
+        <p class="intro">
+          Decir qué entra y qué no es lo que evita la discusión de después. Esta es la frontera: lo que la herramienta te da hecho, y lo que sigue siendo trabajo tuyo o del agente.
+        </p>
 
         <h3>En la caja de herramientas</h3>
         <ul class="checks">
@@ -2008,6 +2344,9 @@ python visor/proyectos.py contexto --todos</code></pre>
       <section id="ejemplo">
         <span class="kicker">Una historia cotidiana</span>
         <h2>25. Ejemplo completo: una cafetería que recibe encargos</h2>
+        <p class="intro">
+          Todo lo anterior junto, en un caso pequeño y real. Si algo de la teoría no te ha encajado, léelo aquí: es el mismo recorrido, pero con una persona, una libreta y unas tartas.
+        </p>
 
         <h3>1. La persona llega con una idea</h3>
         <p>
@@ -2076,6 +2415,9 @@ python visor/proyectos.py contexto --todos</code></pre>
       <section id="checklist">
         <span class="kicker">Listas para usar</span>
         <h2>26. Checklist de principio a fin</h2>
+        <p class="intro">
+          Lo mismo del manual, en forma de lista para ir marcando. Sirve para dos cosas: comprobar antes de empezar que tu ordenador está listo, y comprobar antes de firmar que no te has saltado nada.
+        </p>
 
         <h3>Antes de empezar</h3>
         <ul class="checks">
@@ -2133,6 +2475,9 @@ python visor/proyectos.py contexto --todos</code></pre>
       <section id="faq">
         <span class="kicker">Dudas habituales</span>
         <h2>27. Preguntas frecuentes</h2>
+        <p class="intro">
+          Las dudas que aparecen siempre, contestadas corto. Casi todas son la misma pregunta de fondo: dónde vive cada cosa, y quién manda cuando dos documentos dicen lo contrario.
+        </p>
 
         <details>
           <summary>¿El bootstrap se genera después de la entrevista?</summary>
@@ -2195,6 +2540,9 @@ python visor/proyectos.py contexto --todos</code></pre>
       <section id="glosario">
         <span class="kicker">Diccionario Barrio Sésamo</span>
         <h2>28. Glosario en lenguaje normal</h2>
+        <p class="intro">
+          Cada palabra del método dicha como se diría en una conversación. Si en algún punto te has perdido en una palabra, se traduce aquí; y si una palabra no está en esta lista, es que no hacía falta usarla.
+        </p>
         <dl class="glossary">
           <div class="term"><dt>Actividad</dt><dd>Una cosa completa que pasa en el negocio, expresada con un verbo: cobrar una factura, entregar un pedido.</dd></div>
           <div class="term"><dt>Agente padre</dt><dd>La sesión que habla con la persona, organiza el trabajo y mantiene los documentos compartidos.</dd></div>
@@ -2225,11 +2573,11 @@ python visor/proyectos.py contexto --todos</code></pre>
 
       <section id="runbooks-completos">
         <span class="kicker">Las recetas operativas, una por una</span>
-        <h2>29. Los 12 runbooks del método</h2>
+        <h2>29. Los 14 runbooks del método</h2>
         <p class="intro">
           Un runbook no es una explicación decorativa: es la receta que decide cuándo entra
           un trabajo, quién actúa, qué papel deja, qué puerta impide avanzar y cómo termina.
-          Estos son los doce que viajan dentro de cada workspace <code>-agents</code>.
+          Estos son los catorce que viajan dentro de cada workspace <code>-agents</code>. La ficha detallada de cada uno, con sus pasos y sus puertas, está en <a href="#w8">W8</a>.
         </p>
 
         <div class="table-wrap">
@@ -2321,6 +2669,20 @@ python visor/proyectos.py contexto --todos</code></pre>
                 <td>Constructor del bug y después rol Deploy.</td>
                 <td>Es la única vía que puede adelantar la aprobación completa; nunca salta suite, evidencia ni revisión. Deja deuda con reloj de 24 horas.</td>
                 <td>Producción estabilizada y validada; después se paga toda la deuda de diagnóstico y regresión.</td>
+              </tr>
+              <tr>
+                <td><strong>Cierre</strong></td>
+                <td>Una unidad de cualquier tipo está terminada y el usuario pide cerrarla.</td>
+                <td>El padre; un revisor fresco distinto de quien construyó.</td>
+                <td>Sin OK del usuario sobre la app corriendo no hay cierre, ni con los tests en verde; y el revisor no puede ser el constructor.</td>
+                <td><code>unidad.py cerrar</code> aplica las puertas, archiva, borra worktree y rama local, y pasa el linter.</td>
+              </tr>
+              <tr>
+                <td><strong>Primer despliegue</strong></td>
+                <td>El usuario quiere que otros lo usen y nunca ha desplegado nada.</td>
+                <td>Rol Deploy, en sesión propia.</td>
+                <td>Ensayo en falso con vuelta atrás completa antes de que haya datos que perder; y auditoría de seguridad antes de salir a internet.</td>
+                <td>Ficha del plano de deploy rellena y <code>lint_deploy.py</code> en verde; a partir de ahí, runbook de deploy normal.</td>
               </tr>
             </tbody>
           </table>
@@ -2653,6 +3015,1110 @@ python visor/proyectos.py contexto --todos</code></pre>
         El método y sus prioridades proceden de Nate Gentile, creador de Ingeniería de
         Requisitos y del Método Nate.
       </div>
+
+      <section id="croquis">
+        <span class="kicker">Parte 3 · el plano técnico</span>
+        <h2>El croquis del workspace, a fondo</h2>
+        <p class="intro">
+          Hasta aquí, el manual cuenta <em>qué</em> pasa. Esta parte es el plano de obra: cada
+          runbook con sus pasos, cada estado con quién lo escribe, y <strong>cada comprobación
+          con su umbral exacto</strong>. Es la parte que se consulta, no la que se lee de un tirón.
+        </p>
+
+        <h3>Cómo se lee este croquis</h3>
+        <p>
+          El método se apoya en una jerarquía de confianza declarada: <strong>script/hook</strong>
+          (se cumple solo) &gt; <strong>plantilla</strong> (guía la forma) &gt; <strong>prosa</strong>
+          (se pide). Cada marca dice quién hace cumplir la regla.
+        </p>
+
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Marca</th><th>Significa</th><th>Quién lo hace cumplir</th></tr></thead>
+            <tbody>
+              <tr><td><span class="chip c-fail">HARD-GATE</span></td><td>Puerta que no se negocia: sin ella no se pasa</td><td>Un script bloquea, o el runbook lo escribe y el linter lo detecta después</td></tr>
+              <tr><td><span class="chip c-fail">FAIL</span></td><td>Salida <code>exit 1</code>: se arregla antes de seguir</td><td><code>lint_metodo.py</code> · <code>lint_deploy.py</code> · <code>unidad.py</code></td></tr>
+              <tr><td><span class="chip c-warn">WARN</span></td><td>Se dice en cada arranque, no bloquea</td><td>Los mismos scripts</td></tr>
+              <tr><td><span class="chip c-ok">OK</span></td><td>Comprobado con evidencia real</td><td>Output pegado, no afirmación</td></tr>
+              <tr><td><span class="chip c-acc">HUMANO</span></td><td>Decisión que ningún agente delega jamás</td><td>Tú: aprobar specs, dar el OK sobre la app, los ADRs</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note"><p>Regla base de todo el sistema: <strong>evidencia, no afirmación</strong>. «Hecho» sin el output del check que lo demuestra no es hecho (<code>AGENTS.md</code>, regla 12).</p></div>
+      </section>
+
+      <section id="w1">
+        <span class="kicker">W1 · Nacimiento</span>
+        <h2>De dónde sale el workspace</h2>
+        <p class="lede">Un workspace <strong>solo</strong> puede nacer del bootstrap de esta herramienta (ADR-002). No hay otra forma de crear uno, y eso es lo que garantiza que todos tengan la misma forma.</p>
+
+        <div class="sheet">
+          <p class="cap">Cadena completa: entrevista → planos → workspace</p>
+<pre>  ENTREVISTA (RUNBOOK.md, modos A/B/C)
+       │
+       │  iniciar.py --destino &lt;ruta&gt;/&lt;nombre&gt;-agents --nombre --titulo --tipo
+       │      └─ el workspace existe desde el MINUTO UNO; nada vive suelto
+       ▼
+  planos.json ──────────► validar.py ──► validar_web.py ──► requisitos.py abrir
+   (única fuente          (esquema +     (E2E del menú      (visor 127.0.0.1,
+    de verdad)             coherencia)    lateral, real)     refresco solo)
+       │
+       │  requisitos.py aprobar --por "NOMBRE" --confirmar-supuestos  ──► aprobacion.json
+       ▼
+  finalizar.py  ──exige──►  --github &lt;cuenta&gt;  |  --sin-github     (o se niega a terminar)
+       │                    validar.py --perfil congelado ──► si falla: NADA se genera
+       ▼
+  bootstrap.py --planos &lt;proyecto&gt; --destino &lt;ws&gt; --tipo &lt;webapp|automatizacion|agente|otro&gt;
+       │
+       ├─► &lt;nombre&gt;-agents/   meta-repo   (documentación + método + planos)
+       └─► &lt;nombre&gt;-agents/main/  repo de código, INDEPENDIENTE (no submódulo)</pre>
+        </div>
+
+        <h3>Las 8 comprobaciones del bootstrap</h3>
+        <p>Todas ocurren <em>antes</em> de que exista un solo commit. <strong>Las siete primeras
+        paran el proceso</strong>: si una falla, no se crea nada y no te quedas con un proyecto a
+        medias. <strong>La octava solo avisa</strong>, porque se puede rehacer después.</p>
+
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>#</th><th>Comprueba</th><th>Dato exacto</th></tr></thead>
+            <tbody>
+              <tr><td class="num">1</td><td>Destino nuevo</td><td>La carpeta no existe o está vacía</td></tr>
+              <tr><td class="num">2</td><td>Planos presentes</td><td><code>planos.json</code> + <code>especificaciones/01-constitution/constitution.md</code></td></tr>
+              <tr><td class="num">3</td><td>Plantilla completa</td><td>8 piezas: los 3 bias, AGENTS.md, README.md, gitignore, setup.py, worktrees-README.md</td></tr>
+              <tr><td class="num">4</td><td>Método publicable</td><td>El contenido de <code>docs/00-metodo</code> casa <strong>exactamente</strong> con el manifiesto (ni falta ni sobra un fichero)</td></tr>
+              <tr><td class="num">5</td><td>Ids de actividad únicos</td><td>Dos áreas no pueden repetir el id de una actividad</td></tr>
+              <tr><td class="num">6</td><td>Vocabulario de estados</td><td>Cada actividad del mapa está en el vocabulario cerrado</td></tr>
+              <tr><td class="num">7</td><td>Linter del método</td><td><code>lint_metodo.py</code> sobre lo recién creado, <strong>antes</strong> del <code>git init</code>. Es la única que corre sobre lo ya escrito: si salta, eso no se usa hasta arreglarlo</td></tr>
+              <tr><td class="num">8</td><td>Registro local</td><td>Se apunta el proyecto en el registro que git ignora. <span class="chip c-warn">solo avisa</span> — se rehace con <code>proyectos.py registrar</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Tres decisiones automáticas del bootstrap</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Decisión</th><th>Cómo se toma</th><th>Consecuencia</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Bias tecnológico</strong></td><td><code>--tipo</code> enruta: <code>webapp.md</code> · <code>generico.md</code> (automatizacion, agente, otro)</td><td>Viaja a <code>docs/01-constitucion/bias.md</code> y acota toda la fase 3</td></tr>
+              <tr><td><strong>Brownfield</strong></td><td>Clon superficial del remoto: si hay algo que no sea README / LICENSE / COPYING / .gitignore / .gitattributes / <code>.github/</code> → hay código</td><td>Gana a <code>--tipo</code>: viaja <code>brownfield.md</code> y la <strong>primera unidad obligatoria es la adopción</strong></td></tr>
+              <tr><td><strong>Rama principal</strong></td><td>Se le pregunta al remoto con <code>git ls-remote --symref … HEAD</code></td><td>Un repo adoptado en <code>master</code> funciona igual; queda escrito en <code>repos.yaml</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Si se pidió GitHub</h3>
+        <ul>
+          <li>Se crean <strong>dos repos privados</strong>: <code>&lt;nombre&gt;</code> (código) y <code>&lt;nombre&gt;-agents</code> (meta), ambos con <code>--delete-branch-on-merge</code>.</li>
+          <li>Se intenta proteger la rama principal del código: <code>required_status_checks: {strict: true, contexts: ["tests"]}</code>.</li>
+          <li>Si GitHub lo capa (repos privados del plan gratis) queda un aviso explícito: el método sigue protegiendo por PR + CI, pero un push directo no está bloqueado <em>por GitHub</em>.</li>
+        </ul>
+
+        <div class="note"><p><code>METODO.json</code> guarda un <strong>sha256</strong> de todas las piezas del método (los ficheros del manifiesto + el kit de requisitos + AGENTS.md + setup.py + los hooks + la CI). Es la huella que permite saber de un vistazo si ese workspace se quedó atrás — la entrada del <a href="#w14">Modo D</a>.</p></div>
+      </section>
+
+      <section id="w2">
+        <span class="kicker">W2 · Anatomía</span>
+        <h2>El árbol congelado</h2>
+        <p class="lede">Las <strong>nueve</strong> carpetas de <code>docs/</code> son estructura congelada: añadir o quitar una exige un ADR, y el linter lo comprueba en cada arranque de sesión.</p>
+
+        <div class="sheet">
+          <p class="cap">Workspace &lt;nombre&gt;-agents/ recién bootstrapeado</p>
+<pre>AGENTS.md            router + 15 reglas duras   [linter: ≤ 160 líneas]
+CLAUDE.md GEMINI.md  puentes; contenido exacto: "@AGENTS.md\n"
+GUIA.md              la guía del humano, sin tecnicismos
+README.md            mapa + cómo llevárselo a otro ordenador
+METODO.json          huella sha256 de la plantilla
+repos.yaml           remoto · rama_principal · ruta_local: main/
+setup.py             deja el taller listo en cualquier máquina (idempotente)
+.githooks/pre-push   hook agnóstico al agente (lo ejecuta git)
+.github/workflows/lint.yml    CI del meta → lint_metodo.py
+
+docs/
+├── 00-metodo/       EL MÉTODO (viaja con la plantilla; no se toca sin ADR)
+│   ├── runbooks/    14 ficheros
+│   ├── plantillas/  12 ficheros
+│   ├── scripts/     unidad.py · lint_metodo.py · doctor.py
+│   │                lint_deploy.py · sandbox_lanzar.py
+│   ├── decisiones/  ADR-001 … ADR-011 (del MÉTODO)
+│   └── requisitos/  kit heredado: RUNBOOK.md + visor + validadores
+├── 01-constitucion/ manifiesto.md (compilado de los planos) + bias.md
+├── 02-flujos/       INDICE.md + un .md por actividad
+│   └── planos/      planos.json  ← LA FUENTE DE VERDAD (canónica desde aquí)
+├── 03-investigacion/  fase 3      (nace vacía)
+├── 04-planificacion/  ROADMAP.md  (nace vacía)
+├── 05-trabajo/      ESTADO.md [linter: ≤ 100 líneas] + NNN-slug/ + archivo/
+├── bugs/            INDICE.md + NNN-slug.md por bug — NO se archivan
+├── conocimiento/    aprendizajes + plano-deploy.md + plano-observabilidad.md
+└── decisiones/      ADRs de ESTE proyecto (numeración propia desde 001)
+
+main/                clon canónico del código   — git-ignorado por el meta
+worktrees/NNN-slug/  una copia de trabajo por unidad — git-ignorado
+.private/            secretos y PII — JAMÁS por git, se copian a mano
+.runtime/            logs, capturas, dumps — se regenera sola
+.caja-negra/         diario de fricción, fuera de git</pre>
+        </div>
+
+        <h3>Quién escribe dónde</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Actor</th><th>Escribe</th><th>Jamás</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Padre</strong> (la sesión que habla contigo)</td><td>Todo <code>docs/</code>; único que hace git en el meta, siempre con rutas explícitas</td><td>Código. Ni en <code>main/</code> ni en worktrees. Nunca <code>git add -A</code></td></tr>
+              <tr><td><strong>Constructor</strong> (subagente)</td><td>Su worktree + <code>hallazgos.md</code> + las casillas <code>[x]</code> de su plan</td><td>Ficheros compartidos, git en el meta, mergear</td></tr>
+              <tr><td><strong>Subagente de bug</strong></td><td>Su worktree + <code>docs/bugs/NNN-slug.md</code></td><td>Todo lo demás de <code>docs/</code></td></tr>
+              <tr><td><strong>Documental</strong> (auditoría / investigación / documentación)</td><td>Solo su carpeta de unidad. Lee <code>main/</code></td><td>Tiene rama ni worktree</td></tr>
+              <tr><td><strong>Revisor fresco</strong></td><td>Sección <strong>Revisión</strong> de <code>hallazgos.md</code> + <code>revisor:</code> / <code>revisado:</code></td><td>Ser quien construyó</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="gate">
+          <span class="tag">Hard-gate estructural</span>
+          <p><code>main/</code> es <strong>solo lectura</strong>. La única excepción nombrada en todo el método es el merge del paso 3 del cierre cuando la máquina no tiene <code>gh</code> (camino B). Nada más: ni editar, ni crear ramas, ni commitear a mano.</p>
+        </div>
+      </section>
+
+      <section id="w3">
+        <span class="kicker">W3 · Arranque</span>
+        <h2>Los 4 pasos de cada sesión</h2>
+        <p class="intro">
+          Una sesión empieza siempre igual, y no por rutina: los cuatro pasos existen para que el agente no trabaje sobre una foto vieja del proyecto. Saltárselos es la forma más común de construir sobre algo que ya no está.
+        </p>
+        <ol class="steps">
+          <li><strong>Actualizar el taller</strong> — <code>python setup.py</code>. Cinco pasos: (1) comprueba git, (2) lee <code>repos.yaml</code>, (3) clona o actualiza <code>main/</code> con <code>fetch</code> + <code>switch</code> + <code>pull --ff-only</code> —si no puede, <strong>PARA</strong> y explica por qué—, (4) activa <code>core.hooksPath</code> y recrea <code>worktrees/</code>, <code>.private/</code>, <code>.runtime/</code>, (5) pasa el linter (si falla, para y no sigue) e imprime el último commit del código. Termina lanzando <code>doctor.py --escribir</code>.</li>
+          <li><strong>Lintar el método</strong> — <code>python docs/00-metodo/scripts/lint_metodo.py</code>. Un <span class="chip c-fail">FAIL</span> se arregla antes de seguir (regla dura 13).</li>
+          <li><strong>Leer <code>docs/05-trabajo/ESTADO.md</code></strong> — dónde estamos, qué hay en vuelo y qué toca ahora.</li>
+          <li><strong>Declarar el rol y confirmarlo</strong> — se te ofrecen los tres operativos. Un rol = una sesión: <strong>no se mezclan</strong>. Cambiar de rol es abrir sesión nueva.</li>
+        </ol>
+        <div class="note"><p><code>setup.py</code> es idempotente y funciona en Windows, macOS y Linux: fuerza UTF-8 en la salida porque en Windows un <code>→</code> por un pipe mataba el arranque con un <code>charmap codec</code> que parecía un fallo del método y no lo era.</p></div>
+      </section>
+
+      <section id="w4">
+        <span class="kicker">W4 · Roles</span>
+        <h2>Los cuatro roles del padre</h2>
+        <p class="lede">El padre, en cualquier rol, <strong>jamás escribe código</strong>. Dos de los roles no pueden ni empezar sin su plano escrito.</p>
+
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Rol</th><th>Qué hace</th><th>Escribe</th><th>Hard-gate de arranque</th></tr></thead>
+            <tbody>
+              <tr><td><strong>CONSTRUCTOR</strong><br><span class="chip c-acc">por defecto</span></td><td>Recorre las fases, especifica, despacha y cierra unidades</td><td>Todo <code>docs/</code>; único que hace git en el meta</td><td>—</td></tr>
+              <tr><td><strong>ANALISTA DE FLUJOS</strong></td><td>Se asume <em>desde</em> constructor ante cualquier cambio de comportamiento</td><td>Solo <code>docs/02-flujos/planos/</code>, y siempre con las herramientas de <code>00-metodo/requisitos/</code></td><td>Aprobación del usuario sobre la web <em>antes</em> de crear unidades de código (regla 14, ADR-007)</td></tr>
+              <tr><td><strong>OBSERVABILIDAD</strong></td><td>Mira el estado real del sistema y reporta. <strong>No arregla nada</strong></td><td>Solo informes, dentro de una unidad tipo <code>auditoria</code></td><td>Sin <code>conocimiento/plano-observabilidad.md</code> <strong>no mira nada y no informa de nada</strong></td></tr>
+              <tr><td><strong>DEPLOY</strong></td><td>El único con manos en la máquina destino</td><td>Nada a mano: la infra se cambia como unidad normal, con spec aprobada y worktree</td><td>Sin <code>conocimiento/plano-deploy.md</code> <strong>no toca ninguna máquina</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Las dos entrevistas de arranque (una vez, ADR-008)</h3>
+        <p>Se preguntan de una en una, en tu idioma, <strong>partiendo del bias, no de cero</strong>. La sesión siguiente arranca <em>leyendo</em> el plano y solo re-pregunta ante las señales de drift que el propio plano lista.</p>
+
+        <div class="cards two">
+          <div class="card">
+            <h5>Observabilidad · 6 preguntas</h5>
+            <ol>
+              <li>¿Qué se vigila hoy, y con qué?</li>
+              <li>¿Dónde están los logs?</li>
+              <li>¿Dónde se ven los errores?</li>
+              <li>¿Qué significa para ti que «va bien»?</li>
+              <li>¿A quién se avisa cuando algo se rompe, y cómo?</li>
+              <li>¿Etapa: local, LAN o internet?</li>
+            </ol>
+            <p class="foot-line">Si la cosa existe pero no lo sabes → el rol la <strong>deriva con evidencia</strong> y te la confirma. Si NO existe → hallazgo que pare una unidad; este rol no la construye.</p>
+          </div>
+          <div class="card">
+            <h5>Deploy · 6 preguntas</h5>
+            <ol>
+              <li>¿Dónde corre esto hoy, y dónde debería?</li>
+              <li>¿Qué etapas hay?</li>
+              <li>¿Cómo se despliega ahora?</li>
+              <li>¿Hay copia de seguridad, dónde, y se ha restaurado <strong>de verdad</strong> alguna vez?</li>
+              <li>¿Quién da el OK antes de producción? (nombre)</li>
+              <li>¿Qué pasa si hay que volver atrás?</li>
+            </ol>
+            <p class="foot-line">Si <strong>nunca has desplegado nada</strong>, estas preguntas no tienen respuesta: se empieza por <code>runbooks/primer-despliegue.md</code>, que pregunta por tu negocio y deduce lo técnico.</p>
+          </div>
+        </div>
+
+        <div class="note"><p><strong>Lo que ningún rol delega jamás:</strong> aprobación de specs, OK de comportamiento antes de producción, decisiones de contrato escaladas, y los ADRs.</p></div>
+      </section>
+
+      <section id="w5">
+        <span class="kicker">W5 · Fases</span>
+        <h2>Las 7 fases, con sus contratos numéricos</h2>
+        <p class="lede">Las fases 1-4 se recorren al arrancar el proyecto y después se <strong>actualizan</strong>, nunca se re-hacen enteras. Las fases 5-7 se repiten por cada unidad de trabajo.</p>
+
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>#</th><th>Fase</th><th>Nivel</th><th>Produce</th><th>Estado al bootstrapear</th></tr></thead>
+            <tbody>
+              <tr><td class="num">1</td><td>Constitución</td><td>proyecto</td><td><code>01-constitucion/</code> — manifiesto + bias</td><td><span class="chip c-ok">con contenido</span></td></tr>
+              <tr><td class="num">2</td><td>Flujos</td><td>proyecto</td><td><code>02-flujos/</code> — mapa por actividades</td><td><span class="chip c-ok">con contenido</span></td></tr>
+              <tr><td class="num">3</td><td>Investigación</td><td>proyecto</td><td><code>03-investigacion/</code> — 10 informes + <code>SINTESIS.md</code></td><td><span class="chip c-warn">vacía</span></td></tr>
+              <tr><td class="num">4</td><td>Planificación</td><td>proyecto</td><td><code>04-planificacion/ROADMAP.md</code></td><td><span class="chip c-warn">vacía</span></td></tr>
+              <tr><td class="num">5</td><td>Especificación</td><td>unidad</td><td><code>05-trabajo/NNN-slug/especificacion.md</code></td><td>por unidad</td></tr>
+              <tr><td class="num">6</td><td>Construcción</td><td>unidad</td><td>el subagente implementa el plan en su worktree</td><td>por unidad</td></tr>
+              <tr><td class="num">7</td><td>Cierre</td><td>unidad</td><td>verificar → revisar → merge → e2e + instancia validada → consolidar</td><td>por unidad</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Fase 3 · Investigación — contrato de cierre numérico</h3>
+        <p><strong>Exactamente 10 ficheros</strong> <code>informe-NN-&lt;enfoque&gt;.md</code> para un proyecto de cero, más <code>SINTESIS.md</code>, todo con fuentes fechadas y su nivel. Una investigación que no deja documento no existió.</p>
+
+        <div class="sheet">
+          <p class="cap">Los 10 enfoques estándar · un subagente por enfoque, cada uno con el bias delante</p>
+<pre>01 casos y proyectos parecidos (open source primero)
+02 el ecosistema del stack del bias
+03 la alternativa simple  (¿basta un script?)
+04 el escéptico del stack            ◄── obligatorio
+05 integraciones / hardware que exigen los flujos
+06 modelo de datos
+07 despliegue self-hosted
+08 seguridad
+09 frontend  (¿estático basta o hace falta React?)
+10 estado del arte: empresas famosas, startups grandes, organizaciones reputadas</pre>
+        </div>
+
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th class="num">Nivel</th><th>Lista blanca de fuentes (prioridad de arriba abajo)</th><th>Uso</th></tr></thead>
+            <tbody>
+              <tr><td class="num">1</td><td>Documentación oficial y sus notas de versión</td><td>sostiene decisiones</td></tr>
+              <tr><td class="num">2</td><td>Repositorio oficial y especificaciones (RFC, W3C, PEP, ISO)</td><td>sostiene decisiones</td></tr>
+              <tr><td class="num">3</td><td>Blogs de ingeniería de empresas grandes y startups punteras</td><td>sostiene decisiones</td></tr>
+              <tr><td class="num">4</td><td>Organizaciones reputadas (OWASP, CNCF, Linux Foundation, ACM/IEEE)</td><td>sostiene decisiones</td></tr>
+              <tr><td class="num">5</td><td>Foros técnicos (Stack Overflow, HN, subreddits)</td><td>detectar trampas, <strong>NO</strong> afirmar hechos</td></tr>
+              <tr><td class="num">6</td><td>Todo lo demás</td><td>se marca <strong>fuente débil</strong>; no sostiene nada por sí sola</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Dos reglas más: <strong>contenido generado por IA sin fuente citada no vale</strong> (ni como nivel 6), y ante conflicto gana la fuente más oficial y más reciente.</p>
+
+        <h3>Fase 4 · Planificación — tres hard-gates antes de escribir el ROADMAP</h3>
+        <div class="gate">
+          <span class="tag">Hard-gate 1 · mirar la máquina</span>
+          <p><code>python docs/00-metodo/scripts/doctor.py --escribir</code>. <strong>El ROADMAP no fija una herramienta que el doctor no haya visto en verde.</strong> Sin Docker, el plan no dice «se desarrolla con contenedores»; sin <code>gh</code>, el cierre va por el camino B y eso se escribe <em>aquí</em>, no se descubre en el paso del pull request.</p>
+        </div>
+        <div class="gate">
+          <span class="tag">Hard-gate 2 · mirar qué ya existe</span>
+          <p>Antes de proponer nada, buscar en <code>main/</code> si ya hay un módulo que haga eso o algo parecido. <strong>No se duplica código ni responsabilidades.</strong> Lo encontrado —qué módulos se tocan y por qué no se duplica— se escribe en el ROADMAP.</p>
+        </div>
+        <div class="gate">
+          <span class="tag">Hard-gate 3 · el usuario decide</span>
+          <p>Las decisiones se presentan <strong>de una en una</strong>, con pros y contras en cristiano. Nada queda decidido sin tu OK, y tú apruebas el documento final.</p>
+        </div>
+
+        <p>El bias fijo de la planificación: quien decide no es técnico → todo en cristiano, <strong>pero la elección técnica no se rebaja por eso</strong> (la terminal la maneja un agente). Prohibido proponer SaaS o ecosistemas cerrados «porque es más fácil para un no técnico». Cero overengineering. Destino por defecto: un VPS propio.</p>
+
+        <div class="note"><p>La estructura del ROADMAP es fija: ① resumen de 30 segundos · ② motivos de cada decisión · ③ tabla comparativa · ④ plan de construcción con el <strong>esqueleto andante primero</strong>. Y el entorno decidido se materializa en el <code>AGENTS.md</code> del repo de código con los comandos exactos y copiables: levantar entorno, suite completa, e2e, instancia local y comprobación de seguridad. Sin esos comandos escritos, «suite en verde» y «lanzar instancia» no son ejecutables por un agente fresco.</p></div>
+      </section>
+
+      <section id="w6">
+        <span class="kicker">W6 · Carriles y tipos</span>
+        <h2>Cómo entra el trabajo</h2>
+        <p class="intro">
+          Todo lo que se hace entra por una puerta y con una etiqueta. Sin eso, el trabajo aparece a mitad de otra cosa, sin contrato y sin que nadie más sepa que existe.
+        </p>
+
+        <h3>Los 3 carriles — decidir el carril es obligatorio al abrir trabajo</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Carril</th><th>Criterio de entrada</th><th>Papeles</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Exprés</strong></td><td>El diff cabe en una frase <strong>Y</strong> no cambia comportamiento</td><td>Ninguno — el rastro es el commit/PR</td></tr>
+              <tr><td><strong>Normal</strong> <span class="chip c-acc">default</span></td><td>Todo lo demás</td><td><code>especificacion.md</code> (contrato + plan)</td></tr>
+              <tr><td><strong>Completo</strong></td><td>Transversal, arriesgado o territorio desconocido</td><td>+ <code>investigacion.md</code> de la unidad</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="gate">
+          <span class="tag">Hard-gate de carril</span>
+          <p>Si cambia comportamiento, <strong>nunca</strong> es exprés. Un <strong>bug jamás es exprés, sin excepciones</strong>: restaura comportamiento prometido, luego cambia comportamiento. Y ante la duda, no es exprés: la duda ya es la prueba de que algo cambia. Producción caída no es un carril, es una <em>excepción de despacho</em>: <code>hotfix.md</code>.</p>
+        </div>
+
+        <h3>Los 7 tipos de unidad</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Tipo</th><th>Contrato de cierre</th><th>¿Worktree?</th></tr></thead>
+            <tbody>
+              <tr><td><code>bug</code></td><td>Tests en rojo → fix → verde <strong>sin tocar los tests</strong> + regresión contraprobada. Ficha viva en <code>docs/bugs/</code> que NO se archiva (ADR-006)</td><td>sí</td></tr>
+              <tr><td><code>feature</code></td><td>Comportamiento nuevo verificado por los criterios de la spec</td><td>sí</td></tr>
+              <tr><td><code>refactor</code></td><td>Nada observable cambia; la suite existente sigue verde e <strong>intacta</strong></td><td>sí</td></tr>
+              <tr><td><code>migracion</code></td><td>Mismo comportamiento sobre base nueva; backup restaurado y rollback ensayado</td><td>sí</td></tr>
+              <tr><td><code>auditoria</code></td><td>Informe con hallazgos verificados; no toca código. Los aceptados paren unidades</td><td>no — <code>--documental</code></td></tr>
+              <tr><td><code>investigacion</code></td><td>Preguntas respondidas con fuentes → se promueve a <code>conocimiento/</code></td><td>no — <code>--documental</code></td></tr>
+              <tr><td><code>documentacion</code></td><td>Docs verificados contra la realidad</td><td>según toque código o no</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="w7">
+        <span class="kicker">W7 · Ciclo de vida</span>
+        <h2>La vida de una unidad, estado a estado</h2>
+        <p class="intro">
+          Un trabajo pasa por estados para que cualquiera pueda entrar a mitad y saber qué falta sin preguntarte a ti. Los estados no son burocracia: son lo que permite que una sesión que se muere no se lleve con ella lo que ya estaba hecho.
+        </p>
+
+        <div class="sheet">
+          <p class="cap">Vocabulario cerrado de estados · quién provoca cada transición</p>
+<pre>                                    unidad.py nueva &lt;tipo&gt; &lt;slug&gt;
+                                              │
+                                              ▼
+                                      ┌───────────────┐
+                                      │  planificada  │  ← la escribe la plantilla
+                                      └───────┬───────┘
+              HUMANO: escribe  aprobado: YYYY-MM-DD  │
+                                              │
+                       ╔══════════════════════▼══════════════════════╗
+                       ║  unidad.py despachar  — 6 PRECONDICIONES    ║
+                       ╚══════════════════════┬══════════════════════╝
+                                              ▼
+                       ┌────────────┐   crea rama NNN-slug + worktree
+                       │  en_obra   │◄──────────────┐
+                       └─────┬──────┘               │  propuesta aprobada
+                             │ PR abierto           │
+                             ▼                      │
+                     ┌───────────────┐        ┌─────┴──────┐
+                     │  en_revision  │        │ bloqueada  │  esperando decisión
+                     └───────┬───────┘        └────────────┘
+                             │
+          ╔══════════════════▼═══════════════════╗
+          ║  unidad.py cerrar  — 5 PUERTAS       ║
+          ╚═════════┬═══════════════════┬════════╝
+      sin --ok-usuario                  │ con --ok-usuario YYYY-MM-DD
+                    ▼                   ▼
+          ┌──────────────────┐   ┌───────────────┐
+          │  en_validacion   │──►│   mergeada    │──► archivo/  (los bugs NO)
+          └──────────────────┘   └───────────────┘
+           fusionada, esperando    worktree y rama LOCAL borrados
+           a una persona.          origin/NNN-slug SE CONSERVA
+           NO cuenta para el
+           tope de trabajo         ┌────────────┐
+           en vuelo (ADR-010)      │ descartada │ ──► archivo/
+                                   └────────────┘</pre>
+        </div>
+
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Estado</th><th>Significa</th><th>¿Cuenta para el tope?</th><th>Quién lo escribe</th></tr></thead>
+            <tbody>
+              <tr><td><code>planificada</code></td><td>Ficha creada, contrato por escribir o aprobar</td><td>no</td><td><code>unidad.py nueva</code></td></tr>
+              <tr><td><code>en_obra</code></td><td>Rama y worktree vivos, constructor trabajando</td><td><strong>sí</strong></td><td><code>unidad.py despachar</code></td></tr>
+              <tr><td><code>en_revision</code></td><td>PR abierto (o rama parada); el constructor terminó</td><td><strong>sí</strong></td><td>el padre</td></tr>
+              <tr><td><code>en_validacion</code></td><td>Fusionada y verificada; solo falta que tú pruebes</td><td>no</td><td><code>unidad.py cerrar</code> sin <code>--ok-usuario</code></td></tr>
+              <tr><td><code>mergeada</code></td><td>Cerrada de verdad</td><td>no</td><td><code>unidad.py cerrar</code> con fecha</td></tr>
+              <tr><td><code>bloqueada</code></td><td>Esperando una decisión (típico de bugs con propuesta)</td><td>no</td><td>el padre</td></tr>
+              <tr><td><code>descartada</code></td><td>No se hará; el porqué queda escrito</td><td>no</td><td>el padre</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Vocabulario paralelo: las actividades del mapa</h3>
+        <p>Manda el vocabulario del aparato de requisitos: <code>sin empezar → en entrevista → especificada → en obra → entregada</code>. Equivalencias con los nombres cortos de los runbooks: <code>por_descomponer</code> = <em>sin empezar</em>, <code>en_obra</code> = <em>en obra</em>. No se crean más variantes.</p>
+
+        <h3>Frontmatter obligatorio (8 claves; el linter exige las 8)</h3>
+        <div class="sheet">
+<pre>---
+unidad: NNN-slug
+tipo: bug | feature | refactor | migracion | auditoria | investigacion | documentacion
+carril: normal | completo
+estado: planificada | en_obra | en_revision | en_validacion | mergeada | bloqueada | descartada
+aprobado: no | YYYY-MM-DD        ◄── LO PONE EL USUARIO, jamás el agente
+actividad: &lt;id del INDICE de flujos&gt;
+ficheros: [rutas que esta unidad POSEE — dos paralelas jamás comparten]
+actualizado: YYYY-MM-DD
+---
+                     añadidas por los scripts cuando toca:
+                     ejecucion: documental      · fusion: &lt;sha&gt;
+                     y en hallazgos.md:  revisor:  ·  revisado: YYYY-MM-DD</pre>
+        </div>
+
+        <div class="gate">
+          <span class="tag">Por qué una fecha y no un «sí»</span>
+          <p><code>aprobado:</code> solo vale si es una fecha ISO <strong>real y no futura</strong>. Un «sí» lo teclea cualquiera sin haber leído nada; una fecha dice <em>cuándo</em> se leyó. <code>aprobado: 2030-01-01</code> es lo que teclea un agente que deja «preparada» la aprobación, y se rechaza igual. Única excepción en todo el método: el hotfix P0.</p>
+        </div>
+
+        <h3>El plan de trabajo del constructor (esqueleto fijo, 8 pasos)</h3>
+        <ol class="steps">
+          <li>Tests de integración + end-to-end (+ unit si hacen falta) que demuestren que esto <strong>no existe aún</strong>, en ROJO.</li>
+          <li>Implementar según el contrato.</li>
+          <li>Iterar hasta que todos esos tests pasen, <strong>sin tocarlos</strong>.</li>
+          <li>Tests adicionales que claven los casos límite de los R*.</li>
+          <li>Verificación final: suite completa + lint en verde; evidencia <strong>pegada</strong> en <code>hallazgos.md</code>.</li>
+          <li>Commit y push de la rama <code>NNN-slug</code>.</li>
+          <li>Pull request con <code>NNN-slug</code> en el título. Sin <code>gh</code>: se salta, la rama se queda tal cual (camino B).</li>
+          <li><strong>PARAR.</strong> Estado → <code>en_revision</code>. Devuelve el control al padre con el enlace y la evidencia.</li>
+        </ol>
+
+        <p><strong>Reglas del constructor que no se negocian:</strong> escribe solo en su worktree; las dos excepciones (<code>hallazgos.md</code> y las casillas del plan) están en <em>otro repositorio</em> y ahí no hace git jamás; lo que no está en <code>ficheros:</code> no se edita aunque su cambio lo necesite (lo propone y lo aplica el padre); <strong>no mergea él</strong>; los tests no se debilitan ni se borran; y <code>git stash</code> está <strong>prohibido</strong> — la pila es única y compartida entre todos los worktrees, un <code>pop</code> puede llevarse trabajo de otra rama.</p>
+      </section>
+
+      <section id="w8">
+        <span class="kicker">W8 · Runbooks</span>
+        <h2>Los 14 runbooks, ficha por ficha</h2>
+        <p class="lede">Siete son los tipos de unidad; los otros siete son rituales y excepciones. Todos cierran por el mismo sitio: <code>cierre.md</code>. La tabla resumen está en el <a href="#runbooks-completos">capítulo 29</a>; aquí van los pasos y las puertas de cada uno.</p>
+
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Runbook</th><th>Cuándo</th><th>Hard-gate propio más duro</th></tr></thead>
+            <tbody>
+              <tr><td><code>investigacion</code></td><td>Fase 3, o pregunta suelta</td><td>10 informes + SÍNTESIS, con fuente y fecha</td></tr>
+              <tr><td><code>planificacion</code></td><td>Fase 4</td><td>doctor en verde antes de prometer herramienta</td></tr>
+              <tr><td><code>adopcion</code></td><td>Brownfield: primera unidad, obligatoria</td><td>Ninguna unidad de código antes de tener adopción demostrable</td></tr>
+              <tr><td><code>feature</code></td><td>Comportamiento nuevo</td><td>Flujo escrito en el mapa y aprobado sobre la web antes de especificar</td></tr>
+              <tr><td><code>bug</code></td><td>«Esto está mal»</td><td>Sin test rojo con output pegado no se toca código</td></tr>
+              <tr><td><code>refactor</code></td><td>Estructura, sin cambiar comportamiento</td><td>Sin cobertura → primero unidad de tests de caracterización</td></tr>
+              <tr><td><code>migracion</code></td><td>Misma app, base nueva</td><td>Backup <em>restaurado</em> de prueba, no solo creado</td></tr>
+              <tr><td><code>auditoria</code></td><td>Revisar sin construir</td><td>Cada hallazgo se intenta refutar antes de presentarlo</td></tr>
+              <tr><td><code>documentacion</code></td><td>Docs como entregable</td><td>Cero comandos no ejecutados</td></tr>
+              <tr><td><code>expres</code></td><td>Diff de una frase, sin cambio observable</td><td>Ante la duda, no es exprés</td></tr>
+              <tr><td><code>hotfix</code></td><td>Producción caída, emergencia declarada</td><td>Deuda de spec pagada en 24 h; nada nuevo mientras tanto</td></tr>
+              <tr><td><code>cierre</code></td><td>Toda unidad, de cualquier tipo</td><td>Sin OK del usuario sobre la app corriendo, no hay cierre</td></tr>
+              <tr><td><code>deploy</code></td><td>Llevar a una etapa real algo ya mergeado</td><td><code>lint_deploy.py</code> en rojo bloquea</td></tr>
+              <tr><td><code>primer-despliegue</code></td><td>El usuario no ha desplegado nunca nada</td><td>Ensayo en falso con vuelta atrás completa antes de tener datos</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="cards two">
+
+          <div class="card">
+            <h5>adopcion</h5>
+            <p class="sub">Brownfield. Unidad <code>investigacion</code>+<code>auditoria</code>, carril completo, <strong>sin worktree de escritura</strong>.</p>
+            <ol>
+              <li><strong>Paso 0:</strong> si ya existe <code>03-investigacion/ADOPCION.md</code> completo, la adopción está cerrada → saltar al paso 6. Nunca se repite «por si acaso».</li>
+              <li>Inventario: stack y <strong>versiones leídas de los ficheros de dependencias</strong>, nunca supuestas por el nombre del framework.</li>
+              <li>Comandos de build/test/arranque <strong>ejecutados</strong>, no citados del README («el README miente con frecuencia»). Output pegado.</li>
+              <li>Estado de la suite. Sin suite o en rojo = <strong>deuda declarada nº 1</strong>: la siguiente unidad son tests de caracterización.</li>
+              <li>Gap-map en dos direcciones: lo que el mapa promete y el código no hace; lo que el código hace y el mapa no recoge.</li>
+              <li>Fase 3 <strong>acotada</strong>: no se re-elige stack; se investiga lo desconocido del gap-map y las versiones/CVE del stack existente.</li>
+            </ol>
+            <p class="foot-line">Si el gap-map no revela nada desconocido, se escribe <strong>«fase 3 sin temas»</strong> en <code>SINTESIS.md</code> con su porqué, quién y cuándo. Nunca un salto silencioso.</p>
+          </div>
+
+          <div class="card">
+            <h5>feature</h5>
+            <p class="sub">Pasos 1-4 = fase 5 · paso 5 = fase 6 · paso 6 = fase 7.</p>
+            <ol>
+              <li>Encaje con los flujos: encaja / modifica uno / es nuevo. Se edita <strong>siempre la fuente</strong> (<code>planos.json</code>), nunca los <code>.md</code> compilados. Primero <code>validar_web.py</code>, después <code>servir.py</code> → <code>http://127.0.0.1:8765/</code>, que se refresca sola cada 3 s.</li>
+              <li>¿Hace falta investigar? Cubierto por bias+SÍNTESIS → adelante; territorio nuevo → carril completo.</li>
+              <li>Planificación en cristiano + búsqueda obligatoria de módulos que ya hagan esto.</li>
+              <li>Spec con el script. Qué · R* · <strong>Cómo lo pruebas tú</strong> · Deltas al mapa · Cómo · ficheros.</li>
+              <li>Despacho y obra.</li>
+              <li>Cierre por <code>cierre.md</code>.</li>
+            </ol>
+            <p class="foot-line"><strong>Test de autocontención:</strong> ¿un constructor sin nada de contexto previo puede trabajar leyendo solo esta spec y su contexto? Si no → se reescribe.</p>
+          </div>
+
+          <div class="card">
+            <h5>bug</h5>
+            <p class="sub">Un fichero vivo con todo el ciclo: reporte → reproducción → diagnóstico → propuesta → resolución → cierre.</p>
+            <ol>
+              <li>Reporte con severidad P0-P4 y estado de triaje. Sin promesa incumplida no es un bug: es una feature sin especificar.</li>
+              <li>Despacho.</li>
+              <li><strong>Reproducir:</strong> test e2e en ROJO. El output literal <strong>pegado</strong> en la sección 2. «Está rojo» no satisface el gate; lo satisface el output.</li>
+              <li>Causa raíz al fichero, siempre.</li>
+              <li>¿Directa? implementar. ¿Con miga o varias vías? escribir propuesta y <strong>PARAR</strong> → <code>bloqueada</code>.</li>
+              <li>Aprobación del usuario, anotada.</li>
+              <li>Resolver: verde sin tocar el test + <strong>regresión contraprobada</strong> (rojo sin el arreglo, verde con él) + suite completa. Todo pegado.</li>
+              <li>PR.</li>
+              <li>Cierre con puerta de evidencia previa.</li>
+            </ol>
+            <p class="foot-line">El árbol se pone «sin el arreglo» con <code>git revert --no-commit</code> o <code>git checkout HEAD~1 -- &lt;fichero&gt;</code>. <strong>Nunca con <code>git stash</code></strong>.</p>
+          </div>
+
+          <div class="card">
+            <h5>hotfix</h5>
+            <p class="sub">Un hotfix <strong>es un bug</strong> con una válvula de despacho, no otro carril.</p>
+            <ol>
+              <li>Emergencia declarada por el usuario. Sin declaración no hay hotfix: hay un bug P1.</li>
+              <li>Ficha + <code>despachar --force --motivo "…"</code> — el <strong>único uso legítimo</strong> de <code>--force</code>.</li>
+              <li>Reproducir. ¿Imposible en caliente? se documentan los intentos y se sigue, escrito como <strong>riesgo asumido</strong>. Excepción exclusiva de aquí.</li>
+              <li>Arreglar el defecto y nada más. Suite completa verde.</li>
+              <li>Merge del constructor. <strong>Estar en main no es estar en producción</strong>, y tampoco es estar cerrado.</li>
+              <li>Traspaso a DEPLOY en <strong>sesión nueva</strong>: qué commit, quién dio el OK y a qué hora.</li>
+              <li>Verificación en caliente sobre producción: el síntoma real, no el test.</li>
+            </ol>
+            <p class="foot-line">Se salta <strong>una sola cosa</strong>: la espera de aprobación previa. Nunca el test, ni la suite, ni la evidencia. Mientras exista deuda sin pagar <strong>no se abre trabajo nuevo que no sea otro hotfix</strong>.</p>
+          </div>
+
+          <div class="card">
+            <h5>expres</h5>
+            <p class="sub">Sin <code>NNN</code>, sin carpeta, sin ficha. El rastro es el commit/PR.</p>
+            <p><strong>Sí:</strong> errata en un comentario, formateo, bump de dependencia <em>de desarrollo</em>, añadir algo al <code>.gitignore</code>.</p>
+            <p><strong>No:</strong> cualquier texto que ve el usuario, tocar lógica «aunque sea una línea», cualquier dependencia de producción, ficheros que la app carga, y <strong>un bug: nunca, ni el más pequeño</strong>.</p>
+            <p class="foot-line">Es el único carril que llega a main sin ninguna puerta del usuario, así que el aviso previo del padre es su única ocasión de corregir. Mientras el worktree exista, el linter lo canta como huérfano: <strong>un exprés que sobrevive a un lint del padre no era exprés</strong>. Dos exprés seguidos sobre lo mismo eran una unidad disfrazada.</p>
+          </div>
+
+          <div class="card">
+            <h5>refactor</h5>
+            <p class="sub">El mismo producto, mejor estructura, demostrado.</p>
+            <ol>
+              <li>Justificar con un problema concreto. «Limpiar un poco» no abre unidad.</li>
+              <li>Buscar cobertura. Sin ella → unidad separada de tests de caracterización primero.</li>
+              <li>Contrato: qué responsabilidad se mueve, R* que deben permanecer idénticos, métrica antes/después si el motivo es rendimiento.</li>
+              <li>Línea base <strong>verde</strong> pegada antes de tocar nada. Si ya estaba roja, para.</li>
+              <li>Un cambio estructural por commit lógico.</li>
+            </ol>
+            <p class="foot-line">Los tests existentes <strong>no se editan, debilitan ni eliminan</strong>. Si uno impide el cambio porque el comportamiento debe variar, esto dejó de ser refactor: es feature o bug.</p>
+          </div>
+
+          <div class="card">
+            <h5>migracion</h5>
+            <p class="sub">Una sola frontera: origen y destino exactos.</p>
+            <ol>
+              <li>Investigar changelog y guía oficial, con versión y fecha.</li>
+              <li>Inventariar datos, consumidores, indisponibilidad tolerable e integraciones en riesgo.</li>
+              <li>Spec <strong>antes de tocar nada</strong>: integridad (conteos, relaciones, hashes), backup, rollback con comandos y tiempo máximo.</li>
+              <li>Caracterizar el estado previo.</li>
+              <li><strong>Backup verificable:</strong> restaurarlo en un entorno desechable. «El archivo existe» no prueba que se pueda recuperar.</li>
+              <li>Ensayo completo en entorno no productivo con volumen representativo.</li>
+              <li>El camino repetible queda <strong>en código</strong>, no como una secuencia recordada.</li>
+            </ol>
+            <p class="foot-line">Subir de etapa (local → LAN → internet) es una migración, y la ejecuta DEPLOY en sesión aparte.</p>
+          </div>
+
+          <div class="card">
+            <h5>auditoria</h5>
+            <p class="sub">Documental: lee <code>main/</code>, escribe solo en su unidad. <strong>Nunca arregla lo que encuentra.</strong></p>
+            <ol>
+              <li>Acotar contigo. «Mira todo» se divide por lentes.</li>
+              <li>Contrato con controles concretos y qué evidencia los satisface.</li>
+              <li>Lentes independientes, sin solapamiento: seguridad → <code>auditoria-seguridad.md</code>; calidad → <code>auditoria-calidad.md</code>; método → <code>auditoria-metodo.md</code>.</li>
+              <li>Evidencia: ruta, línea, comando con output. «Parece inseguro» no es un hallazgo.</li>
+              <li><strong>Intentar refutar</strong> cada hallazgo antes de incluirlo.</li>
+              <li>Clasificar P0-P4 + confirmado / no reproducible / duplicado / riesgo aceptado.</li>
+            </ol>
+            <p class="foot-line">Cada hallazgo que aceptes pare su propia unidad. La auditoría no contiene arreglos camuflados.</p>
+          </div>
+
+          <div class="card">
+            <h5>documentacion</h5>
+            <p class="sub">Tres modos: meta (documental) · del software (rama y PR) · flujos (no usa este runbook, va por el kit de requisitos).</p>
+            <ol>
+              <li>Definir lector y tarea. «Documentar X» no basta.</li>
+              <li><strong>Comprobar la realidad antes de escribir:</strong> abrir rutas, ejecutar comandos, comparar con el código.</li>
+              <li>R* verificables: «una persona nueva puede arrancar la app siguiendo estos pasos».</li>
+              <li>Revisor fresco que <strong>repite la guía sin contexto previo</strong>.</li>
+            </ol>
+            <p class="foot-line">Puertas: cero comandos no ejecutados · cero enlaces rotos · el documento antiguo se actualiza o se elimina, no quedan dos verdades.</p>
+          </div>
+
+          <div class="card">
+            <h5>investigacion (nivel unidad)</h5>
+            <p class="sub">Fuera de la fase 3.</p>
+            <ul>
+              <li>Pregunta suelta → unidad <code>investigacion</code>: «Qué» son las preguntas exactas, «Criterios» es qué hace válida una respuesta. Se promueve a <code>conocimiento/</code> al cerrar. <strong>No necesita worktree.</strong></li>
+              <li>Carril completo → <code>investigacion.md</code> de la unidad, rellenado <strong>antes</strong> de la spec; sus respuestas alimentan el Cómo y los criterios.</li>
+            </ul>
+            <p class="foot-line">Anti-patrones: exploración infinita (el presupuesto se declara antes de lanzar), informes sin fecha o sin URL, y un solo punto de vista.</p>
+          </div>
+
+        </div>
+      </section>
+
+      <section id="w9">
+        <span class="kicker">W9 · Cierre</span>
+        <h2>El ritual indivisible</h2>
+        <p class="lede">No existe «fusionado pero sin cerrar». Todos los tipos cierran por aquí, y los dos caminos los decide el doctor <strong>al arrancar el proyecto</strong>, no al llegar al paso del pull request.</p>
+
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th></th><th>Camino A — con <code>gh</code></th><th>Camino B — sin <code>gh</code></th></tr></thead>
+            <tbody>
+              <tr><td>Dónde termina el constructor</td><td>PR abierto, rama empujada</td><td>Rama local (o empujada si hay remoto)</td></tr>
+              <tr><td>Qué mira el revisor</td><td>El diff del PR</td><td><code>git -C main diff main..NNN-slug</code></td></tr>
+              <tr><td>Dónde queda el veredicto</td><td colspan="2">Sección <strong>Revisión</strong> de <code>hallazgos.md</code> — igual en los dos</td></tr>
+              <tr><td>Quién fusiona y cómo</td><td>El padre: <code>gh pr merge NNN-slug</code></td><td>El padre: <code>git -C main merge --ff-only NNN-slug</code> <strong>y después <code>git -C main push origin main</code></strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note"><p><strong>Camino B: el push de la principal no es opcional.</strong> Cada rama nace de <code>origin/&lt;principal&gt;</code>. Si el merge se queda en local, la siguiente unidad parte de una base vieja y su merge ya no será fast-forward: a partir de ahí cada cierre pelea con git.</p></div>
+
+        <ol class="steps">
+          <li><strong>Verificar con evidencia.</strong> El output real de los checks, pegado en <code>hallazgos.md</code> (o en la ficha, si es un bug).</li>
+          <li><strong>Revisor fresco.</strong> Sesión o subagente nuevo, solo lectura: cada criterio implementado, casos límite con test, nada fuera de los ficheros declarados, <strong>los tests no tocados después de crearse</strong> y <strong>ningún módulo duplicado</strong> de lo que ya existía. <span class="chip c-fail">HARD-GATE</span> el revisor no puede ser quien construyó.</li>
+          <li><strong>Fusionar</strong> por el camino A o el B.</li>
+          <li><strong>Suite end-to-end completa sobre la rama principal</strong>, con los comandos del <code>AGENTS.md</code> del repo de código.</li>
+          <li><strong>Lanzar una instancia y que tú la pruebes</strong> con los ejemplos reales de tus criterios. <span class="chip c-fail">HARD-GATE</span> sin tu OK no hay cierre; «no es lo que pedí» no se discute: se abre una unidad tipo <code>bug</code>.</li>
+          <li><strong>Los pasos mecánicos, con el script:</strong> <code>unidad.py cerrar NNN-slug --ok-usuario YYYY-MM-DD</code>.</li>
+          <li><strong>Lo que no hace el script, porque es criterio:</strong> aplicar los deltas a <code>02-flujos/</code> y pasar el flujo a <code>entregada</code> · promover hallazgos a <code>conocimiento/</code>, <code>decisiones/</code> o al ROADMAP · actualizar <code>ESTADO.md</code> (e <code>INDICE.md</code> si es un bug).</li>
+        </ol>
+
+        <h3>Lo que se te pega en la conversación en el paso 5</h3>
+        <div class="sheet">
+<pre>| unidad         | qué se hizo                                   | estado                |
+|----------------|-----------------------------------------------|-----------------------|
+| 007-albaranes  | editar un albarán facturado recalcula el total| listo, esperando tu OK|
+
+App corriendo en: &lt;enlace&gt;  ·  Ficha: docs/05-trabajo/007-albaranes/especificacion.md
+
+…y debajo, la tabla «Cómo lo pruebas tú» de esa especificación, tal cual.
+Si está en blanco, se escribe ANTES de llamarte: sin ella devuelves un "me parece
+bien" que firma una entrega sin haber comprobado nada.</pre>
+        </div>
+
+        <h3>La frontera del revisor (regla, no preferencia — ADR-009)</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Devuelve el trabajo al constructor</th><th>NO reabre la unidad</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Incumplimientos del contrato de <strong>esta</strong> unidad · fallos de seguridad · todo lo que pierda datos</td>
+                <td>Riesgos de flujos futuros · mejoras · «convendría dejarlo preparado para cuando…» → se anotan como trabajo descubierto</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Una segunda ronda de revisión solo la abre un fallo crítico. Preparar hoy problemas que aún no existen retrasa lo único que enseña de verdad: que uses la aplicación.</p>
+
+        <h3>Las 4 puertas que no se negocian</h3>
+        <ul class="checks">
+          <li>Sin OK del usuario sobre la app corriendo, no hay cierre. <strong>Ni con los tests en verde.</strong></li>
+          <li>Sin revisor distinto del constructor, no hay cierre.</li>
+          <li>Nada sin guardar en el worktree: es lo único del método que no respalda nadie.</li>
+          <li>Nada se cierra sin estar fusionado en la rama principal.</li>
+        </ul>
+      </section>
+
+      <section id="w10">
+        <span class="kicker">W10 · Guardián principal</span>
+        <h2><code>unidad.py</code> — las precondiciones que bloquean</h2>
+        <p class="lede">Convierte el ritual en cinco comandos con puertas. Solo stdlib. Nada destructivo: crea y avisa, jamás pisa lo escrito.</p>
+
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Comando</th><th>Qué hace</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">nnn [--detalle]</td><td>Siguiente número libre = <strong>máximo ocupado + 1</strong>. Nunca reutiliza huecos. Mira 4 fuentes: <code>05-trabajo/</code>, <code>archivo/</code>, <code>docs/bugs/</code> y <strong>las ramas del repo de código</strong></td></tr>
+              <tr><td class="mono">nueva &lt;tipo&gt; &lt;slug&gt;</td><td>Crea la unidad desde su plantilla. Idempotente: si el slug ya existe (vivo o archivado), no toca nada</td></tr>
+              <tr><td class="mono">despachar &lt;NNN-slug&gt;</td><td>6 precondiciones → rama + worktree. Flags: <code>--paralelo</code>, <code>--documental</code>, <code>--force</code>, <code>--motivo</code></td></tr>
+              <tr><td class="mono">cerrar &lt;NNN-slug&gt;</td><td>5 puertas → mecánica del cierre. Flags: <code>--ok-usuario</code>, <code>--fusion &lt;sha&gt;</code></td></tr>
+              <tr><td class="mono">estado</td><td>Unidades, bugs, worktrees y su coherencia, de un vistazo</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>despachar · las 6 precondiciones, en orden</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th class="num">#</th><th>Puerta</th><th>Criterio exacto</th><th>Salida si falla</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="num">1</td><td>La unidad existe y es válida</td>
+                <td>Nombre <code>^\d{3}-[a-z0-9][a-z0-9-]*$</code> · frontmatter abre y cierra con <code>---</code> · <code>unidad:</code> casa con la carpeta · <code>tipo</code> y <code>estado</code> en vocabulario. <code>--documental</code> solo para auditoria/investigacion/documentacion, y no se combina con <code>--force</code></td>
+                <td><span class="chip c-fail">exit 1</span></td>
+              </tr>
+              <tr>
+                <td class="num">2</td><td><code>--force</code> es de verdad una emergencia</td>
+                <td>Las <strong>tres</strong> a la vez: <code>tipo: bug</code> + severidad <strong>P0 única</strong> ya triada en la ficha + <code>--motivo</code> escrito. Si la línea conserva el menú completo de la plantilla, nadie ha triado y se rechaza</td>
+                <td><span class="chip c-fail">exit 1</span> — «--force no es un bypass de la aprobación»</td>
+              </tr>
+              <tr>
+                <td class="num">3</td><td>El usuario aprobó el contrato</td>
+                <td><code>aprobado:</code> = fecha ISO válida y <strong>no futura</strong>. <code>no</code>, vacío, «sí» u «ok» = ausencia de aprobación</td>
+                <td><span class="chip c-fail">exit 1</span> — salvo <code>--force</code></td>
+              </tr>
+              <tr>
+                <td class="num">4</td><td>El contrato está escrito</td>
+                <td><strong>≥ 200 caracteres</strong> de prosa <em>propia</em>: se descuenta línea a línea todo lo idéntico a la plantilla ya rellenada con los datos de esta unidad, más encabezados, citas <code>&gt;</code>, tablas, bloques de código, marcadores <code>&lt;…&gt;</code> y viñetas vacías</td>
+                <td><span class="chip c-fail">exit 1</span> — «la spec va antes que la rama». Con <code>--force</code>: <span class="chip c-warn">WARN</span> + marca de deuda</td>
+              </tr>
+              <tr>
+                <td class="num">5</td><td>Trabajo en vuelo y ownership</td>
+                <td>Otra unidad en vuelo sin <code>--paralelo</code> → bloquea. <strong>≥ 3 en vuelo → bloquea siempre</strong>, ni con <code>--paralelo</code>. Con trabajo en vuelo, <code>ficheros:</code> vacío → bloquea. Intersección no vacía con otra → bloquea. Las rutas se normalizan (separador, <code>./</code>, mayúsculas) antes de comparar</td>
+                <td><span class="chip c-fail">exit 1</span></td>
+              </tr>
+              <tr>
+                <td class="num">6</td><td>El repo está listo</td>
+                <td><code>main/</code> es un repo git · si hay <code>origin</code>, <strong><code>fetch origin &lt;principal&gt;</code> obligatorio</strong> y si falla no se crea trabajo desde una referencia posiblemente antigua · <code>worktrees/NNN-slug</code> no existe · <code>refs/heads/NNN-slug</code> no existe (el NNN no se reutiliza) · la rama principal existe</td>
+                <td><span class="chip c-fail">exit 1</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p><strong>Y entonces actúa:</strong> <code>git worktree add &lt;destino&gt; -b NNN-slug &lt;base&gt;</code> (base = <code>origin/&lt;principal&gt;</code> si existe, si no la local) → ejecuta el gancho opcional del proyecto <code>worktree-listo</code> / <code>worktree-listo.py</code> si está en la raíz → escribe <code>estado: en_obra</code> y <code>actualizado: &lt;hoy&gt;</code>.</p>
+
+        <div class="note"><p>El gancho existe porque un worktree recién creado es <strong>código sin entorno</strong>: sin dependencias, sin base de datos de pruebas. El constructor que aterriza ahí ve fallar tests que en main pasan y los usa como vara de medir durante horas antes de descubrir que medía el entorno. El método no sabe montarlo —depende del stack— pero sí sabe <em>cuándo</em>: justo ahí.</p></div>
+
+        <h3>cerrar · las 5 puertas</h3>
+        <p>Solo se cierra lo que está <code>en_revision</code> (o <code>en_validacion</code>/<code>mergeada</code>, para reanudar un cierre a medias).</p>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th class="num">#</th><th>Puerta</th><th>Criterio exacto</th><th>¿Bloquea?</th></tr></thead>
+            <tbody>
+              <tr><td class="num">1</td><td>OK del usuario</td><td><code>--ok-usuario</code> = fecha ISO no futura</td><td><strong>No</strong> — sin ella, si todo lo demás está verde, la unidad pasa a <code>en_validacion</code></td></tr>
+              <tr><td class="num">2</td><td>Revisión fresca</td><td><code>hallazgos.md</code> existe · veredicto <strong>elegido</strong> (si conserva el menú <code>LIMPIO | HUECOS…</code> no vale) · <code>revisor:</code> ≠ <code>no</code>/vacío · <code>revisado:</code> fecha ISO no futura</td><td><span class="chip c-fail">sí</span></td></tr>
+              <tr><td class="num">3</td><td>Deuda de hotfix</td><td>Si la ficha conserva la marca de deuda → bloquea. La puerta va <em>antes</em> del cierre, que es cuando aún se puede pagar</td><td><span class="chip c-fail">sí</span></td></tr>
+              <tr><td class="num">4</td><td>Worktree limpio</td><td><code>git status --porcelain</code> vacío. Cerrar con cambios sin commitear los borra y no hay copia en ningún sitio</td><td><span class="chip c-fail">sí</span></td></tr>
+              <tr><td class="num">5</td><td>Rama fusionada de verdad</td><td>4 pruebas en orden de fiabilidad (abajo)</td><td><span class="chip c-fail">sí</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="sheet">
+          <p class="cap">Puerta 5 · la prueba de que el trabajo entró en la principal</p>
+<pre>si existe la rama LOCAL ─► manda ella y nadie más
+                           (mirar origin aquí bendeciría una foto vieja)
+si NO existe ─► 1. origin/NNN-slug            ◄── por eso el cierre ya no la borra
+                2. el SHA anotado en `fusion:` o el de --fusion &lt;sha&gt;
+                3. último recurso: un commit de la principal que NOMBRE a la unidad
+                   (huella típica de un squash merge)  ──► prueba DÉBIL: sale como WARN
+
+ninguna de las cuatro ──► CIERRE BLOQUEADO
+   "una rama que ya no existe NO prueba que se fusionara: prueba que alguien la borró"
+   se desatasca con --fusion &lt;sha&gt;, y ese sha tiene que existir Y estar dentro de la principal</pre>
+        </div>
+
+        <h4>Mecánica, cuando las puertas están verdes</h4>
+        <ol>
+          <li>Anota <code>fusion: &lt;sha&gt;</code> en el frontmatter <strong>antes</strong> de tocar nada.</li>
+          <li>Escribe el OK del usuario en <code>hallazgos.md</code>.</li>
+          <li><code>estado: mergeada</code> · <code>actualizado: &lt;hoy&gt;</code>.</li>
+          <li>Borra el worktree (<code>remove</code> → <code>remove --force</code> para ficheros ignorados → <code>rmtree</code> + <code>prune</code>).</li>
+          <li>Borra la rama <strong>local</strong> con <code>-d</code>. <strong>La remota se conserva</strong>: es la única copia del trabajo que no vive en este disco.</li>
+          <li>Avisa si la principal local va por delante de <code>origin</code>, con el comando exacto.</li>
+          <li>Archiva la unidad en <code>archivo/</code> — <strong>los bugs no</strong> (ADR-006).</li>
+          <li>Ejecuta <code>lint_metodo.py</code> y devuelve su código de salida.</li>
+        </ol>
+        <p>Aviso que <em>no</em> bloquea: hallazgos sin cosechar. Cada viñeta de «Descubrimientos» y «Trabajo descubierto» debe acabar marcada con <code>→ promovido a &lt;destino&gt;</code> o <code>→ descartado (motivo)</code>.</p>
+      </section>
+
+      <section id="w11">
+        <span class="kicker">W11 · Linter</span>
+        <h2><code>lint_metodo.py</code> — las comprobaciones, una por una</h2>
+        <p class="lede">Se ejecuta al arrancar sesión del padre, al final de cada cierre y en la CI. <code>exit 1</code> si hay algún FAIL.</p>
+
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>§</th><th>Comprueba</th><th>Umbral / criterio exacto</th><th>Nivel</th></tr></thead>
+            <tbody>
+              <tr><td class="num">1</td><td>Router</td><td><code>AGENTS.md</code> existe y tiene <strong>≤ 160 líneas</strong> («el router está engordando»)</td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td class="num">1</td><td>Puentes</td><td><code>CLAUDE.md</code> y <code>GEMINI.md</code> contienen <strong>exactamente</strong> <code>@AGENTS.md\n</code></td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td class="num">2</td><td>Árbol congelado</td><td><code>docs/</code> contiene <strong>exactamente</strong> las 9 carpetas. Ni falta ni sobra una</td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td class="num">3</td><td>ESTADO.md</td><td>Existe y tiene <strong>≤ 100 líneas</strong> («es un digest, no un archivo»)</td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td class="num">4</td><td>Unidades</td><td>Nombre <code>NNN-slug</code> · NNN no duplicado entre unidades y bugs · las <strong>8 claves</strong> del frontmatter · estado, tipo y carril en vocabulario</td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td class="num">4</td><td>En obra sin contrato</td><td>Una unidad <code>en_obra</code>/<code>en_revision</code> necesita <code>## Plan de trabajo</code> y <code>aprobado:</code> con fecha válida — o la marca de deuda del hotfix</td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td class="num">4</td><td>Cierre a medias</td><td>Unidad <code>mergeada</code> pero sin archivar</td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td class="num">4c</td><td>Bugs</td><td>En <code>docs/bugs/</code> solo <code>tipo: bug</code>. Si está <code>en_revision</code> o <code>mergeada</code>: <strong>output ROJO (§2) y VERDE (§5) pegados</strong> —descontando lo que siga siendo plantilla, marcadores <code>&lt;…&gt;</code> y la pista «(pegado, no resumido)»—. Si está <code>mergeada</code>: la línea de cierre debe <strong>empezar</strong> por <code>OK</code>, para que el menú intacto de la plantilla no cuele</td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td class="num">4c</td><td>Índice de bugs</td><td>La ficha aparece en <code>docs/bugs/INDICE.md</code></td><td><span class="chip c-warn">WARN</span></td></tr>
+              <tr><td class="num">4b</td><td>Trabajo en vuelo</td><td><strong>&gt; 3 → FAIL</strong> (tope absoluto) · <strong>&gt; 1 → WARN</strong> (default 1) · <code>en_validacion</code> → WARN recordatorio en cada arranque · dos activas con ficheros comunes → FAIL</td><td><span class="chip c-fail">FAIL</span>/<span class="chip c-warn">WARN</span></td></tr>
+              <tr><td class="num">5</td><td>Worktrees ↔ unidades</td><td>Worktree sin unidad → FAIL («¿cierre a medias?»). Unidad en obra sin worktree → WARN (las documentales exentas)</td><td><span class="chip c-fail">FAIL</span>/<span class="chip c-warn">WARN</span></td></tr>
+              <tr><td class="num">5b</td><td><strong>Trabajo huérfano</strong></td><td>Worktree con ficheros sin commitear: <strong>WARN si <code>en_obra</code>, FAIL si <code>en_revision</code></strong> · <code>en_revision</code> sin rama local, ni <code>origin/</code>, ni <code>fusion:</code> → FAIL con el comando de <code>reflog</code> para recuperarla · rama sin <strong>ni un commit</strong> por encima de la principal → FAIL</td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td class="num">6</td><td>Archivo</td><td>Lo archivado solo puede estar <code>mergeada</code> o <code>descartada</code></td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td class="num">6b</td><td>Cosecha</td><td>Viñetas de «Descubrimientos» / «Trabajo descubierto» sin <code>→ promovido a</code> ni <code>→ descartado</code></td><td><span class="chip c-warn">WARN</span></td></tr>
+              <tr><td class="num">7</td><td><strong>Secretos horneables</strong></td><td>Un <code>Dockerfile</code> sin <code>.dockerignore</code> → FAIL. Un <code>.dockerignore</code> que no menciona <code>.env</code> → FAIL. Se revisa <code>main/</code> y cada worktree</td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td class="num">7b</td><td>Identidad de git</td><td>Sin <code>user.name</code> o <code>user.email</code> → FAIL (los commits fallan en silencio, uno a uno, hasta que alguien va a hacer push) · meta-repo sin <strong>ni un commit</strong> → FAIL</td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td class="num">8</td><td><strong>¿Existe en algún sitio más que este disco?</strong></td><td>Meta-repo sin remoto → WARN en <strong>cada</strong> arranque. Repo de código sin remoto → WARN</td><td><span class="chip c-warn">WARN</span></td></tr>
+              <tr><td class="num">9</td><td>Higiene</td><td>Existe <code>codebase/</code> (estructura vieja)</td><td><span class="chip c-fail">FAIL</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>El reloj de la deuda de hotfix</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Situación</th><th>Criterio</th><th>Nivel</th></tr></thead>
+            <tbody>
+              <tr><td>Unidad con marca de deuda ya <code>mergeada</code></td><td>Se cerró con el contrato a deber; después de cerrar nadie vuelve a pagarlo</td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td><code>actualizado:</code> ilegible o ausente</td><td>Sin fecha no hay plazo que valga</td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td>Más de <strong>1 día</strong> desde <code>actualizado:</code></td><td>Venció el plazo de 24 h del runbook</td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td>Dentro del plazo</td><td>Se dice en cada arranque de sesión</td><td><span class="chip c-warn">WARN</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="w12">
+        <span class="kicker">W12 · Producción</span>
+        <h2>Deploy: etapas, gate y ritual</h2>
+        <p class="intro">
+          Aquí está el detalle exacto de lo que en la primera parte era «desplegar tiene su propia sesión». Todo cuelga de una pregunta que sí sabes contestar —quién tiene que poder usar esto—: de ahí sale la etapa, y de la etapa sale todo lo demás.
+        </p>
+
+        <h3>La única pregunta que sabes responder</h3>
+        <p><strong>«¿Quién tiene que poder usar esto?»</strong> — de ahí cae la etapa sin que nadie sepa qué es un VPS.</p>
+
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Respondes…</th><th>Etapa</th><th>Qué implica</th><th>Copias</th><th>Auditoría</th><th>Coste</th></tr></thead>
+            <tbody>
+              <tr><td>«solo yo, en mi ordenador»</td><td><code>local</code></td><td>Se apaga con el ordenador; nadie más entra</td><td>las tuyas</td><td>no</td><td class="num">0</td></tr>
+              <tr><td>«la gente de mi oficina»</td><td><code>lan</code></td><td>Un ordenador que no se apague; solo esa red</td><td>a otro disco</td><td>recomendable</td><td class="num">0 (la luz)</td></tr>
+              <tr><td>«cualquiera con el enlace»</td><td><code>internet</code></td><td>Servidor + dominio + copias + auditoría</td><td><strong>fuera</strong> de esa máquina</td><td><span class="chip c-fail">obligatoria</span></td><td>mensual</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>No se sube de etapa por gusto.</strong> Si con <code>local</code> te vale, te quedas en <code>local</code>: cada peldaño añade cosas que hay que mantener. Subir después es una unidad tipo <code>migracion</code>.</p>
+
+        <h3>Las 4 precondiciones que bloquean antes de tocar la máquina</h3>
+        <ol class="steps">
+          <li><strong>Plano de deploy escrito</strong> con su ficha §3bis completa. Sin plano, lo primero de la sesión es la entrevista del rol; y si nunca has desplegado nada, <code>primer-despliegue.md</code>.</li>
+          <li><strong>Backup verificado = restaurado de prueba, hecho AHORA.</strong> No vale el de anoche si hay migración de datos. Las dos evidencias —volcado y restauración— van pegadas en la ficha.</li>
+          <li><strong>OK explícito tuyo</strong> sobre el comportamiento que va a salir, probado con tus ejemplos reales. «Los tests pasan» no es tu OK.</li>
+          <li>Antes de la <strong>primera</strong> salida a internet: unidad tipo <code>auditoria</code> de seguridad cerrada.</li>
+        </ol>
+
+        <h3><code>lint_deploy.py</code> — el gate, check por check</h3>
+        <p>No sabe cómo se despliega tu proyecto, y no debe saberlo: puede ser una web con Docker, una app de móvil o un proceso en un portátil. Comprueba que las cinco cosas universales estén <strong>decididas</strong>.</p>
+
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th class="num">#</th><th>Check</th><th>Criterio exacto</th><th>Nivel</th></tr></thead>
+            <tbody>
+              <tr><td class="num">1</td><td>Se corre en el workspace completo</td><td><code>main/</code> existe (no en el repo de código suelto)</td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td class="num">2</td><td>Las 5 casillas decididas</td><td><code>etapa</code> · <code>camino</code> · <code>vuelta_atras</code> · <code>datos</code> · <code>vigilancia</code>. Un hueco <code>&lt;…&gt;</code>, un menú sin elegir (<code>local | lan | internet</code>), un guion o vacío <strong>no cuentan como decisión</strong>. <code>SIN DATOS</code> es una respuesta válida</td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td class="num">3</td><td>Se despliega lo que está en la principal</td><td><code>main/</code> sin ficheros sin commitear · en la rama principal, no en otra · si hay remoto y quedan commits locales sin empujar → WARN</td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td class="num">4</td><td>Repo de código limpio de artefactos</td><td>Ni <code>.claude/</code>, <code>.cursor/</code>, <code>planning/</code>, ni <code>CLAUDE.md</code>, <code>AGENTS.md</code>, <code>.cursorrules</code>, <code>PLAN.md</code>, <code>TODO.md</code>, <code>especificacion*.md</code>, <code>tareas*.md</code>, <code>hallazgos*.md</code>. Escanea la raíz y un nivel, saltando <code>.git</code>, <code>.github</code> y <code>tests</code></td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td class="num">5</td><td>Auditoría de seguridad</td><td>Una unidad archivada <code>*auditoria*seguridad*</code> con informe. <strong>FAIL si la etapa es internet</strong>; WARN en local/LAN. Si la última tiene <strong>más de 60 días</strong> → WARN</td><td><span class="chip c-fail">FAIL</span>/<span class="chip c-warn">WARN</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Salida: <code>GATE ABIERTO</code> o <code>GATE CERRADO: NO se despliega hasta dejar esto en verde</code>.</p>
+
+        <h3>Los 12 pasos del despliegue</h3>
+        <div class="sheet">
+<pre> 1  abrir la ficha (commit, etapa, responsable, ventana, pasos, verificaciones, rollback)
+ 2  actualizar main/ a origin/main y verificar que el commit PERTENECE a esa rama
+ 3  lint_deploy.py                                    ◄── un rojo bloquea
+ 4  crear y RESTAURAR el backup de prueba; pegar ambas evidencias
+ 5  leer el plan en voz alta con el usuario y obtener autorización explícita
+ 6  ejecutar SOLO el camino declarado en plano-deploy.md
+      └─ si el camino no cubre el caso: PARAR y crear una unidad normal
+ 7  verificación técnica: procesos, salud, migraciones, colas, errores
+ 8  verificación de negocio: un flujo real de punta a punta con datos seguros
+ 9  verificación de vigilancia: monitor en verde + un error inocuo visible en el registro
+10  decidir: todo verde → que el usuario pruebe · cualquier rojo → ROLLBACK
+11  OK del usuario sobre la etapa real                ◄── HARD-GATE
+12  registrar: commit, etapa, fecha, persona, duración y resultado
+      └─ en la ficha · en conocimiento/plano-deploy.md · en ESTADO.md</pre>
+        </div>
+
+        <div class="gate">
+          <span class="tag">Si falla</span>
+          <p>Se decide <strong>en minutos, no en horas</strong>. Disparan vuelta atrás: verificación en caliente en rojo, errores nuevos en el registro, o tú diciendo «esto no es lo que aprobé». Ante la duda se vuelve atrás: investigar se investiga en local, nunca con la etapa real coja. Después, el fallo se abre como <code>bug</code> y <strong>el despliegue no se reintenta hasta que esa unidad cierre</strong>.</p>
+        </div>
+
+        <h3>Primer despliegue: lo que no puede hacer un agente</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th class="num">#</th><th>Paso</th><th>Quién</th><th>Dónde queda</th></tr></thead>
+            <tbody>
+              <tr><td class="num">1</td><td>Crear la cuenta del proveedor y pagar</td><td>tú</td><td>—</td></tr>
+              <tr><td class="num">2</td><td>Comprar el dominio</td><td>tú</td><td>—</td></tr>
+              <tr><td class="num">3</td><td>Apuntar el dominio a la máquina</td><td>el agente dicta, tú pegas</td><td>plano de deploy</td></tr>
+              <tr><td class="num">4</td><td>Guardar contraseñas y claves</td><td>tú</td><td><code>.private/</code> — <strong>jamás</strong> en docs ni en git</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Si eliges internet, el método <strong>no trae proveedor ni precio</strong>: envejecen. Se investiga hoy con doc oficial, fuente y fecha, se te traen <strong>tres</strong> opciones con precio y quién lo mantiene, eliges tú, y queda un <strong>ADR</strong>: es la decisión más cara de deshacer del proyecto.</p>
+        <p><strong>Ensayo en falso:</strong> se despliega una vez con la app vacía y se hace la vuelta atrás entera, tal y como está escrita. Es el único momento de la vida del proyecto en que equivocarse no cuesta nada.</p>
+      </section>
+
+      <section id="w13">
+        <span class="kicker">W13 · Guardianes</span>
+        <h2>Lo que vigila sin que nadie lo pida</h2>
+        <p class="intro">
+          Hay comprobaciones que no dependen de que el agente se acuerde: las ejecuta git o el propio método. Existen porque una regla que solo vive en un documento se cumple mientras alguien la recuerda, y estas se cumplen siempre.
+        </p>
+
+        <div class="cards two">
+          <div class="card">
+            <h5>.githooks/pre-push</h5>
+            <p class="sub">Lo ejecuta <strong>git</strong>, no el agente: funciona con Claude, Codex, OpenCode, Antigravity o a mano.</p>
+            <ul>
+              <li>Solo mira ramas con forma <code>NNN-slug</code>.</li>
+              <li>Busca el contrato en tres sitios: <code>05-trabajo/NNN/especificacion.md</code>, <code>archivo/</code> y <code>docs/bugs/NNN.md</code>.</li>
+              <li>Exige <strong>≥ 200 caracteres</strong> de prosa real, descontando las líneas literales de la plantilla, cabeceras, frontmatter, citas y huecos <code>&lt;…&gt;</code>.</li>
+              <li>Ante la duda, pasa: es la red del atajo, no la capa fuerte.</li>
+            </ul>
+            <p class="foot-line">Mensaje de bloqueo: «PUSH BLOQUEADO: el contrato de &lt;rama&gt; no existe / solo tiene N caracteres. Va ANTES que el trabajo.»</p>
+          </div>
+
+          <div class="card">
+            <h5>doctor.py</h5>
+            <p class="sub">Qué hay <strong>realmente</strong> en esta máquina, antes de prometer nada. <strong>Informa, nunca bloquea</strong>: sale siempre con código 0.</p>
+            <ul>
+              <li><strong>Python</strong> — versión y ejecutable.</li>
+              <li><strong>git</strong> — «a medias» si falta identidad: el primer commit fallará con <em>Author identity unknown</em>.</li>
+              <li><strong>gh</strong> — si falta: el cierre va por el <strong>camino B</strong>. Si está sin sesión: «a medias».</li>
+              <li><strong>Docker</strong> — si falta: el ROADMAP <strong>no puede prometer contenedores</strong>. Si el demonio está parado: «a medias».</li>
+              <li><strong>Node</strong> + npm — solo importa si el stack lo pide.</li>
+            </ul>
+            <p class="foot-line"><code>--escribir</code> deja la foto en <code>docs/conocimiento/entorno-de-esta-maquina.md</code>. Se sobrescribe: es una foto, no un histórico.</p>
+          </div>
+
+          <div class="card">
+            <h5>Integración continua</h5>
+            <p class="sub">Dos workflows, uno por repo.</p>
+            <ul>
+              <li><strong>Meta</strong> — <code>lint.yml</code>: en push a la principal y en cada PR, corre <code>lint_metodo.py</code>.</li>
+              <li><strong>Código</strong> — <code>tests.yml</code>: en PR <strong>y en push a cualquier rama</strong> —sin <code>gh</code> no hay PRs, y una CI que solo corre en PR no corre jamás en las máquinas del camino B—. Lint con ruff si hay config, y pytest si hay <code>tests/</code> o <code>pyproject.toml</code>.</li>
+            </ul>
+            <p class="foot-line">Los repos creados de cero traen CI; los adoptados la ganan en su roadmap.</p>
+          </div>
+
+          <div class="card">
+            <h5>sandbox_lanzar.py</h5>
+            <p class="sub">Aislamiento <strong>opcional</strong> del constructor. No se ejecuta automáticamente y no es por sí solo una garantía de seguridad.</p>
+            <ul>
+              <li>Busca, por ese orden: <code>srt</code>, <code>sandbox-exec</code>, <code>bwrap</code>. Sin mecanismo se niega a ejecutar, salvo <code>--permitir-sin-sandbox</code>.</li>
+              <li>Intenta limitar: escritura al worktree, bloqueo de hooks y config compartidos de git, bloqueo de lectura de directorios de credenciales, red denegada si el mecanismo puede.</li>
+              <li>Se prueba primero sin <code>--ejecutar</code> y se comprueba a mano en esa máquina.</li>
+            </ul>
+            <p class="foot-line">Para código hostil hace falta una frontera administrada por el dueño de la máquina. Un repositorio clonado no puede concederse privilegios de seguridad a sí mismo.</p>
+          </div>
+        </div>
+
+        <h3>Los tres playbooks de auditoría</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Playbook</th><th>Qué revisa</th><th>Estructura</th></tr></thead>
+            <tbody>
+              <tr><td><code>auditoria-metodo.md</code></td><td>Cumplimiento del método</td><td>8 checks con comando exacto y veredicto: linter en verde · unidades archivadas con evidencia real · <strong>tests jamás debilitados</strong> · todo merge traza a una unidad · ESTADO pequeño y veraz · deltas aplicados al mapa · git con rutas explícitas · WIP respetado</td></tr>
+              <tr><td><code>auditoria-calidad.md</code></td><td>Calidad del código</td><td>6 bloques: complejidad medible · funciones y módulos gordos · <strong>duplicación de lógica de negocio</strong> (el check estrella) · cada cosa en su módulo · regresión viva (todo bug conserva su test) · limpieza</td></tr>
+              <tr><td><code>auditoria-seguridad.md</code></td><td>OWASP Top 10:2025</td><td>A01 Access Control (ahora incluye SSRF) · A02 Misconfiguration · <strong>A03 Supply Chain</strong> (nueva) · A04 Crypto · A05 Injection · A06 Insecure Design · A07 Auth · A08 Integrity · A09 Logging &amp; Alerting · <strong>A10 Excepciones mal manejadas</strong> (nueva). Con detectores enrutados por stack en <code>seguridad-por-stack.md</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note"><p><strong>Regla dura del playbook de seguridad:</strong> el agente no es el auditor único.</p></div>
+      </section>
+
+      <section id="w14">
+        <span class="kicker">W14 · Mantenimiento</span>
+        <h2>Modo D — repartir mejoras del método</h2>
+        <p class="lede">Los workspaces ya creados <strong>no se enteran solos</strong>: cada uno es un repositorio aparte y su copia del método salió por copia de ficheros, no por clonado. Un <code>git pull</code> allí trae el historial de <em>ese</em> proyecto; del método, nada.</p>
+
+        <ol class="steps">
+          <li><strong>Encontrar</strong> — <code>actualizar.py buscar</code> rastrea tu carpeta de usuario y las de trabajo habituales (<code>--en /ruta</code> si viven en otro sitio). El registro local solo conoce lo creado en <em>esta</em> máquina.</li>
+          <li><strong>Enseñar la foto y preguntar</strong> — <code>actualizar.py revisar --todos</code>: qué ficheros cambian y cuáles hay allí que el método ya no publica (esos <strong>no se borran</strong>, solo se avisan). Se cuenta en cristiano y <strong>se te pregunta cuáles quieres actualizar</strong>.</li>
+          <li><strong>Aplicar</strong> — <code>actualizar.py aplicar --todos</code>. No exige árbol limpio ni trabajo cerrado, porque el punto de retorno lo deja él mismo.</li>
+          <li><strong>Enseñar el resultado</strong> — <code>git log --oneline -2</code> y <code>git show</code>, contado en negocio.</li>
+        </ol>
+
+        <div class="gate">
+          <span class="tag">Por qué todo lo demás puede ser simple</span>
+          <p>Antes de tocar un solo fichero, <code>aplicar</code> <strong>commitea el estado actual</strong> (y hace <code>git init</code> si aún no era repo). Volver atrás es <code>git checkout &lt;ese commit&gt;</code>, y ese commit queda escrito en <code>docs/00-metodo/HISTORIAL.md</code>. Por eso el método se sobrescribe entero, sin clasificar fichero por fichero. Si <strong>no</strong> se puede dejar el punto de retorno (git sin identidad en esa máquina), <strong>no se toca nada</strong> y se dice por qué.</p>
+        </div>
+
+        <h3>Los 12 límites que el Modo D no cruza jamás</h3>
+        <div class="sheet">
+<pre>01-constitucion/   02-flujos/     03-investigacion/   04-planificacion/
+05-trabajo/        bugs/          conocimiento/       decisiones/
+repos.yaml         .private/      main/               worktrees/
+
+Solo el método y las piezas que lo ejecutan.</pre>
+        </div>
+      </section>
+
+      <section id="w15">
+        <span class="kicker">W15 · Referencia</span>
+        <h2>Todas las constantes, en un sitio</h2>
+        <p class="intro">
+          Cada número del método, con dónde vive y qué pasa al pasarse. Están juntos a propósito: un umbral escondido dentro de un script es un umbral que nadie discute, y estos sí se pueden discutir — cambiarlos exige dejar escrito por qué.
+        </p>
+
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Constante</th><th>Valor</th><th>Dónde vive</th><th>Qué pasa al pasarse</th></tr></thead>
+            <tbody>
+              <tr><td>Tamaño del router</td><td class="num">≤ 160 líneas</td><td><code>lint_metodo.py</code> §1</td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td>Tamaño de ESTADO.md</td><td class="num">≤ 100 líneas</td><td><code>lint_metodo.py</code> §3</td><td><span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td>Carpetas de <code>docs/</code></td><td class="num">exactamente 9</td><td><code>lint_metodo.py</code> §2</td><td><span class="chip c-fail">FAIL</span> — cambiarlo exige ADR</td></tr>
+              <tr><td>Prosa mínima del contrato</td><td class="num">200 caracteres</td><td><code>unidad.py</code> · <code>pre-push</code></td><td>No hay despacho ni push</td></tr>
+              <tr><td>Trabajo en vuelo</td><td class="num">1 por defecto · 3 tope</td><td><code>unidad.py</code> · <code>lint_metodo.py</code></td><td>&gt;1 WARN · &gt;3 <span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td>Deuda de spec de un hotfix</td><td class="num">24 h</td><td><code>hotfix.md</code> · linter</td><td>WARN dentro, <span class="chip c-fail">FAIL</span> pasadas o si ya está mergeada</td></tr>
+              <tr><td>Informes de la fase 3</td><td class="num">exactamente 10</td><td><code>investigacion.md</code></td><td>Contrato de cierre incumplido (salvo la versión acotada de brownfield)</td></tr>
+              <tr><td>Caducidad de la auditoría de seguridad</td><td class="num">60 días</td><td><code>lint_deploy.py</code></td><td><span class="chip c-warn">WARN</span>: «el código ha seguido cambiando»</td></tr>
+              <tr><td>Casillas del plano de deploy</td><td class="num">5</td><td><code>lint_deploy.py</code></td><td><span class="chip c-fail">GATE CERRADO</span></td></tr>
+              <tr><td>Severidad de bugs</td><td class="num">P0 … P4</td><td><code>bug.md</code> · <code>auditoria.md</code></td><td>Solo P0 triado habilita <code>--force</code></td></tr>
+              <tr><td>Visor de flujos</td><td class="mono">127.0.0.1:8765 · 3 s</td><td><code>servir.py</code></td><td>Se refresca sola: se edita el JSON y se ve al momento</td></tr>
+              <tr><td>Filas de «Cómo lo pruebas tú»</td><td class="num">≤ 10</td><td><code>especificacion.md</code></td><td>Si no cabe, <strong>la unidad es demasiado grande</strong></td></tr>
+              <tr><td>Numeración</td><td class="mono">máx + 1, nunca reutiliza</td><td><code>unidad.py nnn</code></td><td>Un número gastado es historia</td></tr>
+              <tr><td>Forma de una unidad</td><td class="mono">^\d{3}-[a-z0-9][a-z0-9-]*$</td><td>3 scripts + el hook</td><td>Fuera de convención → <span class="chip c-fail">FAIL</span></td></tr>
+              <tr><td>Fechas</td><td class="mono">ISO, reales, no futuras</td><td><code>aprobado:</code> · <code>--ok-usuario</code> · <code>revisado:</code></td><td>Una fecha futura no la firmó nadie que leyera</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Las 15 reglas duras de <code>AGENTS.md</code>, en una línea cada una</h3>
+        <div class="sheet">
+<pre> 1  el padre jamás escribe código; los constructores solo en su worktree
+ 2  escritura acotada: los compartidos los escribe SOLO el padre, en el cierre
+ 3  git del meta: solo el padre, con rutas explícitas — nunca `git add -A`
+ 4  numeración y despacho con el script, no a mano
+ 5  UNA unidad en vuelo por defecto; paralelo solo sin ficheros comunes, tope 2-3
+ 6  buscar código dentro de main/ o del worktree (desde la raíz no se ve: es intencional)
+ 7  merge y cierre son indivisibles
+ 8  desviación de contrato → PARA y escala
+ 9  tres carriles; si cambia comportamiento, nunca es exprés
+10  la especificación es el punto de entrada, autocontenida
+11  fuentes: doc oficial &gt; más reciente; sin fuente = opinión declarada
+12  evidencia, no afirmación; las líneas base se miden al vuelo, no de una foto
+13  el método también se lintea, al arrancar y al cerrar
+14  los flujos siguen vivos: se aprueban sobre la web ANTES de abrir unidades
+15  funciona con CUALQUIER agente: AGENTS.md, scripts y hook son agnósticos</pre>
+        </div>
+
+        <h4>Reglas de oro (siempre)</h4>
+        <ul>
+          <li>Producción y servicios externos (pagos, DNS, correo, chat) son <strong>lectura por defecto</strong>. Cualquier mutación exige autorización explícita.</li>
+          <li><strong>Fusionar main NO despliega.</strong></li>
+          <li>Nunca mostrar secretos ni PII: viven en <code>.private/</code> y se referencian por ruta, jamás por copia.</li>
+          <li>Escribir sobre material del usuario se anuncia y se deja escrito.</li>
+          <li>Antes de afirmar que algo funciona, ejecutar la verificación que lo demuestra.</li>
+          <li><strong>Caja negra:</strong> todo lo raro que haya que arreglar sobre la marcha se anota en <code>.caja-negra/diario.md</code>, una línea. Es lo que permite arreglar la causa en vez del síntoma.</li>
+        </ul>
+
+        <h4>Autoridad de la información (qué fuente manda en conflicto)</h4>
+        <ol>
+          <li>El código y sus tests describen el producto de su rama.</li>
+          <li><code>docs/</code> describe el workspace y el método.</li>
+          <li><code>git -C main worktree list</code> es el inventario autoritativo de worktrees.</li>
+          <li><code>docs/bugs/</code> es la verdad de los bugs.</li>
+          <li>Los papeles de una unidad archivada son historia, no doctrina.</li>
+          <li><strong>Lo escrito gana a lo recordado.</strong></li>
+        </ol>
+      </section>
+
+      <section id="w16">
+        <span class="kicker">W16 · Porqués</span>
+        <h2>Los 11 ADRs del método</h2>
+        <p class="lede">Cuando un runbook cita «ADR-005», está aquí. Se leen, no se editan. Los ADRs de <em>tu</em> proyecto van en <code>docs/decisiones/</code>, con numeración propia desde 001.</p>
+
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>ADR</th><th>Decisión</th><th>Qué gobierna hoy</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">001</td><td>Meta-repositorio separado del código</td><td>Los documentos que juzgan la obra viven fuera del alcance de quien construye; y la carga automática de contexto no cruza esa frontera, por eso la spec lista rutas exactas</td></tr>
+              <tr><td class="mono">002</td><td>Bootstrap desde ingeniería de requisitos</td><td>Es la <strong>única</strong> forma de crear un workspace</td></tr>
+              <tr><td class="mono">003</td><td>Entrevista universal y orientación enrutada</td><td>La entrevista y la lanzadera son las mismas para todo tipo de software; lo que cambia es el bias</td></tr>
+              <tr><td class="mono">004</td><td>Adopción brownfield y doctrina de comprobaciones</td><td>Primero conocer, después tocar; sin suite no se toca comportamiento</td></tr>
+              <tr><td class="mono">005</td><td>Contrato y plan en una única especificación</td><td>Un solo documento por unidad</td></tr>
+              <tr><td class="mono">006</td><td>Un bug es una ficha viva</td><td><code>docs/bugs/NNN-slug.md</code> con todo su ciclo; <strong>no se archiva</strong></td></tr>
+              <tr><td class="mono">007</td><td>Planos canónicos y límites del workspace</td><td>La copia de <code>02-flujos/planos/</code> es la fuente de verdad; los <code>.md</code> compilados no se editan a mano</td></tr>
+              <tr><td class="mono">008</td><td>Arranque documentado de roles operativos</td><td>Las dos entrevistas <span class="chip c-fail">HARD-GATE</span> de observabilidad y deploy</td></tr>
+              <tr><td class="mono">009</td><td>Cierre scriptado, entorno comprobado, revisor con frontera</td><td><code>unidad.py cerrar</code> · <code>doctor.py</code> · la excepción nombrada de <code>main/</code> en el camino B</td></tr>
+              <tr><td class="mono">010</td><td>El estado que faltaba y los guardianes que miraban de menos</td><td><code>en_validacion</code> · el parseo de listas multilínea · el gancho <code>worktree-listo</code></td></tr>
+              <tr><td class="mono">011</td><td>La salida del trabajo se prueba y el despliegue deja de presuponer el stack</td><td><code>lint_deploy.py</code> agnóstico + las 5 casillas del plano</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note">
+          <strong>El principio que ordena todo lo demás</strong>
+          <p><strong>Iteración corta, no entrega perfecta.</strong> La pregunta que ordena el trabajo no es «¿está todo previsto?» sino <strong>«¿cuál es la parte más pequeña que podemos poner hoy delante del usuario para aprender algo?»</strong>. De ahí: unidades pequeñas y contratos breves · un constructor y UNA revisión · resolver el problema de hoy y no los futuros · pruebas sobre el comportamiento nuevo, no sobre escenarios que aún no existen.</p>
+          <p>Lo que <strong>no</strong> se recorta nunca, porque no es ceremonia sino garantía: <strong>no perder datos, no filtrar secretos y no romper lo que el usuario ya aprobó.</strong></p>
+        </div>
+      </section>
+
 
       <footer>
         <p><strong>Idea final del Método Nate:</strong> la persona aporta la verdad del negocio; los planos la hacen visible; los agentes construyen bajo contrato; la aplicación funcionando da la última palabra.</p>

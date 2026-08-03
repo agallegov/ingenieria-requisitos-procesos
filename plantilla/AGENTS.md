@@ -116,11 +116,18 @@ y trabajado en `worktrees/` (una copia por unidad de trabajo). Ambos ignorados p
   lo generado (logs, capturas, dumps), en `.runtime/`. Ambos fuera de git.
 - **Escribir sobre material del usuario se anuncia y se deja escrito** (su instancia, sus datos).
 - **Antes de afirmar que algo funciona, ejecutar la verificación que lo demuestra.**
+- **Se escribe según se hace:** cada paso, en el momento, con fecha y con quién lo hizo. Lo que
+  solo está en el contexto de tu sesión está perdido; lo rellenado después de memoria es
+  inventado (por eso una revisión sin firma se repite, no se firma).
 - **Caja negra.** Todo lo raro que te encuentres y tengas que arreglar sobre la marcha —algo
   que no estaba donde decía, un comando que falla por el entorno, un rodeo que hubo que dar—
   se anota en `.caja-negra/diario.md` (fuera de git; créalo si no existe). Una línea:
   `AAAA-MM-DD · qué pasó · qué hice · dónde`. No es documentación del proyecto: es el rastro
   de lo que cuesta trabajar aquí, y es lo que permite arreglar la causa en vez del síntoma.
+
+## Cómo se le informa al usuario (todo mensaje, no solo los documentos)
+
+**Si una palabra solo existe dentro de `docs/00-metodo/`, no sale por el chat**: unidad → "trabajo", `en_validacion` → "hecho, a falta de que lo pruebes", hard-gate → "comprobación que bloquea", exprés → "cambio de una línea"; worktree, ADR, cupo, meta-repo: o se dicen por lo que son, o no se dicen. Nombres de fichero y de script SÍ, con lo que hacen al lado ("he tocado papeles" no informa de nada). Un rojo son tres datos: qué comprobación, qué falla y quién lo arregla; si son varios, tabla. Lo que el usuario no puede decidir ni tocar, se calla. Cierra pidiendo lo que necesitas en preguntas de sí o no, y que el informe quepa en una pantalla.
 
 ## Autoridad de la información (qué fuente manda en conflicto)
 

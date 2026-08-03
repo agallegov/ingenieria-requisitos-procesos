@@ -15,6 +15,11 @@ con investigación y un ADR que lo justifique**, guiado por estos principios uni
    de documentación y ejemplos; el mínimo espacio para que el agente invente.
 5. **SaaS: la línea es "¿puedo irme en una tarde?"** — protocolo portable sí, plataforma
    que captura datos o lógica no.
+6. **Lo más pequeño que arranque, primero.** El punto de partida es una máquina —la del
+   usuario— y un entorno nativo (venv o equivalente). Contenedores, orquestación y servidores
+   se añaden cuando haya una razón que el usuario haya dicho («lo va a usar más gente a la
+   vez», «corre en otra máquina»), nunca por defecto. En un proyecto de una sola máquina, "el
+   stack decidido" puede ser una línea: lenguaje + fichero de dependencias.
 
 ## Qué debe producir la fase 3 con esto
 

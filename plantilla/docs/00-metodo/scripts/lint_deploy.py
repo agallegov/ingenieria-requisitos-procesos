@@ -47,6 +47,14 @@ ARTEFACTOS_DIR = {".claude", ".cursor", "planning"}
 ARTEFACTOS_FICHERO = ["CLAUDE.md", "AGENTS.md", ".cursorrules", "PLAN.md", "plan.md",
                       "TODO.md", "especificacion*.md", "tareas*.md", "hallazgos*.md"]
 NO_ESCANEAR = {".git", ".github", "tests"}
+# En la RAÍZ del repo de código, el AGENTS.md y sus puentes de una línea no son basura de
+# agente: el método OBLIGA a crearlos (runbooks/planificacion.md regla 6 +
+# plantillas/agents-repo-codigo.md) porque llevan los comandos literales de test y de arranque
+# sin los cuales "suite en verde" y "lanzar instancia" no los puede ejecutar un agente fresco.
+# Exigir su borrado era un gate imposible, y un rojo imposible solo enseña a desplegar con el
+# gate en rojo — mismo defecto que ADR-011 arregló en la comprobación 5 de este script. La
+# excepción es SOLO la raíz: anidados (main/loquesea/AGENTS.md) siguen siendo basura.
+PERMITIDOS_EN_RAIZ = {"AGENTS.md", "CLAUDE.md", "GEMINI.md"}
 
 DIAS_AUDITORIA = 60
 
@@ -116,7 +124,9 @@ else:
     casillas = casillas_del_plano(plano.read_text(encoding="utf-8"))
     faltan = [f"`{c}` ({CASILLAS[c]})" for c in CASILLAS if c not in casillas]
     if faltan:
-        fail(f"plano-deploy.md sin decidir: {'; '.join(faltan)}")
+        fail(f"plano-deploy.md sin decidir: {'; '.join(faltan)} — esas casillas las llena la "
+             f"entrevista de arranque del rol DEPLOY (roles.md), preguntándole al usuario una "
+             f"por una; si no ha desplegado nunca nada, runbooks/primer-despliegue.md")
     else:
         ok(f"despliegue definido: etapa {casillas['etapa']} · camino «{casillas['camino'][:40]}»")
         if casillas["datos"].upper().startswith("SIN DATOS"):
@@ -156,6 +166,8 @@ if main_dir.is_dir():
     sucios = []
     for entrada in sorted(main_dir.iterdir()):
         if entrada.name in NO_ESCANEAR:
+            continue
+        if entrada.is_file() and entrada.name in PERMITIDOS_EN_RAIZ:
             continue
         if es_artefacto(entrada):
             sucios.append(f"main/{entrada.name}{'/' if entrada.is_dir() else ''}")
