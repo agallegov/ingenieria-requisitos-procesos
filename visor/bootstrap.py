@@ -37,6 +37,7 @@ Siempre son dos repos independientes. ``main/`` está ignorado por el meta-repo 
 import argparse
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -806,7 +807,7 @@ def main():
               "y pídelo, o conecta remotos a mano y actualiza repos.yaml.")
     else:
         print(f"Dos repos independientes: meta ({nombre_meta}) y código desde "
-              f"{remoto_codigo}; main/ sigue siempre origin/main.")
+              f"{remoto_codigo}; main/ sigue siempre origin/{rama_codigo}.")
     for a in avisos:
         print(f"AVISO: {a}")
     print("Siguiente paso del método: fase 3 (investigación) — abrir sesión del agente "
