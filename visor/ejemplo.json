@@ -1,249 +1,1101 @@
 {
-  "version": 2,
-  "proyecto": "almacen-de-paco",
-  "titulo": "Pedidos del almacén",
-  "descripcion": "La app del almacén de piensos: los pedidos que hoy llegan por WhatsApp y se copian a mano al Excel pasarán a registrarse y facturarse solos. La IA lee el mensaje y monta un borrador, María lo confirma, el código factura y avisa, y el jefe aprueba las excepciones desde el móvil.",
+  "version": 3,
+  "proyecto": "expansion-portugal-2026",
+  "titulo": "Apertura de oficina en Lisboa",
+  "descripcion": "Plan de expansión de 'EcoPescado S.L.' (sede en Vigo, Galicia) para abrir una oficina comercial en Lisboa. El plan cubre estructura organizativa, cumplimiento legal en Portugal, definición de procesos de apertura y asignación de entregables con fechas.",
   "definicion": {
     "estado": "listo para revisar",
     "modo": "entrevista",
-    "bloques_no_aplican": [],
-    "supuestos": []
-  },
-  "cobertura": {
-    "estado": "no implementado",
-    "evidencias": ["El ejemplo describe un proyecto nuevo, todavía sin aplicación."],
-    "pruebas": ["No existe código de producto que ejecutar."]
+    "bloques_no_aplican": [
+      "cumplimiento"
+    ],
+    "supuestos": [
+      {
+        "id": "S-1",
+        "texto": "Se abre como filial portuguesa (Lda.), no como franquicia.",
+        "origen": "usuario",
+        "estado": "confirmado"
+      },
+      {
+        "id": "S-2",
+        "texto": "La oficina de Lisboa reportará a la sede de Vigo, no habrá director autónomo el primer año.",
+        "origen": "usuario",
+        "estado": "confirmado"
+      },
+      {
+        "id": "S-3",
+        "texto": "Se contratará 1 representante comercial local y 1 asistente administrativo en Lisboa.",
+        "origen": "inferido",
+        "estado": "propuesto"
+      },
+      {
+        "id": "S-4",
+        "texto": "El presupuesto total de apertura no superará los 45.000€ en el primer año.",
+        "origen": "usuario",
+        "estado": "propuesto"
+      }
+    ],
+    "riesgos": [
+      {
+        "id": "RIS-1",
+        "descripcion": "Burocracia portuguesa más lenta de lo esperado para registro de filial.",
+        "impacto": "medio",
+        "mitigacion": "Contratar gestor local desde el mes 1 para agilizar trámites."
+      },
+      {
+        "id": "RIS-2",
+        "descripcion": "Dificultad para encontrar talento comercial local con experiencia en sector pesquero.",
+        "impacto": "alto",
+        "mitigacion": "Formar al asistente administrativo para que cubra ambas funciones inicialmente."
+      }
+    ]
   },
   "contrato": {
-    "frase": "Cuando llega un pedido por WhatsApp, María necesita registrarlo y facturarlo sin copiarlo a mano para que el despacho medio baje de 40 a 10 minutos.",
-    "exito": "en un mes, el tiempo medio entre que llega el mensaje y sale el pedido baja de 40 a 10 minutos, y ningún pedido se pierde."
+    "frase": "Cuando la dirección de EcoPescado decida expandirse a Portugal, el equipo de planificación necesita un plan estructurado con acciones, entregables y cumplimiento legal para abrir la oficina de Lisboa en 6 meses.",
+    "exito": [
+      "Oficina registrada y operativa en Lisboa antes de septiembre 2026.",
+      "Al menos 3 clientes portugueses activos en el primer trimestre de operación.",
+      "Cumplimiento total de obligaciones fiscales y laborales portuguesas."
+    ]
   },
   "actores": [
-    { "nombre": "Paco", "rol": "cliente" },
-    { "nombre": "María", "rol": "gestiona pedidos" },
-    { "nombre": "el jefe", "rol": "aprueba excepciones" },
-    { "nombre": "el almacén", "rol": "prepara y envía" }
+    {
+      "nombre": "Carlos Vega",
+      "rol": "director general, sede Vigo"
+    },
+    {
+      "nombre": "Ana López",
+      "rol": "jefa de administración, sede Vigo"
+    },
+    {
+      "nombre": "Miguel Santos",
+      "rol": "representante comercial local, Lisboa"
+    },
+    {
+      "nombre": "Clara Ferreira",
+      "rol": "asistente administrativa, Lisboa"
+    },
+    {
+      "nombre": "Gestoría Rías Baixas",
+      "rol": "gestoría fiscal en España"
+    },
+    {
+      "nombre": "Gestoría Lisboa & Filhos",
+      "rol": "gestoría fiscal en Portugal"
+    }
   ],
-  "vocabulario": [
-    { "termino": "pedido", "significado": "lo que un cliente pide de una vez, con sus sacos y su fecha; no es lo mismo que la factura" },
-    { "termino": "deuda", "significado": "dinero pendiente de facturas anteriores; con deuda (o con un pedido de más de 1.000€, ver G-1) hace falta visto bueno del jefe" }
+  "glosario": [
+    {
+      "termino": "filial (Lda.)",
+      "significado": "Sociedad limitada portuguesa, equivalente a la SRL española. Es una persona jurídica independiente de la matriz española."
+    },
+    {
+      "termino": "NIF",
+      "significado": "Número de Identificación Fiscal portugués, equivalente al CIF/NIF español. Necesario para todo trámite fiscal."
+    },
+    {
+      "termino": "CAE",
+      "significado": "Código de Actividad Económico portugués, clasifica la actividad de la empresa a efectos fiscales y estadísticos."
+    },
+    {
+      "termino": "IRT",
+      "significado": "Impuesto sobre Renta de Trabajadores, la retención laboral portuguesa."
+    }
+  ],
+  "estructura_organizativa": [
+    {
+      "id": "U-1",
+      "nombre": "Sede central - Vigo",
+      "tipo": "sede",
+      "ubicacion": {
+        "pais": "España",
+        "ciudad": "Vigo",
+        "zona_horaria": "Europe/Madrid"
+      },
+      "estado": "abierta",
+      "origen": "usuario"
+    },
+    {
+      "id": "U-2",
+      "nombre": "Oficina comercial - Lisboa",
+      "tipo": "oficina",
+      "ubicacion": {
+        "pais": "Portugal",
+        "ciudad": "Lisboa",
+        "zona_horaria": "Europe/Lisbon"
+      },
+      "reporta_a": "U-1",
+      "estado": "proyectada",
+      "origen": "usuario"
+    }
   ],
   "flujos": [
     {
-      "id": "pedido-hoy",
-      "titulo": "Un pedido, de la llamada al envío",
+      "id": "apertura-hoy",
+      "titulo": "Cómo se abre una oficina actualmente (sin plan)",
       "momento": "hoy",
       "origen": "usuario",
-      "descripcion": "Cómo funciona el negocio ahora mismo, sin la app.",
+      "descripcion": "El proceso ad-hoc que harían ahora si decidieran abrir sin este plan.",
       "pasos": [
-        { "tipo": "humano", "texto": "Llegó un pedido por WhatsApp", "quien": "Paco" },
-        { "tipo": "humano", "texto": "Lo pasó al Excel", "quien": "María" },
         {
-          "tipo": "decision", "clase": "excepcion", "condicion": "¿había stock?",
-          "rama": { "etiqueta": "no había", "pasos": [ { "tipo": "humano", "texto": "Llamó al proveedor", "quien": "María" } ] },
-          "sigue": "sí había"
+          "tipo": "humano",
+          "texto": "La dirección decide explorar el mercado portugués",
+          "quien": "Carlos Vega"
         },
-        { "tipo": "humano", "texto": "Hizo la factura en Word", "quien": "María" },
         {
-          "tipo": "decision", "clase": "regla", "condicion": "¿hacía falta el visto bueno del jefe?",
-          "rama": { "etiqueta": "sí: debía dinero o el pedido pasaba de 1.000€", "pasos": [ { "tipo": "humano", "texto": "Aprobó el pedido", "quien": "el jefe" } ] },
-          "sigue": "no hacía falta"
+          "tipo": "humano",
+          "texto": "Visita Lisboa y valora la zona comercial",
+          "quien": "Carlos Vega"
         },
-        { "tipo": "humano", "texto": "Preparó y envió el pedido", "quien": "el almacén" }
+        {
+          "tipo": "externo",
+          "texto": "Contrata un gestor sin saber qué documentos necesita",
+          "quien": "Gestoría Lisboa & Filhos"
+        },
+        {
+          "tipo": "humano",
+          "texto": "Espera indicaciones del gestor y reúne papeles",
+          "quien": "Ana López"
+        },
+        {
+          "tipo": "externo",
+          "texto": "El gestor presenta la documentación en el Registro Mercantil",
+          "quien": "Gestoría Lisboa & Filhos"
+        },
+        {
+          "tipo": "humano",
+          "texto": "Cuando sale el NIF, alquila el local",
+          "quien": "Carlos Vega"
+        },
+        {
+          "tipo": "externo",
+          "texto": "Abre cuenta bancaria en Portugal",
+          "quien": "Gestoría Lisboa & Filhos"
+        },
+        {
+          "tipo": "humano",
+          "texto": "Contrata al personal local",
+          "quien": "Carlos Vega"
+        }
       ]
     },
     {
-      "id": "pedido-futuro",
-      "titulo": "El mismo pedido, con la app",
+      "id": "apertura-futuro",
+      "titulo": "Apertura planificada de la oficina de Lisboa",
       "momento": "futuro",
       "origen": "usuario",
-      "descripcion": "El reparto del trabajo: qué queda en personas, qué hace código normal y qué hace un modelo de IA. La IA propone, María confirma: nada se factura sin ojos humanos.",
+      "descripcion": "El proceso con este plan de expansión: acciones secuenciadas, responsables definidos y entregables con criterios de aprobación.",
       "pasos": [
-        { "tipo": "humano", "texto": "Llegó un pedido por WhatsApp", "quien": "Paco" },
-        { "tipo": "ia", "texto": "La app leyó el mensaje y montó un borrador de pedido" },
         {
-          "tipo": "decision", "clase": "excepcion", "condicion": "¿la app entendió el mensaje?",
-          "rama": { "etiqueta": "no (audio raro, remitente desconocido, texto ambiguo)", "pasos": [
-            { "tipo": "estatico", "texto": "Se dejó como pendiente de revisión y se avisó a María por WhatsApp" },
-            { "tipo": "humano", "texto": "Lo registró a mano o lo descartó", "quien": "María" }
-          ] },
-          "sigue": "sí lo entendió"
-        },
-        { "tipo": "humano", "texto": "Revisó el borrador y lo confirmó", "quien": "María" },
-        { "tipo": "estatico", "texto": "Se comprobó el stock" },
-        {
-          "tipo": "decision", "clase": "excepcion", "condicion": "¿había stock?",
-          "rama": { "etiqueta": "no había", "pasos": [
-            { "tipo": "estatico", "texto": "Se avisó a María por WhatsApp" },
-            { "tipo": "humano", "texto": "Llamó al proveedor", "quien": "María" }
-          ] },
-          "sigue": "sí había"
+          "tipo": "humano",
+          "texto": "La dirección aprueba el plan de expansión",
+          "quien": "Carlos Vega"
         },
         {
-          "tipo": "decision", "clase": "regla", "condicion": "¿hacía falta el visto bueno del jefe? (deuda o más de 1.000€)",
-          "ramas": [
-            { "etiqueta": "sí, y el jefe aprobó", "pasos": [ { "tipo": "humano", "texto": "Aprobó desde el móvil", "quien": "el jefe" } ] },
-            { "etiqueta": "sí, y el jefe rechazó", "pasos": [
-              { "tipo": "humano", "texto": "Rechazó desde el móvil, escribiendo el motivo", "quien": "el jefe" },
-              { "tipo": "estatico", "texto": "Se dejó el pedido como anulado y María vio el motivo en su panel" }
-            ], "termina": true }
-          ],
-          "sigue": "no hacía falta"
+          "tipo": "humano",
+          "texto": "Se contrata la gestoría portuguesa para asesoramiento legal y fiscal",
+          "quien": "Ana López"
         },
-        { "tipo": "estatico", "texto": "Se generó la factura" },
-        { "tipo": "estatico", "texto": "Se avisó al almacén por WhatsApp" },
-        { "tipo": "humano", "texto": "Preparó el pedido y lo marcó como enviado", "quien": "el almacén" }
+        {
+          "tipo": "automatizado",
+          "texto": "Se verifica que todos los documentos de la matriz (EscP, actas, estatutos) estén apostillados y traducidos"
+        },
+        {
+          "tipo": "decision",
+          "clase": "regla",
+          "condicion": "¿están todos los documentos de la matriz en regla?",
+          "rama": {
+            "etiqueta": "no, faltan documentos",
+            "pasos": [
+              {
+                "tipo": "humano",
+                "texto": "Se solicita apostilla de Holanda y traducción jurada al portugués",
+                "quien": "Ana López"
+              },
+              {
+                "tipo": "externo",
+                "texto": "Se tramita la apostilla en el Registro Mercantil de Pontevedra",
+                "quien": "Ana López"
+              }
+            ]
+          },
+          "sigue": "sí, todo en regla"
+        },
+        {
+          "tipo": "externo",
+          "texto": "Se presenta la solicitud de registro de filial en el Registro Mercantil central",
+          "quien": "Gestoría Lisboa & Filhos"
+        },
+        {
+          "tipo": "externo",
+          "texto": "Se obtiene el NIF de la filial",
+          "quien": "Gestoría Lisboa & Filhos"
+        },
+        {
+          "tipo": "humano",
+          "texto": "Se abre la cuenta bancaria portuguesa",
+          "quien": "Carlos Vega"
+        },
+        {
+          "tipo": "humano",
+          "texto": "Se firma el contrato de alquiler del local",
+          "quien": "Carlos Vega"
+        },
+        {
+          "tipo": "externo",
+          "texto": "Se inscribe en la seguridad social portuguesa (SS)",
+          "quien": "Gestoría Lisboa & Filhos"
+        },
+        {
+          "tipo": "humano",
+          "texto": "Se publicita la apertura y se contactan los primeros clientes potenciales",
+          "quien": "Miguel Santos"
+        }
       ]
     }
   ],
-  "episodios": [
-    { "texto": "El 3 de julio Paco pidió 40 sacos debiendo 300€; el pedido esperó 2 horas a que el jefe volviera de la obra y el almacén cerró sin prepararlo.", "refs": ["G-1", "R-4"] },
-    { "texto": "En vendimia entraron 52 pedidos en un día y María dejó de contestar el teléfono para poder copiarlos al Excel.", "refs": ["Q-1"] }
-  ],
-  "volumen": [
-    { "que": "pedidos al día", "cuanto": "unos 30, con picos de 50 en vendimia" },
-    { "que": "clientes con ficha", "cuanto": "unos 200, 40 activos cada semana" }
-  ],
-  "recorridos": [
+  "acciones": [
     {
-      "id": "REC-1",
-      "nombre": "Esqueleto: un pedido normal, de WhatsApp a enviado",
-      "objetivo": "Recorrer todo el camino feliz aunque sea en fino: entra el mensaje, María confirma, se factura, el almacén envía.",
-      "estado": "pendiente",
-      "requisitos": [
-        { "id": "R-1", "texto": "Cuando llegue un mensaje de pedido por WhatsApp de un cliente conocido, el sistema deberá montar un borrador de pedido con cliente, líneas y fecha, y guardar el mensaje original.", "origen": "usuario", "implementacion": { "estado": "no implementado", "evidencias": ["Proyecto nuevo sin código."], "pruebas": ["Pendiente de construcción."] } },
-        { "id": "R-2", "texto": "Cuando María confirme un borrador con stock y sin necesidad de visto bueno (G-1), el sistema deberá generar la factura, apuntar su importe a la cuenta del cliente y avisar al almacén por WhatsApp.", "regla": "G-1", "origen": "usuario", "implementacion": { "estado": "no implementado", "evidencias": ["Proyecto nuevo sin código."], "pruebas": ["Pendiente de construcción."] } },
-        { "id": "R-3", "texto": "Cuando el almacén responda al aviso marcando el pedido como enviado, el sistema deberá registrar la hora del envío.", "origen": "usuario", "implementacion": { "estado": "no implementado", "evidencias": ["Proyecto nuevo sin código."], "pruebas": ["Pendiente de construcción."] } }
+      "id": "A-1",
+      "nombre": "Preparar documentación de la matriz",
+      "descripcion": "Reunir y legalizar todos los documentos de EcoPescado S.L. necesarios para el registro en Portugal.",
+      "objetivo": "Tener EscP, actas de junta, estatutos y poder notarial apostillados y traducidos al portugués.",
+      "responsable": "Ana López",
+      "entregable": "ENT-1",
+      "fecha_prevista": "2026-01-15",
+      "secuencia": [
+        "A-2"
       ],
-      "criterios": [
-        { "id": "C-1", "dado": "que Paco no debe nada y hay 100 sacos de harina en stock", "cuando": "escribe \"40 sacos de harina de 25kg para el jueves\" y María confirma el borrador", "entonces": "se genera la factura, el almacén recibe el aviso por WhatsApp y el pedido queda como facturado", "cubre": "R-2" },
-        { "id": "C-2", "dado": "que llega un audio ininteligible desde un número desconocido", "cuando": "la app no consigue montar el borrador", "entonces": "queda como pendiente de revisión, María recibe aviso por WhatsApp y no se factura nada", "cubre": "R-1" },
-        { "id": "C-6", "dado": "un pedido de Paco facturado esta mañana", "cuando": "el almacén responde LISTO al aviso", "entonces": "el pedido queda como enviado, con su hora de llegada y su hora de envío guardadas", "cubre": "R-3" }
-      ]
+      "origen": "usuario",
+      "avance": {
+        "estado": "pendiente"
+      }
     },
     {
-      "id": "REC-2",
-      "nombre": "El visto bueno del jefe: deuda o pedido gordo",
-      "objetivo": "Que ningún pedido con deuda o de más de 1.000€ salga sin aprobación (regla G-1).",
-      "estado": "pendiente",
-      "requisitos": [
-        { "id": "R-4", "texto": "Cuando María confirme un borrador de un cliente con deuda pendiente o por importe mayor de 1.000€, el sistema deberá retenerlo y pedir aprobación al jefe por WhatsApp, enseñándole la deuda y el importe.", "regla": "G-1", "origen": "usuario", "implementacion": { "estado": "no implementado", "evidencias": ["Proyecto nuevo sin código."], "pruebas": ["Pendiente de construcción."] } },
-        { "id": "R-5", "texto": "Cuando el jefe apruebe, el sistema deberá continuar hacia la factura; cuando rechace con motivo, el sistema deberá dejar el pedido como anulado y avisar a María con el motivo.", "origen": "usuario", "implementacion": { "estado": "no implementado", "evidencias": ["Proyecto nuevo sin código."], "pruebas": ["Pendiente de construcción."] } }
+      "id": "A-2",
+      "nombre": "Contratar gestoría portuguesa",
+      "descripcion": "Seleccionar y contratar gestoría en Lisboa para Tramitar el registro de la filial.",
+      "objetivo": "Tener un contrato con la gestoría Lisboa & Filhos con alcance definido.",
+      "responsable": "Ana López",
+      "entregable": "ENT-2",
+      "fecha_prevista": "2026-01-20",
+      "secuencia": [
+        "A-3"
       ],
-      "criterios": [
-        { "id": "C-3", "dado": "que Paco debe 300€", "cuando": "María confirma su pedido de 40 sacos", "entonces": "el pedido queda retenido y al jefe le llega la petición con la deuda visible", "cubre": "R-4" },
-        { "id": "C-4", "dado": "que Paco no debe nada", "cuando": "María confirma un pedido suyo de 60 sacos por 1.200€", "entonces": "el pedido queda retenido por pasar de 1.000€", "cubre": "R-4" },
-        { "id": "C-5", "dado": "un pedido retenido de Paco", "cuando": "el jefe lo rechaza escribiendo el motivo", "entonces": "el pedido queda anulado y María ve el motivo en su panel", "cubre": "R-5" }
-      ]
+      "origen": "usuario",
+      "avance": {
+        "estado": "pendiente"
+      }
+    },
+    {
+      "id": "A-3",
+      "nombre": "Registrar filial en Portugal",
+      "descripcion": "Presentar toda la documentación en el Registro Mercantil central portugués.",
+      "objetivo": "Obtener el NIF de la filial y la inscripción registral.",
+      "responsable": "Gestoría Lisboa & Filhos",
+      "entregable": "ENT-3",
+      "fecha_prevista": "2026-03-01",
+      "secuencia": [
+        "A-4",
+        "A-5"
+      ],
+      "origen": "usuario",
+      "avance": {
+        "estado": "pendiente"
+      }
+    },
+    {
+      "id": "A-4",
+      "nombre": "Abrir cuenta bancaria",
+      "descripcion": "Abrir cuenta corriente en un banco portugués a nombre de la filial.",
+      "objetivo": "Tener cuenta operativa para recibir cobros y realizar pagos.",
+      "responsable": "Carlos Vega",
+      "entregable": "ENT-4",
+      "fecha_prevista": "2026-03-15",
+      "secuencia": [
+        "A-6"
+      ],
+      "origen": "usuario",
+      "avance": {
+        "estado": "pendiente"
+      }
+    },
+    {
+      "id": "A-5",
+      "nombre": "Alquilar local comercial",
+      "descripcion": "Encontrar y firmar contrato de alquiler para la oficina en Lisboa.",
+      "objetivo": "Tener local firmado y listo para Equipar.",
+      "responsable": "Carlos Vega",
+      "entregable": "ENT-5",
+      "fecha_prevista": "2026-03-15",
+      "secuencia": [
+        "A-7"
+      ],
+      "origen": "usuario",
+      "avance": {
+        "estado": "pendiente"
+      }
+    },
+    {
+      "id": "A-6",
+      "nombre": "Inscribir empleados en seguridad social",
+      "descripcion": "Dar de alta a los empleados en la seguridad social portuguesa.",
+      "objetivo": "Tener altas de Miguel Santos y Clara Ferreira listas antes del primer día.",
+      "responsable": "Gestoría Lisboa & Filhos",
+      "entregable": "ENT-6",
+      "fecha_prevista": "2026-04-01",
+      "secuencia": [
+        "A-7"
+      ],
+      "origen": "usuario",
+      "avance": {
+        "estado": "pendiente"
+      }
+    },
+    {
+      "id": "A-7",
+      "nombre": "Contratar y formar personal local",
+      "descripcion": "Reclutar, contratar y formar al representante comercial y al asistente administrativo.",
+      "objetivo": "Tener equipo completo y formado antes de la apertura.",
+      "responsable": "Carlos Vega",
+      "entregable": "ENT-7",
+      "fecha_prevista": "2026-04-15",
+      "secuencia": [
+        "A-8"
+      ],
+      "origen": "usuario",
+      "avance": {
+        "estado": "pendiente"
+      }
+    },
+    {
+      "id": "A-8",
+      "nombre": "Apertura comercial",
+      "descripcion": "Abrir la oficina al público y comenzar actividad comercial.",
+      "objetivo": "Primer día de operaciones con clientes activos.",
+      "responsable": "Miguel Santos",
+      "entregable": "ENT-8",
+      "fecha_prevista": "2026-05-01",
+      "origen": "usuario",
+      "avance": {
+        "estado": "pendiente"
+      }
     }
   ],
-  "reglas": [
+  "entregables": [
+    {
+      "id": "ENT-1",
+      "nombre": "Documentación de la matriz legalizada",
+      "descripcion": "EscP vigente, actas de última junta, estatutos, poder notarial apostillados y traducidos al portugués.",
+      "tipo": "documento",
+      "acciones": [
+        "A-1"
+      ],
+      "fecha_prevista": "2026-01-15",
+      "criterios_aprobacion": [
+        {
+          "id": "C-1",
+          "condicion": "Dado: todos los documentos de la matriz están vigentes. Cuando: se obtiene la apostilla de Holanda y la traducción jurada. → Se cumple el criterio.",
+          "entregable": "ENT-1"
+        },
+        {
+          "id": "C-2",
+          "condicion": "Dado: los documentos están apostillados. Cuando: se verifica que la traducción cubre todos los estatutos completos. → Se cumple el criterio.",
+          "entregable": "ENT-1"
+        }
+      ],
+      "avance": {
+        "estado": "pendiente"
+      }
+    },
+    {
+      "id": "ENT-2",
+      "nombre": "Contrato con gestoría portuguesa",
+      "descripcion": "Contrato firmado con alcance definido: registro mercantil, NIF, inscripción SS y asesoría fiscal.",
+      "tipo": "contrato",
+      "acciones": [
+        "A-2"
+      ],
+      "fecha_prevista": "2026-01-20",
+      "criterios_aprobacion": [
+        {
+          "id": "C-3",
+          "condicion": "Dado: la gestoría está seleccionada. Cuando: el contrato incluye todos los servicios necesarios (registro, NIF, SS, fiscal). → Se cumple el criterio.",
+          "entregable": "ENT-2"
+        }
+      ],
+      "avance": {
+        "estado": "pendiente"
+      }
+    },
+    {
+      "id": "ENT-3",
+      "nombre": "Filial inscrita con NIF portugués",
+      "descripcion": "Inscripción registral completa y NIF (Contributor) de la filial portuguesa.",
+      "tipo": "registro",
+      "acciones": [
+        "A-3"
+      ],
+      "fecha_prevista": "2026-03-01",
+      "criterios_aprobacion": [
+        {
+          "id": "C-4",
+          "condicion": "Dado: la documentación está presentada. Cuando: el Registro Mercantil emite el certificado de inscripción y la autoridad fiscal asigna el NIF. → Se cumple el criterio.",
+          "entregable": "ENT-3"
+        }
+      ],
+      "avance": {
+        "estado": "pendiente"
+      }
+    },
+    {
+      "id": "ENT-4",
+      "nombre": "Cuenta bancaria portuguesa operativa",
+      "descripcion": "Cuenta corriente a nombre de la filial con IBAN portugués.",
+      "tipo": "documento",
+      "acciones": [
+        "A-4"
+      ],
+      "fecha_prevista": "2026-03-15",
+      "criterios_aprobacion": [
+        {
+          "id": "C-5",
+          "condicion": "Dado: la filial tiene NIF. Cuando: se recibe confirmación del banco con el IBAN operativo. → Se cumple el criterio.",
+          "entregable": "ENT-4"
+        }
+      ],
+      "avance": {
+        "estado": "pendiente"
+      }
+    },
+    {
+      "id": "ENT-5",
+      "nombre": "Contrato de alquiler de local",
+      "descripcion": "Contrato de arrendamiento comercial firmado en Lisboa.",
+      "tipo": "contrato",
+      "acciones": [
+        "A-5"
+      ],
+      "fecha_prevista": "2026-03-15",
+      "criterios_aprobacion": [
+        {
+          "id": "C-6",
+          "condicion": "Dado: el local está visitado y aprobado. Cuando: se firma el contrato de arrendamiento (Contrato de Arrendamento Comercial). → Se cumple el criterio.",
+          "entregable": "ENT-5"
+        }
+      ],
+      "avance": {
+        "estado": "pendiente"
+      }
+    },
+    {
+      "id": "ENT-6",
+      "nombre": "Altas en seguridad social portuguesa",
+      "descripcion": "Inscripción de la filial y de los empleados en la Seguridad Social portuguesa (SS).",
+      "tipo": "registro",
+      "acciones": [
+        "A-6"
+      ],
+      "fecha_prevista": "2026-04-01",
+      "criterios_aprobacion": [
+        {
+          "id": "C-7",
+          "condicion": "Dado: los empleados están contratados. Cuando: la SS portuguesa emite el número de inscripción de la empresa y de cada trabajador. → Se cumple el criterio.",
+          "entregable": "ENT-6"
+        }
+      ],
+      "avance": {
+        "estado": "pendiente"
+      }
+    },
+    {
+      "id": "ENT-7",
+      "nombre": "Equipo local contratado y formado",
+      "descripcion": "Representante comercial y asistente administrativo con contratos firmados y formación iniciada.",
+      "tipo": "acta",
+      "acciones": [
+        "A-7"
+      ],
+      "fecha_prevista": "2026-04-15",
+      "criterios_aprobacion": [
+        {
+          "id": "C-8",
+          "condicion": "Dado: los contratos están firmados. Cuando: se completa la formación en productos, procesos y sistema de gestión. → Se cumple el criterio.",
+          "entregable": "ENT-7"
+        }
+      ],
+      "avance": {
+        "estado": "pendiente"
+      }
+    },
+    {
+      "id": "ENT-8",
+      "nombre": "Primer día de operaciones",
+      "descripcion": "Oficina abierta al público, primer cliente activo registrado.",
+      "tipo": "acta",
+      "acciones": [
+        "A-8"
+      ],
+      "fecha_prevista": "2026-05-01",
+      "criterios_aprobacion": [
+        {
+          "id": "C-9",
+          "condicion": "Dado: todo lo anterior está completado. Cuando: se registra el primer pedido o cliente portugués activo. → Se cumple el criterio.",
+          "entregable": "ENT-8"
+        }
+      ],
+      "avance": {
+        "estado": "pendiente"
+      }
+    }
+  ],
+  "normas": [
     {
       "id": "G-1",
-      "nombre": "Cuándo necesita un pedido el visto bueno del jefe",
+      "nombre": "Aprobación de gastos de apertura",
+      "descripcion": "Cualquier gasto de apertura superior a 2.000€ requiere aprobación de Carlos Vega.",
       "tabla": {
-        "columnas": ["¿Debe dinero?", "¿Pedido mayor de 1.000€?", "Qué pasa"],
+        "columnas": [
+          "¿Importe mayor de 2.000€?",
+          "¿Quién solicita?",
+          "Quién aprueba"
+        ],
         "filas": [
-          ["no", "no", "sale directo"],
-          ["no", "sí", "aprueba el jefe"],
-          ["sí", "lo que sea", "aprueba el jefe"]
+          [
+            "no",
+            "cualquiera",
+            "Ana López"
+          ],
+          [
+            "sí",
+            "Ana López",
+            "Carlos Vega"
+          ],
+          [
+            "sí",
+            "Carlos Vega",
+            "Carlos Vega"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "G-2",
+      "nombre": "Gastos recurrentes mensuales",
+      "descripcion": "El total de gastos recurrentes de la filial (alquiler, gestor, nóminas) no puede superar los 6.000€/mes sin autorización de la dirección.",
+      "tabla": {
+        "columnas": [
+          "¿Gasto mensual > 6.000€?",
+          "Qué pasa"
+        ],
+        "filas": [
+          [
+            "no",
+            "se aprueba automáticamente"
+          ],
+          [
+            "sí",
+            "autorización de Carlos Vega requerida"
+          ]
         ]
       }
     }
   ],
   "estados": [
     {
-      "entidad": "pedido",
+      "entidad": "unidad organizativa",
       "estados": [
-        { "nombre": "pendiente de revisión", "acciones": [
-          { "accion": "registrarlo a mano", "quien": "María", "pasa_a": "borrador" },
-          { "accion": "descartarlo", "quien": "María", "pasa_a": "anulado" }
-        ] },
-        { "nombre": "borrador", "acciones": [
-          { "accion": "editar líneas", "quien": "María" },
-          { "accion": "confirmar, sin necesidad de visto bueno", "quien": "María", "pasa_a": "facturado" },
-          { "accion": "confirmar, con deuda o más de 1.000€", "quien": "María", "pasa_a": "retenido" },
-          { "accion": "anular", "quien": "María", "pasa_a": "anulado" }
-        ] },
-        { "nombre": "retenido", "acciones": [
-          { "accion": "aprobar", "quien": "el jefe", "pasa_a": "facturado" },
-          { "accion": "rechazar con motivo", "quien": "el jefe", "pasa_a": "anulado" }
-        ] },
-        { "nombre": "facturado", "acciones": [
-          { "accion": "marcar como enviado", "quien": "el almacén", "pasa_a": "enviado" }
-        ] },
-        { "nombre": "enviado", "acciones": ["nada: solo consultar"] },
-        { "nombre": "anulado", "acciones": ["nada: solo consultar"] }
+        {
+          "nombre": "proyectada",
+          "acciones": [
+            {
+              "accion": "abrir",
+              "quien": "Carlos Vega",
+              "pasa_a": "abierta"
+            },
+            {
+              "accion": "cancelar",
+              "pasa_a": "cerrada"
+            }
+          ]
+        },
+        {
+          "nombre": "abierta",
+          "acciones": [
+            {
+              "accion": "reorganizar",
+              "pasa_a": "reorganizando"
+            },
+            {
+              "accion": "cerrar",
+              "pasa_a": "cerrada"
+            }
+          ]
+        },
+        {
+          "nombre": "reorganizando",
+          "acciones": [
+            {
+              "accion": "volver a operativa",
+              "pasa_a": "abierta"
+            }
+          ]
+        },
+        {
+          "nombre": "cerrada",
+          "acciones": [
+            "nada: solo consultar"
+          ]
+        }
+      ]
+    },
+    {
+      "entidad": "accion",
+      "estados": [
+        {
+          "nombre": "pendiente",
+          "acciones": [
+            {
+              "accion": "iniciar",
+              "pasa_a": "en progreso"
+            }
+          ]
+        },
+        {
+          "nombre": "en progreso",
+          "acciones": [
+            {
+              "accion": "completar",
+              "pasa_a": "completado"
+            },
+            {
+              "accion": "cancelar",
+              "pasa_a": "cancelado"
+            }
+          ]
+        },
+        {
+          "nombre": "completado",
+          "acciones": [
+            "nada: solo consultar"
+          ]
+        },
+        {
+          "nombre": "cancelado",
+          "acciones": [
+            "nada: solo consultar"
+          ]
+        }
       ]
     }
   ],
   "datos": [
-    { "cosa": "cliente", "guarda": ["nombre", "teléfono de WhatsApp", "deuda pendiente en euros"], "origen": "se importa del Excel de María" },
-    { "cosa": "pedido", "guarda": ["cliente", "líneas (producto y cantidad)", "fecha de entrega", "estado", "mensaje original de WhatsApp", "motivo de rechazo si lo hay", "hora de llegada y hora de envío"], "origen": "se empieza de cero" },
-    { "cosa": "producto", "guarda": ["nombre", "precio", "stock del día"], "origen": "lo carga María cada mañana desde su Excel" },
-    { "cosa": "factura", "guarda": ["número correlativo", "pedido", "importe", "fecha"], "origen": "la genera la app" }
+    {
+      "cosa": "cliente portugués",
+      "guarda": [
+        "nombre",
+        "NIF portugués",
+        "dirección",
+        "contacto",
+        "historial de pedidos"
+      ],
+      "origen": "se empieza de cero"
+    },
+    {
+      "cosa": "fila de la filial",
+      "guarda": [
+        "NIF",
+        "CAE",
+        "acta de constitución",
+        "representante legal",
+        "domicilio fiscal"
+      ],
+      "origen": "se empieza de cero"
+    },
+    {
+      "cosa": "contrato laboral portugués",
+      "guarda": [
+        "nombre empleado",
+        "puesto",
+        "salario",
+        "jornada",
+        "fecha inicio",
+        "duracion"
+      ],
+      "origen": "se empieza de cero"
+    }
   ],
-  "integraciones": [
-    { "con": "WhatsApp", "para": "recibir pedidos y mandar todos los avisos" }
+  "metricas": [
+    {
+      "que": "empleados en Lisboa",
+      "cuanto": "2 en el primer año (1 comercial + 1 administrativo)"
+    },
+    {
+      "que": "clientes portugueses objetivo año 1",
+      "cuanto": "15 activos"
+    },
+    {
+      "que": "facturación objetivo año 1 Lisboa",
+      "cuanto": "120.000€"
+    },
+    {
+      "que": "gasto mensual máximo filial",
+      "cuanto": "6.000€/mes"
+    }
   ],
-  "superficie": {
-    "puntos": [
+  "cumplimiento": [
+    {
+      "jurisdiccion": "Portugal",
+      "laboral": [
+        {
+          "requisito": "Contrato de trabajo escrito",
+          "descripcion": "Todo empleado debe tener contrato firmado antes del primer día, conforme al Código del Trabajo portugués.",
+          "plazo": "antes del día 1",
+          "responsable": "Gestoría Lisboa & Filhos",
+          "estado": "pendiente"
+        },
+        {
+          "requisito": "Retención IRT en nóminas",
+          "descripcion": "Retener el impuesto sobre la renta (IRT) según tablas portuguesas vigentes.",
+          "plazo": "mensual",
+          "responsable": "Gestoría Lisboa & Filhos",
+          "estado": "pendiente"
+        },
+        {
+          "requisito": "Seguridad Social empresarial",
+          "descripcion": "Cuota empresarial SS: 23,8% sobre la base salarial.",
+          "plazo": "mensual",
+          "responsable": "Gestoría Lisboa & Filhos",
+          "estado": "pendiente"
+        },
+        {
+          "requisito": "Fundo de Garantião",
+          "descripcion": "Contribución de 0,83% para el Fondo de Garantía Salarial.",
+          "plazo": "mensual",
+          "responsable": "Gestoría Lisboa & Filhos",
+          "estado": "pendiente"
+        }
+      ],
+      "fiscal": [
+        {
+          "requisito": "Obtener NIF de la filial",
+          "descripcion": "Solicitar el número de identificaci ón fiscal en la Autoridade Tributária.",
+          "plazo": "tras registro mercantil",
+          "responsable": "Gestoría Lisboa & Filhos",
+          "estado": "pendiente"
+        },
+        {
+          "requisito": "IVA portugués (IVA)",
+          "descripcion": "Inscripción en el régimen de IVA y presentación de declaraciones periódicas (IVA-E).",
+          "plazo": "tras obtener NIF",
+          "responsable": "Gestoría Lisboa & Filhos",
+          "estado": "pendiente"
+        },
+        {
+          "requisito": "Impuesto de sociedades (ISCT)",
+          "descripcion": "Sociedad portuguesa sujeta a IRC (Imposto sobre o Rendimento das Sociedades). Tipo general: 21% + sobresulta hasta 1,5%.",
+          "plazo": "anual",
+          "responsable": "Gestoría Lisboa & Filhos",
+          "estado": "pendiente"
+        },
+        {
+          "requisito": "Contabilidad conforme a normas portuguesas",
+          "descripcion": "Llevar contabilidad según Plano Oficial de Contabilidade (POC).",
+          "plazo": "continuo",
+          "responsable": "Ana López",
+          "estado": "pendiente"
+        },
+        {
+          "requisito": "Facturación electrónica (eFATURACÃO)",
+          "descripcion": "Todas las facturas deben enviarse a la Autoridade Tributária en tiempo casi real.",
+          "plazo": "desde el primer día de operación",
+          "responsable": "Clara Ferreira",
+          "estado": "pendiente"
+        }
+      ],
+      "licencias": [
+        {
+          "requisito": "CAE (Código de Actividade Económica)",
+          "descripcion": "Código de actividad económica asignado durante el registro. Para comercialización de productos pesqueros: CAE 46.3-1-04.",
+          "plazo": "en el registro mercantil",
+          "responsable": "Gestoría Lisboa & Filhos",
+          "estado": "pendiente"
+        },
+        {
+          "requisito": "Registro Sanitario de productos pesqueros",
+          "descripcion": "Inscripción en la DGSA (Direção-Geral de Alimentação e Veterinária) para comercialización de productos pesqueros.",
+          "plazo": "antes de vender",
+          "responsable": "Carlos Vega",
+          "estado": "pendiente"
+        }
+      ],
+      "origen": "documentacion"
+    },
+    {
+      "jurisdiccion": "España",
+      "laboral": [
+        {
+          "requisito": "Comunicación de apertura de centro de trabajo en el Reino Unido",
+          "descripcion": "Comunicación al Servicio Público de Empleo Estatal (SEPE) de la apertura del centro de trabajo en Portugal (centro de trabajo en el extranjero).",
+          "plazo": "antes de contratar",
+          "responsable": "Ana López",
+          "estado": "pendiente"
+        }
+      ],
+      "fiscal": [
+        {
+          "requisito": "Modelo 200: declaración anual",
+          "descripcion": "EcoPescado S.L. debe declarar su participación en el extranjero en la renta anual.",
+          "plazo": "anual",
+          "responsable": "Gestoría Rías Baixas",
+          "estado": "pendiente"
+        },
+        {
+          "requisito": "Modelo 720: comunicación de bienes en el extranjero",
+          "descripcion": "Si la filial tiene activos superiores a 50.000€ en Portugal, se debe comunicar en el Modelo 720.",
+          "plazo": "antes del 31/03 del año siguiente",
+          "responsable": "Ana López",
+          "estado": "pendiente"
+        },
+        {
+          "requisito": "Doble imposición España-Portugal",
+          "descripcion": "Aplicar el convenio de doble imposición entre España y Portugal para evitar pagar impuestos dos veces.",
+          "plazo": "continuo",
+          "responsable": "Gestoría Rías Baixas",
+          "estado": "pendiente"
+        }
+      ],
+      "licencias": [],
+      "origen": "documentacion"
+    }
+  ],
+  "presupuesto": {
+    "moneda": "EUR",
+    "items": [
       {
-        "nombre": "El panel de María",
-        "quien": ["María"],
-        "llega": "ordenador del despacho",
-        "cuando": "cada vez que entra un pedido nuevo o hay un aviso",
-        "ve": "los pedidos de hoy, con los pendientes de revisión y retenidos arriba en naranja",
-        "puede": ["confirmar un borrador", "corregir un borrador mal leído", "registrar un pedido a mano (los de teléfono)", "anular un borrador", "marcar deuda como pagada"],
-        "nunca": ["aprobar pedidos retenidos", "borrar el historial de un cliente"]
+        "nombre": "Honorarios gestoría portuguesa (pack registro)",
+        "categoria": "legal",
+        "importe_estimado": 1500,
+        "periodicidad": "puntual",
+        "responsable": "Ana López"
       },
       {
-        "nombre": "El móvil del jefe",
-        "quien": ["el jefe"],
-        "llega": "móvil, por WhatsApp",
-        "cuando": "solo cuando un pedido queda retenido",
-        "ve": "el pedido, la deuda del cliente, el importe y dos botones: aprobar o rechazar",
-        "puede": ["aprobar", "rechazar con motivo"],
-        "nunca": ["editar el pedido", "ver otra cosa que los retenidos"]
+        "nombre": "Traducción jurada de estatutos",
+        "categoria": "legal",
+        "importe_estimado": 300,
+        "periodicidad": "puntual",
+        "responsable": "Ana López"
       },
       {
-        "nombre": "El WhatsApp del almacén",
-        "quien": ["el almacén"],
-        "llega": "móvil, por WhatsApp",
-        "cuando": "cuando hay un pedido facturado listo para preparar",
-        "ve": "las líneas del pedido y la dirección de entrega",
-        "puede": ["marcar como enviado respondiendo LISTO"],
-        "nunca": ["ver deudas ni precios de los clientes"]
+        "nombre": "Apostilla de Holanda",
+        "categoria": "legal",
+        "importe_estimado": 50,
+        "periodicidad": "puntual",
+        "responsable": "Ana López"
+      },
+      {
+        "nombre": "Alquiler oficina Lisboa (deposita 2 meses)",
+        "categoria": "infraestructura",
+        "importe_estimado": 4000,
+        "periodicidad": "puntual",
+        "responsable": "Carlos Vega"
+      },
+      {
+        "nombre": "Adaptación del local (obra menor)",
+        "categoria": "infraestructura",
+        "importe_estimado": 5000,
+        "periodicidad": "puntual",
+        "responsable": "Carlos Vega"
+      },
+      {
+        "nombre": "Mobiliario y equipos informáticos",
+        "categoria": "infraestructura",
+        "importe_estimado": 3000,
+        "periodicidad": "puntual",
+        "responsable": "Ana López"
+      },
+      {
+        "nombre": "Nómina representante comercial (6 meses)",
+        "categoria": "personal",
+        "importe_estimado": 18000,
+        "periodicidad": "puntual",
+        "responsable": "Carlos Vega"
+      },
+      {
+        "nombre": "Nómina asistente administrativo (6 meses)",
+        "categoria": "personal",
+        "importe_estimado": 10800,
+        "periodicidad": "puntual",
+        "responsable": "Carlos Vega"
+      },
+      {
+        "nombre": "Cuota gestoría mensual",
+        "categoria": "legal",
+        "importe_estimado": 200,
+        "periodicidad": "mensual",
+        "responsable": "Ana López"
+      },
+      {
+        "nombre": "Marketing: web y lanzamiento",
+        "categoria": "marketing",
+        "importe_estimado": 2000,
+        "periodicidad": "puntual",
+        "responsable": "Miguel Santos"
+      },
+      {
+        "nombre": "Fondo de contingencia",
+        "categoria": "contingencia",
+        "importe_estimado": 3150,
+        "periodicidad": "puntual",
+        "responsable": "Carlos Vega"
+      }
+    ],
+    "total_estimado": 45000,
+    "origen": "inferido"
+  },
+  "proveedores": [
+    {
+      "id": "PROV-1",
+      "nombre": "Gestoría Lisboa & Filhos",
+      "servicio": "Registro mercantil, NIF, SS, asesoría fiscal y contable",
+      "tipo": "gestoria",
+      "contacto": "gestoria@lisboafilhos.pt",
+      "coste_estimado": 200,
+      "periodicidad": "mensual"
+    },
+    {
+      "id": "PROV-2",
+      "nombre": "Gestoría Rías Baixas",
+      "servicio": "Asesoría fiscal España, Modelos 720 y 200",
+      "tipo": "gestoria",
+      "contacto": "info@riasbaixas.es",
+      "coste_estimado": 500,
+      "periodicidad": "puntual"
+    }
+  ],
+  "distribucion": {
+    "entregas": [
+      {
+        "entregable": "ENT-1",
+        "quien": "Gestoría Lisboa & Filhos",
+        "canal": "email + física",
+        "cuando": "tras completar A-1"
+      },
+      {
+        "entregable": "ENT-3",
+        "quien": "Carlos Vega",
+        "canal": "email",
+        "cuando": "tras completar A-3"
+      },
+      {
+        "entregable": "ENT-8",
+        "quien": "Carlos Vega, Ana López",
+        "canal": "presencial en Vigo",
+        "cuando": "tras completar A-8"
       }
     ],
     "permisos": {
-      "acciones": ["registrar pedido", "confirmar borrador", "corregir borrador", "anular borrador", "aprobar retenido", "rechazar retenido", "marcar deuda pagada", "marcar enviado"],
+      "acciones": [
+        "aprobar gasto",
+        "aprobar gasto limitado",
+        "contratar personal",
+        "firmar contratos",
+        "gestionar contabilidad",
+        "visitar local"
+      ],
       "roles": [
-        { "rol": "María", "permitidas": ["registrar pedido", "confirmar borrador", "corregir borrador", "anular borrador", "marcar deuda pagada"] },
-        { "rol": "el jefe", "permitidas": ["aprobar retenido", "rechazar retenido"] },
-        { "rol": "el almacén", "permitidas": ["marcar enviado"] }
+        {
+          "rol": "Carlos Vega",
+          "permitidas": [
+            "aprobar gasto",
+            "contratar personal",
+            "firmar contratos"
+          ]
+        },
+        {
+          "rol": "Ana López",
+          "permitidas": [
+            "gestionar contabilidad",
+            "aprobar gasto limitado"
+          ]
+        },
+        {
+          "rol": "Miguel Santos",
+          "permitidas": [
+            "visitar local"
+          ]
+        },
+        {
+          "rol": "Gestoría Lisboa & Filhos",
+          "permitidas": [
+            "gestionar contabilidad"
+          ]
+        }
       ]
     },
     "avisos": [
-      { "quien": "el almacén", "que": "pedido listo para preparar", "canal": "WhatsApp", "cuando": "al facturarse" },
-      { "quien": "el jefe", "que": "pedido retenido (deuda o más de 1.000€)", "canal": "WhatsApp", "cuando": "al retenerse" },
-      { "quien": "María", "que": "mensaje que la app no entendió", "canal": "WhatsApp", "cuando": "al quedar pendiente de revisión" },
-      { "quien": "María", "que": "pedido rechazado por el jefe, con su motivo", "canal": "el panel", "cuando": "al rechazarse" }
+      {
+        "quien": "Carlos Vega",
+        "que": "gasto superior a 2.000€ pendiente de aprobación",
+        "canal": "email",
+        "cuando": "al generarse"
+      },
+      {
+        "quien": "Ana López",
+        "que": "plazo fiscal o laboral próximo",
+        "canal": "email",
+        "cuando": "30 días antes"
+      },
+      {
+        "quien": "Miguel Santos",
+        "que": "entregable entregable listo para revisión",
+        "canal": "email",
+        "cuando": "al completarse la acción asociada"
+      }
     ],
     "condiciones": [
-      "María registra pedidos con el cliente al teléfono: nada puede tardar más de 5 segundos.",
-      "Si se corta internet media mañana, no se pierde ningún pedido ya registrado.",
-      "La deuda de los clientes solo la ven María y el jefe."
+      "Todos los documentos legales se guardan en el drive compartido del proyecto.",
+      "El presupuesto no puede superarse en más de un 10% sin aprobación de la dirección.",
+      "Las nóminas portuguesas se revisan mensualmente con la gestoría."
     ]
   },
   "calidad": [
-    { "id": "Q-1", "criterio": "Con 30 pedidos en un día, del mensaje de WhatsApp al borrador listo para confirmar pasan menos de 10 segundos." },
-    { "id": "Q-2", "criterio": "Si la app se cae, al volver no falta ningún pedido ya registrado ni se duplica ninguno." },
-    { "id": "Q-3", "criterio": "Cada pedido guarda hora de llegada y hora de envío, y el panel enseña el tiempo medio de despacho del mes (así se mide el criterio de éxito)." }
+    {
+      "id": "Q-1",
+      "criterio": "La filial está inscrita con NIF antes de marzo 2026."
+    },
+    {
+      "id": "Q-2",
+      "criterio": "No hay multas ni sanciones por incumplimiento de obligaciones fiscales o laborales portuguesas en el primer año."
+    },
+    {
+      "id": "Q-3",
+      "criterio": "El gasto total de apertura no supera los 45.000€."
+    },
+    {
+      "id": "Q-4",
+      "criterio": "El equipo local está contratado y formado antes del 15 de abril de 2026."
+    }
+  ],
+  "antecedentes": [
+    {
+      "texto": "En 2024, EcoPescado S.L. ya exportó 30 toneladas a distribuidores portugueses, generando ingresos de 180.000€. La demanda creció un 25% respecto a 2023.",
+      "refs": [
+        "G-2",
+        "Q-2"
+      ]
+    },
+    {
+      "texto": "Carlos Vega visitó Lisboa en octubre 2025 y encontró locales comerciales disponibles en el barrio de Cais do Sodré, zona con presencia de competencia en productos pesqueros.",
+      "refs": [
+        "Q-1"
+      ]
+    }
   ],
   "fuera": [
-    "Cobros y pasarela de pago: se sigue cobrando como hasta ahora.",
-    "Control de stock en tiempo real: el stock se comprueba contra la cifra que carga María cada mañana."
+    "Producción y logística de productos: sigue gestionada desde Vigo.",
+    "Comercialización en España: fuera del alcance, solo Portugal.",
+    "Apertura en otros países (Francia, UK): puede hacerse en una segunda fase."
   ],
   "preguntas": []
 }

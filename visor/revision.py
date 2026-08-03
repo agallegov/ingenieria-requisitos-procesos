@@ -51,6 +51,8 @@ def rutas_planos(mapa):
     if not isinstance(datos, dict):
         raise ValueError("no pude leer el planos.json raíz")
     rutas = [mapa]
+    # v2 (software) usa "actividades"; v3 (empresarial) no tiene actividades.
+    # Si existen, se incluyen; si no, solo el mapa raíz.
     for actividad in datos.get("actividades", []):
         rutas.append(
             mapa.parent / "actividades" / actividad["id"] / "planos.json"

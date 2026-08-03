@@ -1,23 +1,23 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "ingenieria-requisitos/planos",
-  "title": "planos.json (v2): todo el proyecto como datos",
-  "description": "Única fuente estructurada del proyecto. En borrador puede crecer fase a fase; antes de revisión y congelación debe cumplir el perfil correspondiente de visor/validar.py. El diseño futuro se mantiene separado de la cobertura observada en el código. Los ids R-n, C-n, G-n, Q-n y REC-n son ÚNICOS EN TODO EL PROYECTO.",
+  "$id": "ingenieria-requisitos/planos/v3",
+  "title": "planos.json (v3): planificación empresarial",
+  "description": "Única fuente estructurada de la planificación de procesos y estructuras empresariales. Se usa para mapear procesos, definir estructuras organizativas, registrar cumplimiento legal/fiscal, planificar presupuestos y distribuir entregables. Los ids A-n, ENT-n, C-n, G-n, Q-n, U-n, R-n, PROV-n y SUP-n son ÚNICOS EN TODO EL PROYECTO.",
   "type": "object",
   "required": ["version", "titulo"],
   "additionalProperties": false,
   "properties": {
-    "version": { "const": 2 },
+    "version": { "const": 3 },
     "proyecto": { "type": "string", "description": "Slug del proyecto." },
     "titulo": { "type": "string", "minLength": 1 },
-    "descripcion": { "type": "string", "description": "Dos o tres frases en palabras del usuario: qué es el negocio y qué se quiere construir. Es lo primero que enseña el visor." },
+    "descripcion": { "type": "string", "description": "Dos o tres frases en palabras del negocio: qué se quiere planificar y para qué sirve este documento." },
     "definicion": {
       "type": "object",
       "required": ["estado", "modo"],
       "additionalProperties": false,
       "properties": {
         "estado": { "enum": ["borrador", "listo para revisar", "aprobado", "congelado"] },
-        "modo": { "enum": ["entrevista", "autopropuesto", "analisis de codigo", "mixto"] },
+        "modo": { "enum": ["entrevista", "documentacion", "experto"] },
         "bloques_no_aplican": { "type": "array", "items": { "type": "string" } },
         "supuestos": {
           "type": "array",
@@ -32,10 +32,23 @@
               "estado": { "enum": ["propuesto", "confirmado", "rechazado"] }
             }
           }
+        },
+        "riesgos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "descripcion", "impacto", "mitigacion"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^RIS-[0-9]+$" },
+              "descripcion": { "type": "string" },
+              "impacto": { "enum": ["alto", "medio", "bajo"] },
+              "mitigacion": { "type": "string" }
+            }
+          }
         }
       }
     },
-    "cobertura": { "$ref": "#/definitions/implementacion" },
     "contrato": {
       "type": "object",
       "required": ["frase"],
@@ -47,7 +60,7 @@
             { "type": "string" },
             { "type": "array", "items": { "type": "string" } }
           ],
-          "description": "El número (o números) que se mirarán para saber que funcionó. Varios objetivos = lista, no una frase comprimida."
+          "description": "El número (o números) que se mirarán para saber que funcionó."
         }
       }
     },
@@ -58,32 +71,38 @@
         "properties": {
           "nombre": { "type": "string" },
           "rol": { "type": "string" },
-          "miembros": { "type": "array", "items": { "type": "string" }, "description": "Para actores colectivos (las cafeterías, los técnicos): nombres de los miembros." }
+          "miembros": { "type": "array", "items": { "type": "string" }, "description": "Para actores colectivos." }
         }
       }
     },
-    "vocabulario": {
+    "glosario": {
       "type": "array",
       "items": {
         "type": "object", "required": ["termino", "significado"], "additionalProperties": false,
         "properties": { "termino": { "type": "string" }, "significado": { "type": "string" } }
       }
     },
-    "actividades": {
+    "estructura_organizativa": {
       "type": "array",
-      "description": "Solo en el plano MAPA de una aplicación grande: el catálogo completo de actividades (cada una tendrá su propio planos.json en actividades/<id>/). El orden dentro de cada área es el orden de prioridad.",
+      "description": "Unidades organizativas del negocio: sedes, oficinas, franquicias, distribuidores.",
       "items": {
-        "type": "object", "required": ["id", "nombre", "area"], "additionalProperties": false,
+        "type": "object", "required": ["id", "nombre", "tipo"], "additionalProperties": false,
         "properties": {
-          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
-          "nombre": { "type": "string", "description": "En verbo: 'hacer un pedido', 'emitir un certificado'." },
-          "area": { "type": "string", "description": "Zona del negocio que la agrupa: 'Pagos', 'Directos'..." },
-          "resumen": { "type": "string", "description": "Una línea: qué pasa en esta actividad." },
-          "estado": { "enum": ["sin empezar", "en entrevista", "especificada", "en obra", "entregada"] },
-          "origen": { "$ref": "#/definitions/origen" },
-          "cobertura": { "$ref": "#/definitions/implementacion" },
-          "depende_de": { "type": "array", "items": { "type": "string" }, "description": "Ids de actividades que tienen que existir antes." },
-          "carpeta": { "type": "string", "description": "actividades/<id>/ cuando su plano exista." }
+          "id": { "type": "string", "pattern": "^U-[0-9]+$" },
+          "nombre": { "type": "string" },
+          "tipo": { "enum": ["sede", "oficina", "franquicia", "distribuidor", "filial", "representacion"] },
+          "ubicacion": {
+            "type": "object", "additionalProperties": false,
+            "properties": {
+              "pais": { "type": "string" },
+              "ciudad": { "type": "string" },
+              "zona_horaria": { "type": "string" }
+            }
+          },
+          "reporta_a": { "type": "string", "pattern": "^U-[0-9]+$", "description": "ID de la unidad de la que reporta." },
+          "depende_de": { "type": "array", "items": { "type": "string", "pattern": "^U-[0-9]+$" } },
+          "estado": { "enum": ["proyectada", "abierta", "cerrada", "reorganizando"] },
+          "origen": { "$ref": "#/definitions/origen" }
         }
       }
     },
@@ -103,64 +122,74 @@
         }
       }
     },
-    "episodios": {
+    "acciones": {
       "type": "array",
-      "description": "Los hechos reales con nombres y números que salieron en la entrevista (F2). Viajan al constructor: son la mejor munición para los tests.",
+      "description": "El orden del array ES el orden de ejecución. Cada acción tiene un objetivo, un responsable, un entregable y una fecha prevista.",
       "items": {
-        "type": "object", "required": ["texto"], "additionalProperties": false,
+        "type": "object",
+        "required": ["id", "nombre", "objetivo", "responsable"],
+        "additionalProperties": false,
         "properties": {
-          "texto": { "type": "string", "description": "El episodio con sus datos: 'el 14 de junio los Peña debían 210€ y aun así reservaron pista'." },
-          "refs": { "type": "array", "items": { "type": "string" }, "description": "Ids a los que alimenta: G-2, R-4, C-3..." }
+          "id": { "type": "string", "pattern": "^A-[0-9]+$" },
+          "nombre": { "type": "string" },
+          "descripcion": { "type": "string" },
+          "objetivo": { "type": "string" },
+          "responsable": { "type": "string", "description": "Actor o rol responsable de ejecutar la acción." },
+          "entregable": { "type": "string", "pattern": "^ENT-[0-9]+$", "description": "ID del entregable que produce esta acción." },
+          "fecha_prevista": { "type": "string", "description": "Formato ISO: YYYY-MM-DD." },
+          "secuencia": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^A-[0-9]+$" },
+            "description": "Ids de acciones que deben ejecutarse después de esta."
+          },
+          "origen": { "$ref": "#/definitions/origen" },
+          "avance": { "$ref": "#/definitions/avance" }
         }
       }
     },
-    "recorridos": {
+    "entregables": {
       "type": "array",
-      "description": "El orden del array ES el orden de entrega; el primero es el esqueleto (camino feliz de punta a punta).",
+      "description": "Los documentos, certificados, contratos u otros resultados que produce el proyecto. Cada uno tiene criterios de aprobación.",
       "items": {
         "type": "object",
-        "required": ["id", "nombre"],
+        "required": ["id", "nombre", "tipo"],
         "additionalProperties": false,
         "properties": {
-          "id": { "type": "string", "pattern": "^REC-[0-9]+$" },
+          "id": { "type": "string", "pattern": "^ENT-[0-9]+$" },
           "nombre": { "type": "string" },
-          "objetivo": { "type": "string" },
-          "estado": { "enum": ["pendiente", "en construcción", "entregado"], "description": "Lo cambia el analista en modo C cuando el usuario confirma; el constructor no toca los planos." },
-          "requisitos": {
+          "descripcion": { "type": "string" },
+          "tipo": { "enum": ["documento", "certificado", "contrato", "acta", "registro", "plan", "manual", "matriz", "informe", "autorizacion"] },
+          "acciones": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^A-[0-9]+$" },
+            "description": "Ids de acciones que producen este entregable."
+          },
+          "fecha_prevista": { "type": "string" },
+          "entregado_el": { "type": "string" },
+          "origen": { "$ref": "#/definitions/origen" },
+          "criterios_aprobacion": {
             "type": "array",
             "items": {
-              "type": "object", "required": ["id", "texto"], "additionalProperties": false,
+              "type": "object", "required": ["id", "condicion", "entregable"], "additionalProperties": false,
               "properties": {
-                "id": { "type": "string", "pattern": "^R-[0-9]+$" },
-                "texto": { "type": "string", "description": "EARS: Cuando [disparador], el sistema deberá [respuesta]." },
-                "regla": { "type": "string", "pattern": "^G-[0-9]+$", "description": "Regla de negocio que este requisito implementa, si la hay." },
-                "origen": { "$ref": "#/definitions/origen" },
-                "implementacion": { "$ref": "#/definitions/implementacion" }
+                "id": { "type": "string", "pattern": "^C-[0-9]+$" },
+                "condicion": { "type": "string", "description": "Dado X, cuando Y → se cumple el criterio." },
+                "entregable": { "type": "string", "pattern": "^ENT-[0-9]+$", "description": "Entregable que este criterio verifica." }
               }
             }
           },
-          "criterios": {
-            "type": "array",
-            "items": {
-              "type": "object", "required": ["id", "dado", "cuando", "entonces"], "additionalProperties": false,
-              "properties": {
-                "id": { "type": "string", "pattern": "^C-[0-9]+$" },
-                "dado": { "type": "string" }, "cuando": { "type": "string" }, "entonces": { "type": "string" },
-                "cubre": { "type": "string", "pattern": "^R-[0-9]+$", "description": "Requisito que este criterio verifica." }
-              }
-            }
-          }
+          "avance": { "$ref": "#/definitions/avance" }
         }
       }
     },
-    "reglas": {
+    "normas": {
       "type": "array",
       "items": {
         "type": "object", "required": ["id", "nombre"], "additionalProperties": false,
         "properties": {
           "id": { "type": "string", "pattern": "^G-[0-9]+$" },
           "nombre": { "type": "string" },
-          "texto": { "type": "string" },
+          "descripcion": { "type": "string" },
           "tabla": {
             "type": "object", "required": ["columnas", "filas"], "additionalProperties": false,
             "description": "Tabla de decisión: la última columna es qué pasa; las demás son condiciones. Cada fila debe tener tantas celdas como columnas. El comodín 'cualquier valor' se escribe '*'.",
@@ -186,7 +215,6 @@
                 "nombre": { "type": "string" },
                 "acciones": {
                   "type": "array",
-                  "description": "Mejor como objetos: quién puede hacerla y a qué estado deja la cosa (pasa_a). Sin pasa_a, se queda en el mismo estado.",
                   "items": {
                     "anyOf": [
                       { "type": "string" },
@@ -214,42 +242,120 @@
         "properties": {
           "cosa": { "type": "string" },
           "guarda": { "type": "array", "items": { "type": "string" } },
-          "origen": { "type": "string", "description": "De dónde viene lo existente: el sistema actual, sea el que sea (un Excel, SAP, Holded, el banco, un Drive, la app de un tercero), o 'se empieza de cero'." }
+          "origen": { "type": "string", "description": "De dónde viene lo existente o 'se empieza de cero'." }
         }
       }
     },
-    "volumen": {
+    "metricas": {
       "type": "array",
-      "description": "Los números de escala de F2: cuántos usuarios, registros, frecuencias.",
+      "description": "Los números de escala del negocio: cuántos empleados, registros, frecuencias.",
       "items": {
         "type": "object", "required": ["que", "cuanto"], "additionalProperties": false,
         "properties": { "que": { "type": "string" }, "cuanto": { "type": "string" } }
       }
     },
-    "integraciones": {
+    "cumplimiento": {
       "type": "array",
+      "description": "Requisitos legales, fiscales y laborales por jurisdicción.",
       "items": {
-        "type": "object", "required": ["con"], "additionalProperties": false,
-        "properties": { "con": { "type": "string" }, "para": { "type": "string" } }
+        "type": "object", "required": ["jurisdiccion"], "additionalProperties": false,
+        "properties": {
+          "jurisdiccion": { "type": "string", "description": "País o región: 'España', 'Portugal', 'California'." },
+          "laboral": {
+            "type": "array",
+            "items": {
+              "type": "object", "required": ["requisito"], "additionalProperties": false,
+              "properties": {
+                "requisito": { "type": "string" },
+                "descripcion": { "type": "string" },
+                "plazo": { "type": "string" },
+                "responsable": { "type": "string" },
+                "estado": { "enum": ["pendiente", "en proceso", "cumplido", "no aplicable"] }
+              }
+            }
+          },
+          "fiscal": {
+            "type": "array",
+            "items": {
+              "type": "object", "required": ["requisito"], "additionalProperties": false,
+              "properties": {
+                "requisito": { "type": "string" },
+                "descripcion": { "type": "string" },
+                "plazo": { "type": "string" },
+                "responsable": { "type": "string" },
+                "estado": { "enum": ["pendiente", "en proceso", "cumplido", "no aplicable"] }
+              }
+            }
+          },
+          "licencias": {
+            "type": "array",
+            "items": {
+              "type": "object", "required": ["requisito"], "additionalProperties": false,
+              "properties": {
+                "requisito": { "type": "string" },
+                "descripcion": { "type": "string" },
+                "plazo": { "type": "string" },
+                "responsable": { "type": "string" },
+                "estado": { "enum": ["pendiente", "en proceso", "cumplido", "no aplicable"] }
+              }
+            }
+          },
+          "origen": { "$ref": "#/definitions/origen" }
+        }
       }
     },
-    "superficie": {
+    "presupuesto": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "puntos": {
+        "moneda": { "type": "string" },
+        "items": {
           "type": "array",
-          "description": "La ficha completa lleva SIEMPRE los 7 campos (validar.py avisa de fichas cojas). En puntos que no son pantallas, 've' significa 'qué recibe'.",
           "items": {
-            "type": "object", "required": ["nombre"], "additionalProperties": false,
+            "type": "object", "required": ["nombre", "categoria", "importe_estimado"], "additionalProperties": false,
             "properties": {
               "nombre": { "type": "string" },
-              "quien": { "type": "array", "items": { "type": "string" } },
-              "llega": { "type": "string" },
-              "cuando": { "type": "string" },
-              "ve": { "type": "string" },
-              "puede": { "type": "array", "items": { "type": "string" } },
-              "nunca": { "type": "array", "items": { "type": "string" } }
+              "categoria": { "enum": ["infraestructura", "personal", "legal", "marketing", "operaciones", "tecnologia", "formacion", "contingencia"] },
+              "importe_estimado": { "type": "number" },
+              "periodicidad": { "type": "string", "description": "puntual | mensual | anual." },
+              "responsable": { "type": "string" }
+            }
+          }
+        },
+        "total_estimado": { "type": "number" },
+        "origen": { "$ref": "#/definitions/origen" }
+      }
+    },
+    "proveedores": {
+      "type": "array",
+      "description": "Gestorías, asesores, plataformas externas que apoyan el proyecto.",
+      "items": {
+        "type": "object", "required": ["nombre", "servicio"], "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^PROV-[0-9]+$" },
+          "nombre": { "type": "string" },
+          "servicio": { "type": "string" },
+          "tipo": { "enum": ["gestoria", "asesoria", "plataforma", "consultoria", "operador", "otro"] },
+          "contacto": { "type": "string" },
+          "coste_estimado": { "type": "number" },
+          "periodicidad": { "type": "string" }
+        }
+      }
+    },
+    "distribucion": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entregas": {
+          "type": "array",
+          "description": "Quién recibe qué entregable, por qué canal y cuándo.",
+          "items": {
+            "type": "object", "required": ["entregable", "quien"], "additionalProperties": false,
+            "properties": {
+              "entregable": { "type": "string", "pattern": "^ENT-[0-9]+$" },
+              "quien": { "type": "string" },
+              "canal": { "type": "string" },
+              "cuando": { "type": "string" }
             }
           }
         },
@@ -275,12 +381,12 @@
             "type": "object", "required": ["quien", "que"], "additionalProperties": false,
             "properties": {
               "quien": { "type": "string" }, "que": { "type": "string" },
-              "canal": { "type": "string", "description": "Obligatorio en la práctica: validar.py avisa si falta." },
+              "canal": { "type": "string" },
               "cuando": { "type": "string" }
             }
           }
         },
-        "condiciones": { "type": "array", "items": { "type": "string" }, "description": "Relato de las condiciones de uso. Su versión comprobable son los Q-n de calidad: si divergen, manda el Q-n." }
+        "condiciones": { "type": "array", "items": { "type": "string" } }
       }
     },
     "calidad": {
@@ -289,7 +395,18 @@
         "type": "object", "required": ["id", "criterio"], "additionalProperties": false,
         "properties": {
           "id": { "type": "string", "pattern": "^Q-[0-9]+$" },
-          "criterio": { "type": "string", "description": "Comprobable: condición + umbral." }
+          "criterio": { "type": "string" }
+        }
+      }
+    },
+    "antecedentes": {
+      "type": "array",
+      "description": "Contexto histórico relevante para la planificación.",
+      "items": {
+        "type": "object", "required": ["texto"], "additionalProperties": false,
+        "properties": {
+          "texto": { "type": "string" },
+          "refs": { "type": "array", "items": { "type": "string" } }
         }
       }
     },
@@ -298,57 +415,46 @@
   },
   "definitions": {
     "origen": {
-      "enum": ["usuario", "codigo", "inferido", "mixto"],
-      "description": "De dónde procede esta afirmación. El código describe el estado actual; el usuario manda sobre el diseño futuro."
+      "enum": ["usuario", "documentacion", "inferido", "mixto"],
+      "description": "De dónde procede esta afirmación. El usuario manda sobre el diseño futuro; la documentación es el respaldo."
     },
-    "evidencia": {
-      "type": "object",
-      "required": ["tipo", "referencia"],
-      "additionalProperties": false,
-      "properties": {
-        "tipo": { "enum": ["codigo", "test", "documentacion", "ejecucion", "usuario"] },
-        "referencia": { "type": "string" },
-        "detalle": { "type": "string" }
-      }
-    },
-    "implementacion": {
+    "avance": {
       "type": "object",
       "required": ["estado"],
       "additionalProperties": false,
       "properties": {
-        "estado": { "enum": ["no verificado", "implementado", "parcial", "no implementado", "contradice"] },
-        "evidencias": {
+        "estado": { "enum": ["pendiente", "en progreso", "completado", "cancelado"] },
+        "entregado_el": { "type": "string", "description": "Fecha de entrega (ISO: YYYY-MM-DD)." },
+        "evidencia": {
           "type": "array",
           "items": {
             "anyOf": [
               { "type": "string" },
-              { "$ref": "#/definitions/evidencia" }
+              {
+                "type": "object", "required": ["tipo", "referencia"], "additionalProperties": false,
+                "properties": {
+                  "tipo": { "enum": ["documento", "certificado", "contrato", "acta", "informe"] },
+                  "referencia": { "type": "string" },
+                  "detalle": { "type": "string" }
+                }
+              }
             ]
           }
-        },
-        "pruebas": { "type": "array", "items": { "type": "string" } }
+        }
       }
     },
     "paso": {
       "oneOf": [
-        { "$ref": "#/definitions/accion" },
+        { "$ref": "#/definitions/accion_paso" },
         { "$ref": "#/definitions/decision" }
       ]
     },
-    "accion": {
+    "accion_paso": {
       "type": "object", "required": ["tipo", "texto"], "additionalProperties": false,
       "properties": {
-        "tipo": { "enum": ["humano", "estatico", "ia", "externo"], "description": "externo = lo hace un tercero fuera de la app (el banco, la gestora)." },
+        "tipo": { "enum": ["humano", "automatizado", "externo"], "description": "externo = lo hace un tercero fuera del proceso (el banco, la gestora)." },
         "texto": { "type": "string", "minLength": 1 },
         "quien": { "type": "string" }
-      }
-    },
-    "rama": {
-      "type": "object", "required": ["etiqueta", "pasos"], "additionalProperties": false,
-      "properties": {
-        "etiqueta": { "type": "string", "minLength": 1, "description": "Cuándo se entra: 'sí, debía dinero'." },
-        "pasos": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/paso" } },
-        "termina": { "type": "boolean", "description": "true = este camino TERMINA aquí (anulación, baja); no vuelve al flujo." }
       }
     },
     "decision": {
@@ -359,11 +465,19 @@
       "properties": {
         "tipo": { "const": "decision" },
         "clase": { "enum": ["regla", "excepcion"] },
-        "condicion": { "type": "string", "minLength": 1, "description": "La pregunta, con sus signos: '¿el cliente debía dinero?'." },
+        "condicion": { "type": "string", "minLength": 1 },
         "quien": { "type": "string", "description": "Quién evalúa la condición, si la decide una persona." },
         "rama": { "$ref": "#/definitions/rama" },
-        "ramas": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/rama" }, "description": "Varias salidas con contenido; el camino principal sigue siendo el de 'sigue'." },
-        "sigue": { "type": "string", "description": "Etiqueta del camino normal: 'no debía nada'." }
+        "ramas": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/rama" } },
+        "sigue": { "type": "string", "description": "Etiqueta del camino normal." }
+      }
+    },
+    "rama": {
+      "type": "object", "required": ["etiqueta", "pasos"], "additionalProperties": false,
+      "properties": {
+        "etiqueta": { "type": "string", "minLength": 1 },
+        "pasos": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/paso" } },
+        "termina": { "type": "boolean", "description": "true = este camino TERMINA aquí." }
       }
     }
   }

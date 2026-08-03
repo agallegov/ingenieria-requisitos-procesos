@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Memoria local de workspaces creados por la lanzadera. Solo stdlib."""
+"""Memoria local de workspaces creados por la lanzadera (v2 software + v3 empresarial).
+
+Registro unificado: ~/.config/ingenieria-requisitos-local/proyectos.json.
+Cada entrada incluye un campo `tipo`: "software" (v2) o "empresarial" (v3).
+
+Solo stdlib.
+"""
 
 import argparse
 import json
@@ -9,8 +15,8 @@ from pathlib import Path
 
 import bootstrap
 
-RAIZ = Path(__file__).resolve().parent.parent
-REGISTRO = RAIZ / ".ingenieria-requisitos-local" / "registro.json"
+RAIZ = Path(__file__).resolve().parent
+REGISTRO = RAIZ.parent.parent / ".config" / "ingenieria-requisitos-local" / "proyectos.json"
 FORMATO = 1
 
 
@@ -28,7 +34,7 @@ def cargar():
 
 def guardar(datos):
     REGISTRO.parent.mkdir(parents=True, exist_ok=True)
-    fd, temporal = tempfile.mkstemp(dir=REGISTRO.parent, prefix="registro-")
+    fd, temporal = tempfile.mkstemp(dir=REGISTRO.parent, prefix="proyectos-")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(datos, f, ensure_ascii=False, indent=2, sort_keys=True)
@@ -47,22 +53,46 @@ def leer_marca(workspace):
         return "anterior-a-las-huellas"
 
 
-def registrar(workspace):
+def registrar(workspace, tipo=None):
+    """Registra un workspace. Si tipo es None, intenta detectarlo."""
     workspace = workspace.expanduser().resolve()
-    planos = workspace / "docs/02-flujos/planos/planos.json"
-    if not (workspace / "AGENTS.md").is_file() or not planos.is_file():
-        raise SystemExit("No parece un workspace generado: %s" % workspace)
+    
+    # Detectar tipo por estructura
+    planos_v3 = workspace / "docs" / "01-entregables" / "planos" / "planos.json"
+    planos_v2 = workspace / "docs" / "02-flujos" / "planos" / "planos.json"
+    
+    if not (workspace / "AGENTS.md").is_file():
+        raise SystemExit("No parece un workspace generado (sin AGENTS.md): %s" % workspace)
+    
+    if tipo == "empresarial" or (not tipo and planos_v3.is_file()):
+        tipo = "empresarial"
+        planos = planos_v3
+    elif tipo == "software" or planos_v2.is_file():
+        tipo = "software"
+        planos = planos_v2
+    else:
+        raise SystemExit("No puedo determinar el tipo del workspace: %s" % workspace)
+    
+    if not planos.is_file():
+        raise SystemExit("No puedo leer los planos: %s" % planos)
+    
     try:
         titulo = json.loads(planos.read_text(encoding="utf-8")).get("titulo", workspace.name)
     except (OSError, ValueError):
         titulo = workspace.name
+    
     datos = cargar()
-    entrada = {"ruta": str(workspace), "titulo": titulo, "huella": leer_marca(workspace)}
+    entrada = {
+        "ruta": str(workspace),
+        "titulo": titulo,
+        "huella": leer_marca(workspace),
+        "tipo": tipo,
+    }
     datos["proyectos"] = [p for p in datos["proyectos"] if p.get("ruta") != str(workspace)]
     datos["proyectos"].append(entrada)
     datos["proyectos"].sort(key=lambda p: p["ruta"])
     guardar(datos)
-    print("Registrado: %s" % workspace)
+    print("Registrado: %s (tipo: %s)" % (workspace, tipo))
 
 
 def main():
@@ -71,6 +101,11 @@ def main():
     sub.add_parser("listar")
     reg = sub.add_parser("registrar")
     reg.add_argument("ruta")
+    reg.add_argument(
+        "--tipo",
+        choices=("software", "empresarial"),
+        help="tipo de proyecto (por defecto: detecta por estructura)"
+    )
     reg.add_argument("--generado", action="store_true", help=argparse.SUPPRESS)
     contexto = sub.add_parser("contexto", help="datos para el playbook de actualización")
     grupo = contexto.add_mutually_exclusive_group(required=True)
@@ -79,7 +114,7 @@ def main():
     args = ap.parse_args()
 
     if args.orden == "registrar":
-        registrar(Path(args.ruta))
+        registrar(Path(args.ruta), args.tipo)
         return
     datos = cargar()
     proyectos = datos["proyectos"]
@@ -88,7 +123,8 @@ def main():
             print("No hay proyectos registrados.")
         for p in proyectos:
             estado = "OK" if Path(p["ruta"]).is_dir() else "NO ENCONTRADO"
-            print("[%s] %s — %s" % (estado, p["titulo"], p["ruta"]))
+            tipo = p.get("tipo", "software")
+            print("[%s] %s — %s (tipo: %s)" % (estado, p["titulo"], p["ruta"], tipo))
         return
     if not args.todos:
         objetivo = str(Path(args.ruta).expanduser().resolve())

@@ -311,6 +311,12 @@ function el(tag, clase, texto) {
   if (texto !== undefined) n.textContent = texto;
   return n;
 }
+function elH(tag, clase, html) {
+  const n = document.createElement(tag);
+  if (clase) n.className = clase;
+  if (html !== undefined) n.innerHTML = html;
+  return n;
+}
 
 async function apiJSON(ruta, opciones) {
   const respuesta = await fetch(ruta, Object.assign(
@@ -349,8 +355,9 @@ function validarPaso(p, flujo) {
 }
 
 function validarTodo(d) {
-  if (!d || d.version !== 2) throw new Error('falta "version": 2.');
+  if (!d || (d.version !== 2 && d.version !== 3)) throw new Error('falta "version": 2 o 3 según el tipo de proyecto.');
   if (typeof d.titulo !== "string" || !d.titulo) throw new Error('falta "titulo".');
+  if (d.version === 3) return;  // v3 tiene su propia validación
   (Array.isArray(d.flujos) ? d.flujos : []).forEach(f => {
     if (!f || !f.titulo || !Array.isArray(f.pasos)) throw new Error("flujo mal formado.");
     f.pasos.forEach(p => validarPaso(p, f.titulo));
@@ -1164,6 +1171,325 @@ function pintar(d) {
   activar(ids.includes(pestanaActiva) ? pestanaActiva : "resumen");
 }
 
+/* ---------- v3: planificación empresarial ---------- */
+
+function tabV3Resumen(d, progreso) {
+  const s = el("section", "seccion activa");
+  s.appendChild(el("h2", null, "Resumen"));
+  if (d.descripcion) s.appendChild(el("p", null, d.descripcion));
+  if (d.contrato && d.contrato.frase) {
+    s.appendChild(el("blockquote", null, d.contrato.frase));
+  }
+  if (d.contrato && d.contrato.exito && d.contrato.exito.length) {
+    s.appendChild(el("h3", null, "Criterios de éxito"));
+    const ul = el("ul");
+    d.contrato.exito.forEach(x => ul.appendChild(el("li", null, x)));
+    s.appendChild(ul);
+  }
+  if (d.definicion) {
+    s.appendChild(el("h3", null, "Estado"));
+    s.appendChild(el("p", null, "Estado: " + (d.definicion.estado || "borrador") + " · Modo: " + (d.definicion.modo || "sin declarar")));
+    if (d.definicion.supuestos && d.definicion.supuestos.length) {
+      s.appendChild(el("h4", null, "Supuestos"));
+      d.definicion.supuestos.forEach(x => s.appendChild(el("p", "nota", (x.id || "") + ": " + x.texto)));
+    }
+  }
+  s.appendChild(el("h3", null, "Progreso"));
+  const t = elH("table", null, "");
+  t.appendChild(elH("thead", null, "<tr><th>Sección</th><th>Estado</th><th>Detalle</th></tr>"));
+  const tb = elH("tbody");
+  progreso.forEach(([tit, ok, cnt]) => {
+    const marca = ok === "no-aplica" ? "—" : ok ? "✔" : "✗";
+    tb.appendChild(elH("tr", null, "<td>" + tit + "</td><td>" + marca + "</td><td>" + (cnt || "") + "</td>"));
+  });
+  t.appendChild(tb);
+  s.appendChild(t);
+  return s;
+}
+
+function tabV3Estructura(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Estructura organizativa"));
+  if (!d.estructura_organizativa || !d.estructura_organizativa.length) {
+    s.appendChild(el("p", null, "Sin definir."));
+    return s;
+  }
+  const t = elH("table", null, "");
+  t.appendChild(elH("thead", null, "<tr><th>ID</th><th>Nombre</th><th>Tipo</th><th>Ubicación</th><th>Estado</th></tr>"));
+  const tb = elH("tbody");
+  d.estructura_organizativa.forEach(u => {
+    const ubi = (u.ubicacion && u.ubicacion.pais) || "";
+    const dep = (u.depende_de || []).join(", ");
+    tb.appendChild(elH("tr", null, "<td>" + (u.id || "") + "</td><td>" + u.nombre + "</td><td>" + (u.tipo || "") + "</td><td>" + ubi + "</td><td>" + (u.estado || "activa") + "</td>"));
+  });
+  t.appendChild(tb);
+  s.appendChild(t);
+  return s;
+}
+
+function tabV3Flujos(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Flujos"));
+  if (!d.flujos || !d.flujos.length) {
+    s.appendChild(el("p", null, "Sin flujos definidos."));
+    return s;
+  }
+  d.flujos.forEach(f => {
+    s.appendChild(el("h3", null, f.titulo + (f.momento ? " (" + f.momento + ")" : "")));
+    if (f.descripcion) s.appendChild(el("p", null, f.descripcion));
+    if (f.pasos && f.pasos.length) {
+      const t = el("table", null, "");
+      t.appendChild(elH("thead", null, "<tr><th>#</th><th>Paso</th><th>Responsable</th></tr>"));
+      const tb = elH("tbody");
+      f.pasos.forEach((p, i) => {
+        const texto = p.texto || p.condicion || "";
+        const quien = p.quien || "";
+        tb.appendChild(elH("tr", null, "<td>" + (i+1) + "</td><td>" + texto + "</td><td>" + quien + "</td>"));
+      });
+      t.appendChild(tb);
+      s.appendChild(t);
+    }
+  });
+  return s;
+}
+
+function tabV3Acciones(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Acciones"));
+  if (!d.acciones || !d.acciones.length) {
+    s.appendChild(el("p", null, "Sin acciones definidas."));
+    return s;
+  }
+  const t = el("table", "", "");
+  t.appendChild(elH("thead", null, "<tr><th>Acción</th><th>Responsable</th><th>Fecha</th><th>Avance</th></tr>"));
+  const tb = elH("tbody");
+  d.acciones.forEach(a => {
+    const av = (a.avance && a.avance.estado) || "pendiente";
+    tb.appendChild(elH("tr", null, "<td>" + a.nombre + "</td><td>" + (a.responsable || "") + "</td><td>" + (a.fecha_prevista || "") + "</td><td>" + av + "</td>"));
+  });
+  t.appendChild(tb);
+  s.appendChild(t);
+  return s;
+}
+
+function tabV3Entregables(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Entregables"));
+  if (!d.entregables || !d.entregables.length) {
+    s.appendChild(el("p", null, "Sin entregables definidos."));
+    return s;
+  }
+  const t = el("table", null, "");
+  t.appendChild(elH("thead", null, "<tr><th>Entregable</th><th>Tipo</th><th>Fecha</th><th>Avance</th></tr>"));
+  const tb = elH("tbody");
+  d.entregables.forEach(e => {
+    const av = (e.avance && e.avance.estado) || "pendiente";
+    tb.appendChild(elH("tr", null, "<td>" + e.nombre + "</td><td>" + (e.tipo || "") + "</td><td>" + (e.fecha_prevista || "") + "</td><td>" + av + "</td>"));
+  });
+  t.appendChild(tb);
+  s.appendChild(t);
+  return s;
+}
+
+function tabV3Cumplimiento(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Cumplimiento"));
+  if (!d.cumplimiento || !d.cumplimiento.length) {
+    s.appendChild(el("p", null, "Sin requisitos de cumplimiento."));
+    return s;
+  }
+  d.cumplimiento.forEach(c => {
+    s.appendChild(el("h3", null, c.jurisdiccion || "Sin jurisdicción"));
+    for (const cat of ["laboral", "fiscal", "licencias"]) {
+      if (!c[cat] || !c[cat].length) continue;
+      s.appendChild(el("h4", null, cat.charAt(0).toUpperCase() + cat.slice(1)));
+      const ul = el("ul");
+      c[cat].forEach(item => ul.appendChild(el("li", null, item.requisito + (item.plazo ? " (plazo: " + item.plazo + ")" : "") + (item.responsable ? " · " + item.responsable : ""))));
+      s.appendChild(ul);
+    }
+  });
+  return s;
+}
+
+function tabV3Presupuesto(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Presupuesto"));
+  const pre = d.presupuesto || {};
+  if (!pre.items || !pre.items.length) {
+    s.appendChild(el("p", null, "Sin partidas presupuestarias."));
+    return s;
+  }
+  s.appendChild(el("p", null, "Moneda: " + (pre.moneda || "EUR")));
+  const t = el("table", null, "");
+  t.appendChild(elH("thead", null, "<tr><th>Ítem</th><th>Categoría</th><th>Importe</th><th>Periodicidad</th></tr>"));
+  const tb = elH("tbody");
+  pre.items.forEach(item => {
+    tb.appendChild(elH("tr", null, "<td>" + item.nombre + "</td><td>" + (item.categoria || "") + "</td><td>" + (item.importe_estimado || 0) + " " + (pre.moneda || "EUR") + "</td><td>" + (item.periodicidad || "") + "</td>"));
+  });
+  t.appendChild(tb);
+  s.appendChild(t);
+  return s;
+}
+
+function tabV3Proveedores(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Proveedores"));
+  if (!d.proveedores || !d.proveedores.length) {
+    s.appendChild(el("p", null, "Sin proveedores."));
+    return s;
+  }
+  const t = el("table", null, "");
+  t.appendChild(elH("thead", null, "<tr><th>Nombre</th><th>Servicio</th><th>Tipo</th></tr>"));
+  const tb = elH("tbody");
+  d.proveedores.forEach(p => tb.appendChild(elH("tr", null, "<td>" + p.nombre + "</td><td>" + (p.servicio || "") + "</td><td>" + (p.tipo || "") + "</td>")));
+  t.appendChild(tb);
+  s.appendChild(t);
+  return s;
+}
+
+function tabV3Distribucion(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Distribución"));
+  const dis = d.distribucion || {};
+  let algo = false;
+  if (dis.entregas && dis.entregas.length) {
+    algo = true;
+    s.appendChild(el("h3", null, "Entregas"));
+    const ul = el("ul");
+    dis.entregas.forEach(e => ul.appendChild(el("li", null, e.nombre + (e.responsable ? " · " + e.responsable : "") + (e.canal ? " (" + e.canal + ")" : ""))));
+    s.appendChild(ul);
+  }
+  if (dis.avisos && dis.avisos.length) {
+    algo = true;
+    s.appendChild(el("h3", null, "Avisos"));
+    const ul = el("ul");
+    dis.avisos.forEach(a => ul.appendChild(el("li", null, a.quien + " · " + a.que + (a.canal ? " (" + a.canal + ")" : ""))));
+    s.appendChild(ul);
+  }
+  if (!algo) s.appendChild(el("p", null, "Sin definir."));
+  return s;
+}
+
+function tabV3Calidad(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Calidad"));
+  if (!d.calidad || !d.calidad.length) {
+    s.appendChild(el("p", null, "Sin criterios de calidad."));
+    return s;
+  }
+  const ul = el("ul");
+  d.calidad.forEach(q => ul.appendChild(el("li", null, (q.id || "") + ": " + q.criterio)));
+  s.appendChild(ul);
+  return s;
+}
+
+function tabV3Glosario(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Glosario"));
+  if (!d.glosario || !d.glosario.length) {
+    s.appendChild(el("p", null, "Sin términos definidos."));
+    return s;
+  }
+  const t = el("table", null, "");
+  t.appendChild(elH("thead", null, "<tr><th>Término</th><th>Significado</th></tr>"));
+  const tb = elH("tbody");
+  d.glosario.forEach(g => tb.appendChild(elH("tr", null, "<td>" + g.termino + "</td><td>" + g.significado + "</td>")));
+  t.appendChild(tb);
+  s.appendChild(t);
+  return s;
+}
+
+function tabV3Fuera(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Fuera de alcance"));
+  if (!d.fuera || !d.fuera.length) {
+    s.appendChild(el("p", null, "Sin decisiones de fuera de alcance."));
+    return s;
+  }
+  const ul = el("ul");
+  d.fuera.forEach(x => ul.appendChild(el("li", null, x)));
+  s.appendChild(ul);
+  return s;
+}
+
+function tabV3Preguntas(d) {
+  const s = el("section", "seccion");
+  s.appendChild(el("h2", null, "Preguntas abiertas"));
+  if (!d.preguntas || !d.preguntas.length) {
+    s.appendChild(el("p", null, "Sin preguntas pendientes."));
+    return s;
+  }
+  const ul = el("ul");
+  d.preguntas.forEach(p => ul.appendChild(el("li", null, p)));
+  s.appendChild(ul);
+  return s;
+}
+
+function pintarV3(d) {
+  document.title = d.titulo + " · planos";
+  document.getElementById("titulo").textContent = d.titulo;
+  document.getElementById("proyecto").textContent = d.proyecto ? "Proyecto: " + d.proyecto : "";
+
+  const defs = [
+    ["resumen", "🗺 El mapa", true, () => tabV3Resumen(d, progreso)],
+    ["estructura", "Estructura organizativa", Array.isArray(d.estructura_organizativa) && d.estructura_organizativa.length > 0, () => tabV3Estructura(d)],
+    ["flujos", "Flujos", Array.isArray(d.flujos) && d.flujos.length > 0, () => tabV3Flujos(d)],
+    ["acciones", "Acciones", Array.isArray(d.acciones) && d.acciones.length > 0, () => tabV3Acciones(d)],
+    ["entregables", "Entregables", Array.isArray(d.entregables) && d.entregables.length > 0, () => tabV3Entregables(d)],
+    ["cumplimiento", "Cumplimiento", Array.isArray(d.cumplimiento) && d.cumplimiento.length > 0, () => tabV3Cumplimiento(d)],
+    ["presupuesto", "Presupuesto", !!(d.presupuesto && d.presupuesto.items && d.presupuesto.items.length > 0), () => tabV3Presupuesto(d)],
+    ["proveedores", "Proveedores", Array.isArray(d.proveedores) && d.proveedores.length > 0, () => tabV3Proveedores(d)],
+    ["distribucion", "Distribución", !!(d.distribucion && ((d.distribucion.entregas && d.distribucion.entregas.length) || (d.distribucion.avisos && d.distribucion.avisos.length))), () => tabV3Distribucion(d)],
+    ["calidad", "Calidad", Array.isArray(d.calidad) && d.calidad.length > 0, () => tabV3Calidad(d)],
+    ["glosario", "Glosario", Array.isArray(d.glosario) && d.glosario.length > 0, () => tabV3Glosario(d)],
+    ["fuera", "Fuera de alcance", Array.isArray(d.fuera) && d.fuera.length > 0, () => tabV3Fuera(d)],
+    ["preguntas", "Preguntas", Array.isArray(d.preguntas) && d.preguntas.length > 0, () => tabV3Preguntas(d)],
+  ];
+
+  const cuentas = {
+    estructura: (d.estructura_organizativa || []).length + " unidades",
+    flujos: (d.flujos || []).length + " flujos",
+    acciones: (d.acciones || []).length + " acciones",
+    entregables: (d.entregables || []).length + " entregables",
+    cumplimiento: (d.cumplimiento || []).length + " jurisdicciones",
+    presupuesto: (d.presupuesto && d.presupuesto.items ? d.presupuesto.items.length + " partidas" : ""),
+    proveedores: (d.proveedores || []).length + " proveedores",
+    calidad: (d.calidad || []).length + " criterios",
+    glosario: (d.glosario || []).length + " términos",
+    fuera: (d.fuera || []).length + " decisiones",
+    preguntas: (d.preguntas || []).length + " sin responder"
+  };
+  const noAplican = new Set(((d.definicion || {}).bloques_no_aplican || []));
+  const progreso = defs
+    .filter(([id]) => id !== "resumen")
+    .map(([id, titulo, presente]) => [
+      titulo,
+      noAplican.has(id) ? "no-aplica" : !!presente,
+      cuentas[id] || ""
+    ]);
+
+  const pestañas = defs.filter(x => x[2]);
+
+  const cont = document.getElementById("contenido");
+  const nav = document.getElementById("pestanas");
+  cont.textContent = "";
+  nav.textContent = "";
+
+  pestañas.forEach(([id, titulo, presente, render]) => {
+    const sec = render(d);
+    sec.id = "s-" + id;
+    cont.appendChild(sec);
+    const b = el("button", null, titulo);
+    b.dataset.id = id;
+    b.addEventListener("click", () => activar(id));
+    nav.appendChild(b);
+  });
+  nav.hidden = false;
+
+  const ids = pestañas.map(x => x[0]);
+  activar(ids.includes(pestanaActiva) ? pestanaActiva : "resumen");
+}
+
 async function txtOpcional(ruta) {
   try {
     const r = await fetch(ruta, { cache: "no-store" });
@@ -1245,8 +1571,10 @@ async function cargar() {
     pintarMenu(dRoot);
     docSpec = spec;
     docEncargo = encargo;
-    if (dSel) pintar(dSel);
-    else pintarVacia(dRoot, seleccion);
+    if (dSel) {
+      if (dSel.version === 3) pintarV3(dSel);
+      else pintar(dSel);
+    } else pintarVacia(dRoot, seleccion);
     ultimaFoto = foto; // solo tras un render completo con éxito
   } finally {
     cargando = false;

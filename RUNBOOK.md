@@ -839,3 +839,90 @@ constructor nunca toca los planos.
 
 Los planos son la única fuente de verdad: la obra se regenera a partir de
 ellos, y los cambios nunca se le piden al agente constructor de palabra.
+
+## Modo E: planificación empresarial (v3)
+
+Cuando el encargo no es construir una aplicación sino planificar una
+transformación, una reorganización, o definir la estructura y operaciones de
+un negocio, se usa el modo E. Trabaja sobre planos v3 (`planos.json` con
+`version: 3`) y genera documentos de planificación empresarial, no código.
+
+**Cuándo elegir modo E:** reestructuración organizativa, definición de
+procesos empresariales, planificación de transformación digital sin código,
+diseño de estructura y roles, o cualquier trabajo cuyo entregable sean
+documentos de planificación (no una aplicación).
+
+**Arranque:** en lugar de `visor/iniciar.py`, se usa `visor/iniciar_v3.py`:
+
+`python RUTA_HERRAMIENTA/visor/iniciar_v3.py --destino <ruta>/<nombre>-empresarial
+--nombre <nombre> --titulo "<título>"`
+
+El workspace v3 nace con la estructura de planificación empresarial:
+`docs/01-entregables/planos/planos.json` (en lugar de
+`docs/02-flujos/`), con campos empresariales como `acciones`, `entregables`,
+`estructura_organizativa`, `cumplimiento`, y `distribucion`. Las fases F1-F5
+se mantienen pero adaptadas al contexto empresarial:
+
+- **F0:** contrato de planificación, frase de objetivo, actores del cambio.
+- **F1:** cartografía de procesos actuales (versión empresarial de flujos).
+- **F2:** interrogatorio de huecos (mismas reglas, enfocado en estructura,
+  roles, cumplimiento y distribución).
+- **F3:** acciones de transformación con entregables asignados.
+- **F4:** estructura organizativa, roles, cumplimiento legal y distribución
+  de comunicaciones.
+- **F5:** cierre de coherencia con `validar.py --perfil revision`,
+  entrega de documentos y congelado de la planificación.
+
+**Validación:** mismo comando que v2:
+
+`python RUTA_HERRAMIENTA/visor/validar.py --datos
+<workspace>/docs/01-entregables/planos/planos.json --perfil revision`
+
+**E2E web:** se usa la versión v3 del validador:
+
+`python RUTA_HERRAMIENTA/visor/validar_web_v3.py --datos
+<workspace>/docs/01-entregables/planos/planos.json`
+
+**Revisión humana:** se usa `visor/requisitos.py abrir --workspace <workspace>`
+como en v2, y el menú lateral refleja estructuras v3 (acciones, entregables,
+cumplimiento, distribución).
+
+**Aprobar y congelar:**
+
+`python RUTA_HERRAMIENTA/visor/requisitos.py aprobar --por "NOMBRE"
+--confirmar-supuestos`
+
+**Finalizar:** se usa `visor/finalizar_v3.py` en lugar de `finalizar.py`:
+
+`python RUTA_HERRAMIENTA/visor/finalizar_v3.py --workspace <workspace>`
+
+Congela los planes, entrega la documentación y deja los documentos de
+planificación listos. A diferencia del cierre v2, no maneja repositorios ni
+código: el modo E no produce software, produce documentos y planes.
+
+**Actualización de proyectos v3:** el Modo D funciona igual con proyectos
+v3. `visor/actualizar.py` detecta automáticamente la versión por la ruta
+de planos (`docs/01-entregables/` → v3, `docs/02-flujos/` → v2) y aplica
+el conjunto correcto de ficheros. El registro local es UNIFICADO:
+`~/.config/ingenieria-requisitos-local/proyectos.json` contiene tanto
+proyectos software (`tipo: "software"`) como empresariales
+(`tipo: "empresarial"`).
+
+`python RUTA_HERRAMIENTA/visor/actualizar.py buscar`
+`python RUTA_HERRAMIENTA/visor/actualizar.py revisar --todos`
+`python RUTA_HERRAMIENTA/visor/actualizar.py aplicar --todos`
+
+**Iteración (modo C v3):** se itera sobre
+`<workspace>/docs/01-entregables/planos/` con las mismas reglas que el modo C
+v2: cosechar buzón, localizar impacto en el JSON, preguntar lo mínimo,
+regenerar spec y enseñar cambios.
+
+La documentación final se compila con:
+
+`python RUTA_HERRAMIENTA/visor/compilar.py --mapa
+<workspace>/docs/01-entregables/planos/planos.json`
+
+El modo E usa el mismo esquema de validación que el modo A/B/C: los planos
+son la única fuente de verdad, la web es estrictamente de visualización, y
+la aprobación se comunica al agente por conversación, nunca se escribe en
+la web.

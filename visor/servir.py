@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Visor local de los planos (ingeniería de requisitos).
+"""Visor local de los planos (planificación de procesos empresariales).
 
 Sirve la plantilla fija (plantilla.html, junto a este script) y los datos del
 proyecto (planos.json) en 127.0.0.1. Es estrictamente de sólo lectura: expone

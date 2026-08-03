@@ -20,7 +20,6 @@ def p(texto=""):
 
 
 def celda(x):
-    # Sin '|' ni saltos de línea dentro de una celda: romperían la tabla.
     return " ".join(str(x).split()).replace("|", "\\|")
 
 
@@ -32,8 +31,7 @@ def tabla_md(columnas, filas):
     p()
 
 
-ETIQUETAS = {"humano": "persona", "estatico": "automático: código",
-             "ia": "automático: IA", "externo": "tercero externo"}
+ETIQUETAS = {"humano": "persona", "automatizado": "automático", "externo": "tercero externo"}
 
 
 def paso_texto(paso, sangria):
@@ -52,7 +50,7 @@ def paso_texto(paso, sangria):
             p("%s    - camino normal: %s" % (pre, paso["sigue"]))
     else:
         quien = (" · %s" % paso["quien"]) if paso.get("quien") else ""
-        p("%s- [%s] %s%s" % (pre, ETIQUETAS[paso["tipo"]], paso["texto"], quien))
+        p("%s- [%s] %s%s" % (pre, ETIQUETAS.get(paso["tipo"], paso["tipo"]), paso["texto"], quien))
 
 
 def main():
@@ -66,8 +64,8 @@ def main():
             d = json.load(f)
     except (OSError, ValueError) as e:
         sys.exit("No pude leer los planos: %s" % e)
-    if d.get("version") != 2 or not d.get("titulo"):
-        sys.exit("planos.json debe tener version: 2 y titulo.")
+    if d.get("version") != 3 or not d.get("titulo"):
+        sys.exit("planos.json debe tener version: 3 y titulo.")
     d["titulo"] = " ".join(str(d["titulo"]).split())
     no_aplican = set((d.get("definicion") or {}).get("bloques_no_aplican", []))
 
@@ -76,20 +74,18 @@ def main():
 
     salida = args.salida or os.path.join(os.path.dirname(os.path.abspath(args.datos)), "spec.md")
 
-    p("# Spec: %s" % d["titulo"])
+    p("# Planificación: %s" % d["titulo"])
     p()
     p("Proyecto `%s`. Generado desde `planos.json` (la fuente de verdad): no editar a mano." % d.get("proyecto", "?"))
     p()
+
+    # ---- Definición: estado, supuestos, riesgos ----
     if d.get("definicion"):
         definicion = d["definicion"]
         p("**Estado del diseño:** %s · **modo:** %s." % (
             definicion.get("estado", "borrador"),
             definicion.get("modo", "sin declarar"),
         ))
-        p()
-    if d.get("cobertura"):
-        p("**Cobertura observada en el código actual:** %s." %
-          d["cobertura"].get("estado", "no verificado"))
         p()
     supuestos = (d.get("definicion") or {}).get("supuestos", [])
     if supuestos:
@@ -102,6 +98,20 @@ def main():
             ))
         p()
 
+    riesgos = (d.get("definicion") or {}).get("riesgos", [])
+    if riesgos:
+        p("Riesgos identificados:")
+        for riesgo in riesgos:
+            p("- **%s** [impacto: %s]: %s" % (
+                riesgo.get("id", "Riesgo"),
+                riesgo.get("impacto", ""),
+                riesgo.get("descripcion", ""),
+            ))
+            if riesgo.get("mitigacion"):
+                p("  - Mitigación: %s" % riesgo["mitigacion"])
+        p()
+
+    # ---- Propósito ----
     p("## 1. Propósito")
     p()
     if d.get("descripcion"):
@@ -117,57 +127,42 @@ def main():
             p("- %s" % x)
     p()
 
-    if d.get("actividades"):
-        p("## El mapa de la aplicación")
-        p()
-        p("Catálogo completo de actividades por zona del negocio. Cada actividad "
-          "tiene (o tendrá) sus propios planos en `actividades/<id>/`.")
-        p()
-        areas = []
-        for a in d["actividades"]:
-            if a["area"] not in areas:
-                areas.append(a["area"])
-        for area in areas:
-            p("### %s" % area)
-            p()
-            for a in d["actividades"]:
-                if a["area"] != area:
-                    continue
-                extra = []
-                if a.get("resumen"):
-                    extra.append(a["resumen"])
-                if a.get("depende_de"):
-                    extra.append("necesita antes: %s" % ", ".join(a["depende_de"]))
-                p("- [%s] **%s** (`%s`)%s" % (a.get("estado", "sin empezar"), a["nombre"], a["id"],
-                                              (": " + "; ".join(extra)) if extra else ""))
-            p()
-
+    # ---- Actores y vocabulario ----
     p("## 2. Actores y vocabulario")
     p()
     for a in d.get("actores", []):
         p("- **%s**%s" % (a["nombre"], (": %s" % a["rol"]) if a.get("rol") else ""))
-    if d.get("vocabulario"):
+    if d.get("glosario"):
         p()
-        for v in d["vocabulario"]:
+        for v in d["glosario"]:
             p("- \"%s\": %s" % (v["termino"], v["significado"]))
-    if not d.get("actores") and not d.get("vocabulario"):
+    if not d.get("actores") and not d.get("glosario"):
         ausencia("actores")
     p()
 
-    p("## 3. El proceso (flujos)")
+    # ---- Estructura organizativa ----
+    if d.get("estructura_organizativa"):
+        p("## 3. Estructura organizativa")
+        p()
+        for u in d["estructura_organizativa"]:
+            ubi = u.get("ubicacion", {})
+            ubi_str = ", ".join(v for v in [ubi.get("pais"), ubi.get("ciudad")] if v)
+            reporta = " (reporta a: %s)" % u.get("reporta_a", "") if u.get("reporta_a") else ""
+            p("- **%s** (`%s`) — %s, %s%s" % (
+                u["nombre"], u["id"], u["tipo"], ubi_str, reporta
+            ))
+        p()
+
+    # ---- Flujos de proceso ----
+    p("## 4. Flujos de proceso")
     p()
     p("La versión gráfica vive en el visor local del paquete (visor/servir.py).")
     p()
-    flujos = sorted(d.get("flujos", []), key=lambda f: 0 if f["momento"] == "futuro" else 1)
-    if any(f["momento"] == "hoy" for f in flujos) and any(f["momento"] == "futuro" for f in flujos):
-        p("Lo que se construye son los flujos \"con la app\"; los flujos \"hoy\" "
-          "son la foto del antes y se incluyen como contexto.")
-        p()
+    flujos = sorted(d.get("flujos", []), key=lambda f: 0 if f.get("momento") == "futuro" else 1)
     for f in flujos:
-        p("### %s [%s%s]" % (
+        p("### %s [%s]" % (
             f["titulo"],
-            "hoy" if f["momento"] == "hoy" else "con la app",
-            (" · origen: %s" % f["origen"]) if f.get("origen") else "",
+            "con el nuevo proceso" if f["momento"] == "futuro" else "actual",
         ))
         if f.get("descripcion"):
             p()
@@ -180,145 +175,180 @@ def main():
         ausencia("flujos")
         p()
 
-    p("## 4. Recorridos, requisitos y criterios de aceptación")
+    # ---- Plan de acción ----
+    p("## 5. Plan de acción")
     p()
-    p("El orden es el orden de entrega. El primero es el esqueleto: recorre el camino feliz de punta a punta.")
-    p()
-    for i, r in enumerate(d.get("recorridos", [])):
-        extra = " · 1ª entrega" if i == 0 else ""
-        p("### %s: %s (%s%s)" % (r["id"], r["nombre"], r.get("estado", "pendiente"), extra))
-        if r.get("objetivo"):
-            p()
-            p(r["objetivo"])
-        p()
-        for q in r.get("requisitos", []):
-            extras = []
-            if q.get("origen"):
-                extras.append("origen: %s" % q["origen"])
-            implementacion = q.get("implementacion") or {}
-            if implementacion.get("estado"):
-                extras.append("código actual: %s" % implementacion["estado"])
-            p("- **%s**: %s%s" % (
-                q["id"],
-                q["texto"],
-                (" · " + " · ".join(extras)) if extras else "",
+    acciones = d.get("acciones", [])
+    if acciones:
+        p("| # | Acción | Responsable | Fecha prevista | Entregable | Avance |")
+        p("|---|----------|-------------|----------------|------------|--------|")
+        for i, acc in enumerate(acciones, 1):
+            avance = acc.get("avance", {}).get("estado", "pendiente") if isinstance(acc.get("avance"), dict) else "pendiente"
+            entregable = acc.get("entregable", "")
+            p("| %d | **%s** | %s | %s | %s | %s |" % (
+                i, acc["nombre"], acc.get("responsable", ""),
+                acc.get("fecha_prevista", ""), entregable, avance,
             ))
-            for evidencia in implementacion.get("evidencias", []):
-                if isinstance(evidencia, dict):
-                    evidencia = "%s: %s%s" % (
-                        evidencia.get("tipo", "evidencia"),
-                        evidencia.get("referencia", ""),
-                        (" — " + evidencia["detalle"]) if evidencia.get("detalle") else "",
-                    )
-                p("  - Evidencia: %s" % evidencia)
-            for prueba in implementacion.get("pruebas", []):
-                p("  - Prueba: %s" % prueba)
-        p()
-        for cr in r.get("criterios", []):
-            p("- **%s**: Dado %s / Cuando %s / Entonces %s" % (cr["id"], cr["dado"], cr["cuando"], cr["entonces"]))
-        p()
-    if not d.get("recorridos"):
-        ausencia("recorridos")
         p()
 
-    if d.get("episodios"):
-        p("### Episodios reales que sustentan los requisitos")
-        p()
-        for e in d["episodios"]:
-            refs = (" [%s]" % ", ".join(e["refs"])) if e.get("refs") else ""
-            p("- %s%s" % (e["texto"], refs))
-        p()
-
-    p("## 5. Reglas de negocio")
-    p()
-    for g in d.get("reglas", []):
-        p("### %s: %s" % (g["id"], g["nombre"]))
-        p()
-        if g.get("texto"):
-            p(g["texto"])
+        # Secuencia
+        secuencia_ids = [a["id"] for a in acciones]
+        if len(secuencia_ids) > 1:
+            p("**Secuencia:** %s" % " → ".join(secuencia_ids))
             p()
-        if g.get("tabla"):
-            tabla_md(g["tabla"]["columnas"], g["tabla"]["filas"])
-    if not d.get("reglas"):
-        ausencia("reglas", "(Ninguna registrada.)")
+
+        # Detalles por acción
+        for acc in acciones:
+            p("### %s (`%s`)" % (acc["nombre"], acc["id"]))
+            p()
+            if acc.get("descripcion"):
+                p(acc["descripcion"])
+                p()
+            p("- Responsable: **%s**" % acc.get("responsable", ""))
+            p("- Entregable: %s" % acc.get("entregable", ""))
+            if acc.get("fecha_prevista"):
+                p("- Fecha prevista: %s" % acc["fecha_prevista"])
+            avance = acc.get("avance", {})
+            if isinstance(avance, dict) and avance:
+                p("- Estado: **%s**" % avance.get("estado", "pendiente"))
+                if avance.get("completado_el"):
+                    p("- Completado el: %s" % avance["completado_el"])
+                if avance.get("observaciones"):
+                    p("- Observaciones: %s" % avance["observaciones"])
+            p()
+    else:
+        ausencia("acciones")
         p()
 
-    p("## 6. Estados")
+    # ---- Entregables ----
+    p("## 6. Entregables")
     p()
-    def accion_txt(a):
-        if isinstance(a, str):
-            return a
-        out = a["accion"]
-        if a.get("quien"):
-            out += " (%s)" % a["quien"]
-        if a.get("pasa_a"):
-            out += " → pasa a '%s'" % a["pasa_a"]
-        return out
-
-    for e in d.get("estados", []):
-        p("### %s" % e["entidad"])
-        p()
-        tabla_md(["Estado", "Qué se puede hacer (quién, y a qué estado pasa)"],
-                 [[x["nombre"], " · ".join(accion_txt(a) for a in x.get("acciones", []))] for x in e["estados"]])
-    if not d.get("estados"):
-        ausencia("estados")
+    entregables = d.get("entregables", [])
+    if entregables:
+        p("| # | Entregable | Tipo | Acciones | Fecha prevista | Avance |")
+        p("|---|-----------|------|----------|----------------|--------|")
+        for i, ent in enumerate(entregables, 1):
+            avance = ent.get("avance", {}).get("estado", "pendiente") if isinstance(ent.get("avance"), dict) else "pendiente"
+            p("| %d | **%s** | %s | %s | %s | %s |" % (
+                i, ent["nombre"], ent.get("tipo", ""),
+                ", ".join(ent.get("acciones", [])), ent.get("fecha_prevista", ""), avance,
+            ))
         p()
 
-    p("## 7. Datos e integraciones")
+        for ent in entregables:
+            p("### %s (`%s`)" % (ent["nombre"], ent["id"]))
+            p()
+            if ent.get("descripcion"):
+                p(ent["descripcion"])
+                p()
+            p("- Tipo: **%s**" % ent.get("tipo", ""))
+            p("- Acciones productoras: %s" % ", ".join(ent.get("acciones", [])))
+            if ent.get("fecha_prevista"):
+                p("- Fecha prevista: %s" % ent["fecha_prevista"])
+            if ent.get("entregado_el"):
+                p("- Entregado el: %s" % ent["entregado_el"])
+            criterios = ent.get("criterios_aprobacion", [])
+            if criterios:
+                p()
+                p("**Criterios de aprobación:**")
+                p()
+                for c in criterios:
+                    p("- **%s**: %s" % (c.get("id", ""), c.get("condicion", "")))
+            p()
+    else:
+        ausencia("entregables")
+        p()
+
+    # ---- Cumplimiento ----
+    p("## 7. Cumplimiento legal, fiscal y laboral")
     p()
-    if d.get("datos"):
-        tabla_md(["Cosa", "Qué se guarda", "De dónde viene"],
-                 [[x["cosa"], ", ".join(x.get("guarda", [])), x.get("origen", "")] for x in d["datos"]])
-    if d.get("volumen"):
-        p("Números del negocio:")
-        p()
-        tabla_md(["Qué", "Cuánto"], [[v["que"], v["cuanto"]] for v in d["volumen"]])
-    for x in d.get("integraciones", []):
-        p("- Habla con **%s**%s" % (x["con"], (": %s" % x["para"]) if x.get("para") else ""))
-    if not d.get("datos") and not d.get("integraciones"):
-        if "datos" in no_aplican and "integraciones" in no_aplican:
-            p("(No aplica a este proyecto.)")
-        else:
-            p("(Pendiente.)")
-    p()
-
-    p("## 8. Superficie de uso")
-    p()
-    sup = d.get("superficie") or {}
-    for pt in sup.get("puntos", []):
-        p("### %s" % pt["nombre"])
-        p()
-        tabla_md(["Campo", "Valor"], [
-            ["Quién entra", ", ".join(pt.get("quien", []))],
-            ["Por dónde llega", pt.get("llega", "")],
-            ["Cuándo lo usa", pt.get("cuando", "")],
-            ["Qué ve nada más entrar", pt.get("ve", "")],
-            ["Qué puede hacer", " · ".join(pt.get("puede", []))],
-            ["Qué NO debe poder jamás", " · ".join(pt.get("nunca", []))],
-        ])
-    perm = sup.get("permisos")
-    if perm:
-        p("### Matriz de permisos")
-        p()
-        tabla_md([""] + perm["acciones"],
-                 [[r["rol"]] + ["✓" if a in r.get("permitidas", []) else "" for a in perm["acciones"]]
-                  for r in perm.get("roles", [])])
-    if sup.get("avisos"):
-        p("### Avisos")
-        p()
-        tabla_md(["Quién se entera", "De qué", "Por dónde", "Cuándo"],
-                 [[a["quien"], a["que"], a.get("canal", ""), a.get("cuando", "")] for a in sup["avisos"]])
-    if sup.get("condiciones"):
-        p("### Condiciones de uso")
-        p()
-        for x in sup["condiciones"]:
-            p("- %s" % x)
-        p()
-    if not sup:
-        ausencia("superficie")
+    cumplimiento = d.get("cumplimiento", [])
+    if cumplimiento:
+        for c in cumplimiento:
+            p("### %s" % c.get("jurisdiccion", "Sin jurisdicción"))
+            p()
+            for categoria in ("laboral", "fiscal", "licencias"):
+                items = c.get(categoria, [])
+                if not items:
+                    continue
+                etiqueta = {"laboral": "Laboral", "fiscal": "Fiscal", "licencias": "Licencias"}[categoria]
+                p("#### %s" % etiqueta)
+                p()
+                tabla_md(
+                    ["ID", "Requisito", "Plazo", "Responsable", "Estado"],
+                    [["%s-%d" % (categoria[:3].upper(), j + 1),
+                      req.get("requisito", ""),
+                      req.get("plazo", ""),
+                      req.get("responsable", ""),
+                      req.get("estado", "")] for j, req in enumerate(items)]
+                )
+            p()
+    else:
+        ausencia("cumplimiento")
         p()
 
-    p("## 9. Calidad y límites")
+    # ---- Distribución ----
+    p("## 8. Distribución y canales")
+    p()
+    dist = d.get("distribucion") or {}
+    if dist:
+        p("Canales de distribución y alcance del proyecto:")
+        p()
+        for canal in dist.get("canales", []):
+            p("- **%s**: %s" % (canal.get("nombre", ""), canal.get("descripcion", "")))
+        if dist.get("alcance_geo"):
+            p("- Alcance geográfico: %s" % ", ".join(dist["alcance_geo"]))
+        p()
+    else:
+        ausencia("distribucion")
+        p()
+
+    # ---- Presupuesto ----
+    p("## 9. Presupuesto")
+    p()
+    pres = d.get("presupuesto") or {}
+    if pres:
+        moneda = pres.get("moneda", "EUR")
+        p("Moneda: **%s**" % moneda)
+        p()
+        tabla_md(
+            ["Ítem", "Categoría", "Importe", "Periodicidad", "Responsable"],
+            [[item.get("nombre", ""),
+              item.get("categoria", ""),
+              "%s %s" % (item.get("importe_estimado", ""), moneda),
+              item.get("periodicidad", ""),
+              item.get("responsable", "")] for item in pres.get("items", [])]
+        )
+        p("**Total estimado: %s %s**" % (pres.get("total_estimado", 0), moneda))
+        p()
+    else:
+        ausencia("presupuesto")
+        p()
+
+    # ---- Proveedores ----
+    if d.get("proveedores"):
+        p("## 10. Proveedores y colaboradores externos")
+        p()
+        tabla_md(
+            ["ID", "Nombre", "Servicio", "Tipo", "Coste/Periodicidad"],
+            [[p.get("id", ""),
+              p.get("nombre", ""),
+              p.get("servicio", ""),
+              p.get("tipo", ""),
+              "%s %s" % (p.get("coste_estimado", ""), p.get("periodicidad", ""))] for p in d["proveedores"]]
+        )
+        p()
+
+    # ---- Métricas ----
+    if d.get("metricas"):
+        p("## 11. Métricas del negocio")
+        p()
+        for m in d["metricas"]:
+            p("- **%s**: %s" % (m["que"], m["cuanto"]))
+        p()
+
+    # ---- Calidad ----
+    p("## 12. Calidad")
     p()
     for q in d.get("calidad", []):
         p("- **%s**: %s" % (q["id"], q["criterio"]))
@@ -326,7 +356,25 @@ def main():
         ausencia("calidad")
     p()
 
-    p("## 10. Fuera de alcance")
+    # ---- Datos ----
+    if d.get("datos"):
+        p("## 13. Datos gestionados")
+        p()
+        tabla_md(["Cosa", "Qué se guarda", "Origen"],
+                 [[x["cosa"], ", ".join(x.get("guarda", [])), x.get("origen", "")] for x in d["datos"]])
+        p()
+
+    # ---- Antecedentes ----
+    if d.get("antecedentes"):
+        p("## 14. Antecedentes")
+        p()
+        for ant in d["antecedentes"]:
+            refs_str = (" (refs: %s)" % ", ".join(ant.get("refs", []))) if ant.get("refs") else ""
+            p("- %s%s" % (ant["texto"], refs_str))
+        p()
+
+    # ---- Fuera de alcance ----
+    p("## 15. Fuera de alcance")
     p()
     for x in d.get("fuera", []):
         p("- %s" % x)
@@ -334,9 +382,10 @@ def main():
         ausencia("fuera")
     p()
 
-    p("## 11. Preguntas abiertas")
+    # ---- Preguntas ----
+    p("## 16. Preguntas abiertas")
     p()
-    p("Buzón del constructor: sus dudas se apuntan aquí, nunca se responden de palabra.")
+    p("Buzón del planificador: las dudas se apuntan aquí, nunca se responden de palabra.")
     p()
     for x in d.get("preguntas", []):
         p("- %s" % x)
@@ -346,7 +395,7 @@ def main():
 
     with open(salida, "w", encoding="utf-8") as f:
         f.write("\n".join(L) + "\n")
-    print("Spec generado: %s (%d líneas)" % (salida, len(L)))
+    print("Planificación generada: %s (%d líneas)" % (salida, len(L)))
 
 
 if __name__ == "__main__":

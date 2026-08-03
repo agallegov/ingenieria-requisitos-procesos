@@ -20,6 +20,10 @@ runbook a su gusto, esa versión no se pierde — está en el punto de retorno, 
 
 Solo stdlib. `revisar` no escribe nada. `aplicar` solo escribe el método y las piezas que
 lo ejecutan: jamás los planos, el trabajo, los bugs, el conocimiento ni el código.
+
+SOPORTE DUAL v2/v3: detecta automáticamente la versión del workspace por la ruta de
+planos (docs/01-entregables/ → v3 empresarial, docs/02-flujos/ → v2 software).
+El conjunto de archivos a actualizar varía según la versión.
 """
 import argparse
 import datetime
@@ -62,11 +66,46 @@ def git(repo, *args):
     return p.returncode, (p.stdout + p.stderr).strip()
 
 
-def contenido_esperado(workspace):
+def detectar_version(workspace):
+    """Detecta si el workspace es v2 (software) o v3 (empresarial) por la ruta de planos.
+    
+    Prioridad v3: docs/01-entregables/ tiene prioridad sobre docs/02-flujos/.
+    """
+    planos_v3 = workspace / "docs" / "01-entregables" / "planos" / "planos.json"
+    if planos_v3.is_file():
+        try:
+            datos = json.loads(planos_v3.read_text(encoding="utf-8"))
+            if datos.get("version") == 3:
+                return 3
+        except (OSError, ValueError):
+            pass
+    
+    planos_v2 = workspace / "docs" / "02-flujos" / "planos" / "planos.json"
+    if planos_v2.is_file():
+        try:
+            datos = json.loads(planos_v2.read_text(encoding="utf-8"))
+            if datos.get("version") in (1, 2):
+                return 2
+        except (OSError, ValueError):
+            pass
+    
+    agnts = workspace / "AGENTS.md"
+    if agnts.is_file():
+        contenido = agnts.read_text(encoding="utf-8", errors="replace")
+        if "planificación empresarial" in contenido.lower() or "version 3" in contenido.lower():
+            return 3
+    
+    return 2  # default: v2
+
+
+def contenido_esperado(workspace, version=None):
     """{ruta en el workspace: contenido que debe tener}, y los avisos que salgan.
 
     Mismas fuentes que el bootstrap: si el bootstrap lo coloca, esto lo actualiza.
     """
+    if version is None:
+        version = detectar_version(workspace)
+    
     esperado, avisos = {}, []
     for relativo in bootstrap.ARCHIVOS_METODO:
         esperado[f"docs/00-metodo/{relativo}"] = (
@@ -75,23 +114,25 @@ def contenido_esperado(workspace):
         origen = (HERRAMIENTA / nombre
                   if nombre in ("RUNBOOK.md", "requirements-dev.txt") else BASE / nombre)
         esperado[f"docs/00-metodo/requisitos/{nombre}"] = origen.read_text(encoding="utf-8")
-    for origen in sorted((PLANTILLA / "githooks").rglob("*")):
-        if origen.is_file():
-            rel = origen.relative_to(PLANTILLA / "githooks")
-            esperado[f".githooks/{rel}"] = origen.read_text(encoding="utf-8")
-    esperado["setup.py"] = (PLANTILLA / "setup.py").read_text(encoding="utf-8")
-    # El .gitignore del meta-repo es infraestructura del método: es lo que mantiene main/ y
-    # worktrees/ fuera de git. Sin él, el workspace intenta versionar el repo de código.
-    esperado[".gitignore"] = (PLANTILLA / "gitignore").read_text(encoding="utf-8")
-    esperado["worktrees/README.md"] = (
-        PLANTILLA / "worktrees-README.md").read_text(encoding="utf-8")
-    esperado[".github/workflows/lint.yml"] = bootstrap.generar_ci()
+    
+    if version == 2:
+        # v2: software con githooks, setup.py, worktrees, CI/CD
+        for origen in sorted((PLANTILLA / "githooks").rglob("*")):
+            if origen.is_file():
+                rel = origen.relative_to(PLANTILLA / "githooks")
+                esperado[f".githooks/{rel}"] = origen.read_text(encoding="utf-8")
+        esperado["setup.py"] = (PLANTILLA / "setup.py").read_text(encoding="utf-8")
+        esperado[".gitignore"] = (PLANTILLA / "gitignore").read_text(encoding="utf-8")
+        esperado["worktrees/README.md"] = (
+            PLANTILLA / "worktrees-README.md").read_text(encoding="utf-8")
+        esperado[".github/workflows/lint.yml"] = bootstrap.generar_ci()
+    else:
+        # v3: planificación empresarial, sin githooks/setup.py/worktrees/CI
+        esperado[".gitignore"] = (PLANTILLA / "gitignore").read_text(encoding="utf-8")
+
     for puente in ("CLAUDE.md", "GEMINI.md"):
         esperado[puente] = "@AGENTS.md\n"
 
-    # AGENTS.md lleva dentro el título del proyecto: se compara contra la plantilla rellenada
-    # con SU título. Si no se puede leer, se dice y se deja fuera — antes desaparecía del
-    # informe en silencio, que es la peor de las tres opciones.
     actual = workspace / "AGENTS.md"
     if actual.is_file():
         m = RE_TITULO.search(actual.read_text(encoding="utf-8", errors="replace"))
@@ -102,7 +143,7 @@ def contenido_esperado(workspace):
             avisos.append("no pude leer el título en la primera línea de AGENTS.md "
                           "(se espera '# AGENTS.md — <título> (meta-repo)'): lo dejo sin "
                           "actualizar para no borrarte el nombre del proyecto")
-    return esperado, avisos
+    return esperado, avisos, version
 
 
 def diferencias(workspace, esperado):
@@ -195,8 +236,8 @@ def pasar_linter(workspace):
         print(f"    linter del método: {salida.splitlines()[-1].strip()}")
 
 
-def aplicar(workspace, titulo):
-    esperado, avisos = contenido_esperado(workspace)
+def aplicar(workspace, titulo, version=None):
+    esperado, avisos, version = contenido_esperado(workspace, version)
     cambios, sobrantes = diferencias(workspace, esperado)
     informe(workspace, titulo, cambios, sobrantes, avisos)
     if not cambios:
@@ -214,7 +255,8 @@ def aplicar(workspace, titulo):
         if destino.suffix == ".py" or destino.parent.name == ".githooks":
             destino.chmod(0o755)
     (workspace / "METODO.json").write_text(
-        json.dumps({"formato": 1, "huella": bootstrap.huella_plantilla(), "actualizado": HOY},
+        json.dumps({"formato": 1, "huella": bootstrap.huella_plantilla(), "actualizado": HOY,
+                     "version": version},
                    ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     escribir_historial(workspace, sha, cambios)
 
@@ -241,8 +283,10 @@ def es_workspace(ruta):
     ruta = ruta.resolve()
     if ruta == HERRAMIENTA or HERRAMIENTA in ruta.parents:
         return False
-    return ((ruta / "AGENTS.md").is_file()
-            and (ruta / "docs/02-flujos/planos/planos.json").is_file())
+    agnts = ruta / "AGENTS.md"
+    planos_v3 = ruta / "docs/01-entregables/planos/planos.json"
+    planos_v2 = ruta / "docs/02-flujos/planos/planos.json"
+    return agnts.is_file() and (planos_v3.is_file() or planos_v2.is_file())
 
 
 def buscar(raices, profundidad=3):
@@ -358,19 +402,29 @@ def main():
     for entrada in lista:
         ruta = Path(entrada["ruta"])
         titulo = entrada.get("titulo", ruta.name)
+        tipo = entrada.get("tipo", None)
         if not ruta.is_dir():
             print(f"\n=== {titulo} ===\n    {ruta}\n    NO ENCONTRADO (¿movido o borrado?)")
             continue
         try:
+            # Determinar versión: usar campo tipo si existe, sino detectar
+            if tipo == "empresarial":
+                version = 3
+            elif tipo == "software":
+                version = 2
+            else:
+                version = None  # detectar automáticamente
+            
             if args.orden == "revisar":
-                esperado, avisos = contenido_esperado(ruta)
+                esperado, avisos, version_real = contenido_esperado(ruta, version)
                 cambios, sobrantes = diferencias(ruta, esperado)
-                informe(ruta, titulo, cambios, sobrantes, avisos)
+                version_info = f" (v{version_real})" if version_real != 2 else ""
+                titulo_extra = f"{titulo}{version_info}"
+                informe(ruta, titulo_extra, cambios, sobrantes, avisos)
                 pendientes += 1 if cambios else 0
             else:
-                salida |= aplicar(ruta, titulo)
+                salida |= aplicar(ruta, titulo, version)
         except OSError as e:
-            # Un proyecto roto no puede llevarse por delante la revisión de los demás.
             print(f"\n=== {titulo} ===\n    {ruta}\n    NO PUDE LEERLO: {e}")
             salida = 1
     if args.orden == "revisar":

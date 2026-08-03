@@ -16,15 +16,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-TIPOS_ACCION = ("humano", "estatico", "ia", "externo")
+TIPOS_ACCION = ("humano", "automatizado", "externo")
 BASE = Path(__file__).resolve().parent
 CAMPOS_FICHA = ("quien", "llega", "cuando", "ve", "puede", "nunca")
 ESTADOS_DEFINICION = ("borrador", "listo para revisar", "aprobado", "congelado")
-MODOS_DEFINICION = ("entrevista", "autopropuesto", "analisis de codigo", "mixto")
-ORIGENES = ("usuario", "codigo", "inferido", "mixto")
-ESTADOS_COBERTURA = (
-    "no verificado", "implementado", "parcial", "no implementado", "contradice"
-)
+MODOS_DEFINICION = ("entrevista", "documentacion", "experto")
+ORIGENES = ("usuario", "documentacion", "inferido", "mixto")
+ESTADOS_AVANCE = ("pendiente", "en progreso", "completado", "cancelado")
+ESTADOS_CUMPLIMIENTO = ("pendiente", "en proceso", "cumplido", "no aplicable")
 
 errores = []
 avisos = []
@@ -191,15 +190,11 @@ def validar_paso(p, donde, ids_quien):
         err(donde, 'tipo de paso desconocido: "%s"' % tipo)
 
 
-def validar_implementacion(valor, donde):
+def validar_avance(valor, donde):
     if not isinstance(valor, dict):
-        return err(donde, "falta el objeto de cobertura de implementación")
-    if valor.get("estado") not in ESTADOS_COBERTURA:
-        err(donde, "estado inválido; usa: %s" % ", ".join(ESTADOS_COBERTURA))
-    if not isinstance(valor.get("evidencias", []), list):
-        err(donde, "evidencias debe ser una lista")
-    if not isinstance(valor.get("pruebas", []), list):
-        err(donde, "pruebas debe ser una lista")
+        return err(donde, "falta el objeto de avance")
+    if valor.get("estado") not in ESTADOS_AVANCE:
+        err(donde, "estado inválido; usa: %s" % ", ".join(ESTADOS_AVANCE))
 
 
 def exigir_revision(d):
@@ -212,72 +207,49 @@ def exigir_revision(d):
         err("perfil revision", 'definicion.estado debe ser "listo para revisar" o posterior')
     no_aplican = set(definicion.get("bloques_no_aplican", []) or [])
 
-    if d.get("actividades"):
-        for nombre, valor in (
-            ("descripcion", d.get("descripcion")),
-            ("contrato.frase", (d.get("contrato") or {}).get("frase")),
-            ("contrato.exito", (d.get("contrato") or {}).get("exito")),
-            ("actores", d.get("actores")),
-        ):
-            if not valor and nombre.split(".", 1)[0] not in no_aplican:
-                err("perfil revision", "bloque de mapa sin completar: %s" % nombre)
-        if d.get("preguntas"):
-            err("perfil revision", "quedan preguntas abiertas en el mapa")
-        validar_implementacion(d.get("cobertura"), "perfil revision.cobertura")
-        for i, actividad in enumerate(d.get("actividades", [])):
-            donde = "perfil revision.actividades[%d]" % i
-            if actividad.get("estado") not in ("especificada", "en obra", "entregada"):
-                err(donde, "la actividad todavía no está especificada")
-            if actividad.get("origen") not in ORIGENES:
-                err(donde, "falta origen válido")
-            validar_implementacion(actividad.get("cobertura"), donde + ".cobertura")
-        return
-
+    # V3: bloques obligatorios para planificación empresarial
     obligatorios = (
         ("descripcion", d.get("descripcion")),
         ("contrato.frase", (d.get("contrato") or {}).get("frase")),
         ("contrato.exito", (d.get("contrato") or {}).get("exito")),
         ("actores", d.get("actores")),
         ("flujos", d.get("flujos")),
-        ("recorridos", d.get("recorridos")),
-        ("estados", d.get("estados")),
-        ("datos", d.get("datos")),
-        ("superficie", d.get("superficie")),
-        ("calidad", d.get("calidad")),
+        ("acciones", d.get("acciones")),
+        ("entregables", d.get("entregables")),
         ("fuera", d.get("fuera")),
     )
     for nombre, valor in obligatorios:
         if not valor and nombre.split(".", 1)[0] not in no_aplican:
             err("perfil revision", "bloque obligatorio sin completar: %s" % nombre)
-    for nombre in ("episodios", "reglas", "volumen", "integraciones"):
-        if not d.get(nombre) and nombre not in no_aplican:
-            err(
-                "perfil revision",
-                'el bloque "%s" está vacío: complétalo o decláralo en bloques_no_aplican'
-                % nombre,
-            )
     if d.get("preguntas"):
         err("perfil revision", "quedan preguntas abiertas")
     if not any(f.get("momento") == "futuro" for f in d.get("flujos", [])):
         err("perfil revision", "falta al menos un flujo futuro (el diseño a implementar)")
-    validar_implementacion(d.get("cobertura"), "perfil revision.cobertura")
 
-    for i, f in enumerate(d.get("flujos", [])):
-        if f.get("origen") not in ORIGENES:
-            err("perfil revision.flujos[%d]" % i, "falta origen válido")
-    for i, rec in enumerate(d.get("recorridos", [])):
-        if not rec.get("requisitos"):
-            err("perfil revision.recorridos[%d]" % i, "no contiene requisitos")
-        if not rec.get("criterios"):
-            err("perfil revision.recorridos[%d]" % i, "no contiene criterios comprobables")
-        for j, req in enumerate(rec.get("requisitos", []) or []):
-            donde = "perfil revision.recorridos[%d].requisitos[%d]" % (i, j)
-            if req.get("origen") not in ORIGENES:
-                err(donde, "falta origen válido")
-            validar_implementacion(req.get("implementacion"), donde + ".implementacion")
+    # Validar acciones: deben tener entregables y origen válido
+    for i, a in enumerate(d.get("acciones", [])):
+        donde = "perfil revision.acciones[%d]" % i
+        if a.get("origen") not in ORIGENES:
+            err(donde, "falta origen válido")
+        validar_avance(a.get("avance"), donde + ".avance")
+        if a.get("entregable"):
+            entregable_id = a["entregable"]
+            ids_entregables = {e.get("id") for e in d.get("entregables", []) or []}
+            if entregable_id not in ids_entregables:
+                err(donde, 'entregable "%s" no existe en entregables' % entregable_id)
+
+    # Validar entregables: deben tener criterios de aprobación
+    for i, ent in enumerate(d.get("entregables", [])):
+        donde = "perfil revision.entregables[%d]" % i
+        if not ent.get("criterios_aprobacion"):
+            err(donde, "no contiene criterios de aprobación")
+        validar_avance(ent.get("avance"), donde + ".avance")
+        for c in ent.get("criterios_aprobacion", []) or []:
+            if c.get("entregable") and c["entregable"] != ent.get("id"):
+                err(donde, 'criterio指向 entregable incorrecto: "%s"' % c.get("entregable"))
 
 
-def validar_definicion_y_cobertura(d):
+def validar_definicion_y_avance(d):
     definicion = d.get("definicion")
     if definicion is not None:
         if not isinstance(definicion, dict):
@@ -292,9 +264,9 @@ def validar_definicion_y_cobertura(d):
                     err("definicion.supuestos[%d]" % i, "falta origen válido")
                 if supuesto.get("estado") not in ("propuesto", "confirmado", "rechazado"):
                     err("definicion.supuestos[%d]" % i, "estado inválido")
-    cobertura = d.get("cobertura")
-    if cobertura is not None:
-        validar_implementacion(cobertura, "cobertura")
+            for i, riesgo in enumerate(definicion.get("riesgos", []) or []):
+                if riesgo.get("impacto") not in ("alto", "medio", "bajo"):
+                    err("definicion.riesgos[%d]" % i, "impacto inválido")
 
 
 def validar_planos_de_actividades(d, ruta_mapa, perfil):
@@ -339,11 +311,11 @@ def main():
         sys.exit("ERROR: no pude leer el JSON: %s" % e)
 
     validar_esquema(d)
-    if d.get("version") != 2:
-        err("version", "debe ser 2")
+    if d.get("version") != 3:
+        err("version", "debe ser 3")
     if not d.get("titulo"):
         err("titulo", "falta")
-    validar_definicion_y_cobertura(d)
+    validar_definicion_y_avance(d)
     validar_ids_del_proyecto(d, args.datos)
 
     # actores y quienes válidos
@@ -398,7 +370,6 @@ def main():
                     "el supuesto %s debe estar confirmado antes de congelar"
                     % supuesto.get("id", i + 1),
                 )
-    validar_planos_de_actividades(d, args.datos, args.perfil)
 
     # ids globales únicos
     ids = {}
@@ -412,32 +383,58 @@ def main():
             err(donde, 'id duplicado "%s" (ya usado en %s); la numeración es GLOBAL' % (idv, ids[idv]))
         ids[idv] = donde
 
-    todos_r, todas_g = set(), set()
-    for g in d.get("reglas", []):
-        registrar(g.get("id"), r"^G-\d+$", "reglas")
-        todas_g.add(g.get("id"))
+    # Reglas/normas
+    for g in d.get("normas", []):
+        registrar(g.get("id"), r"^G-\d+$", "normas")
         t = g.get("tabla")
         if t:
             ncol = len(t.get("columnas", []))
             for k, fila in enumerate(t.get("filas", [])):
                 if len(fila) != ncol:
-                    err("reglas %s fila %d" % (g.get("id"), k + 1),
+                    err("normas %s fila %d" % (g.get("id"), k + 1),
                         "tiene %d celdas y la tabla %d columnas" % (len(fila), ncol))
-    for rec in d.get("recorridos", []):
-        registrar(rec.get("id"), r"^REC-\d+$", "recorridos")
-        for q in rec.get("requisitos", []) or []:
-            registrar(q.get("id"), r"^R-\d+$", rec.get("id", "recorrido"))
-            todos_r.add(q.get("id"))
-    for rec in d.get("recorridos", []):
-        for q in rec.get("requisitos", []) or []:
-            if q.get("regla") and q["regla"] not in todas_g:
-                err("%s %s" % (rec.get("id"), q.get("id")), 'cita la regla inexistente "%s"' % q["regla"])
-        for c in rec.get("criterios", []) or []:
-            registrar(c.get("id"), r"^C-\d+$", rec.get("id", "recorrido"))
-            if c.get("cubre") and c["cubre"] not in todos_r:
-                err("%s %s" % (rec.get("id"), c.get("id")), 'dice cubrir el requisito inexistente "%s"' % c["cubre"])
+
+    # Acciones
+    ids_acciones = set()
+    for a in d.get("acciones", []):
+        registrar(a.get("id"), r"^A-\d+$", "acciones")
+        ids_acciones.add(a.get("id"))
+
+    # Entregables
+    ids_entregables = set()
+    for e in d.get("entregables", []):
+        registrar(e.get("id"), r"^ENT-\d+$", "entregables")
+        ids_entregables.add(e.get("id"))
+        for c in e.get("criterios_aprobacion", []) or []:
+            registrar(c.get("id"), r"^C-\d+$", e.get("id", "entregable"))
+            if c.get("entregable") and c["entregable"] not in ids_entregables:
+                err("%s %s" % (e.get("id"), c.get("id")), 'dice cubrir el entregable inexistente "%s"' % c["entregable"])
+
+    # Proveedores
+    for p in d.get("proveedores", []):
+        registrar(p.get("id"), r"^PROV-\d+$", "proveedores")
+
+    for a in d.get("acciones", []):
+        if a.get("entregable") and a["entregable"] not in ids_entregables:
+            err("acciones %s" % a.get("id"), 'cita el entregable inexistente "%s"' % a["entregable"])
+        for sec in a.get("secuencia", []) or []:
+            if sec not in ids_acciones:
+                err("acciones %s" % a.get("id"), 'cita la acción inexistente "%s"' % sec)
+
     for q in d.get("calidad", []):
         registrar(q.get("id"), r"^Q-\d+$", "calidad")
+
+    # Estructura organizativa: verifica dependencias
+    ids_unidades = set()
+    for u in d.get("estructura_organizativa", []):
+        registrar(u.get("id"), r"^U-\d+$", "estructura_organizativa")
+        ids_unidades.add(u.get("id"))
+    for u in d.get("estructura_organizativa", []):
+        if u.get("reporta_a") and u["reporta_a"] not in ids_unidades:
+            err("estructura_organizativa %s" % u.get("id"), 'reporta_a "%s" no existe en estructura' % u["reporta_a"])
+        for dep in u.get("depende_de", []) or []:
+            if dep not in ids_unidades:
+                err("estructura_organizativa %s" % u.get("id"), 'depende de "%s", que no existe en estructura' % dep)
 
     # estados: acciones como texto u objeto; pasa_a debe apuntar a un estado real
     for e in d.get("estados", []):
@@ -451,46 +448,37 @@ def main():
                         aviso("estados %s/%s" % (e.get("entidad"), x.get("nombre")),
                               'pasa_a "%s" no es un estado declarado de esta entidad' % a["pasa_a"])
 
-    # cobertura: reglas huérfanas y requisitos sin prueba
-    reglas_citadas = set()
-    requisitos_cubiertos = set()
-    for rec in d.get("recorridos", []):
-        for q in rec.get("requisitos", []) or []:
-            if q.get("regla"):
-                reglas_citadas.add(q["regla"])
-        for c in rec.get("criterios", []) or []:
-            if c.get("cubre"):
-                requisitos_cubiertos.add(c["cubre"])
-    for g in todas_g:
-        if g and g not in reglas_citadas:
-            aviso("reglas", '%s no la implementa ningún requisito (campo "regla"): regla huérfana o campo sin rellenar' % g)
-    for rid in sorted(todos_r):
-        if rid and rid not in requisitos_cubiertos:
-            aviso("recorridos", '%s no tiene ninguna prueba que lo cubra (campo "cubre" de los criterios)' % rid)
-
-    # episodios: refs que existan
-    for i, e in enumerate(d.get("episodios", [])):
+    # episodios/antecedentes: refs que existan
+    for i, e in enumerate(d.get("antecedentes", []) or []):
         for ref in e.get("refs", []) or []:
             if ref not in ids:
-                aviso("episodios[%d]" % i, 'ref "%s" no corresponde a ningún id' % ref)
+                aviso("antecedentes[%d]" % i, 'ref "%s" no corresponde a ningún id' % ref)
 
-    # superficie: fichas completas, avisos con canal
-    sup = d.get("superficie") or {}
-    for i, p in enumerate(sup.get("puntos", []) or []):
-        faltan = [c for c in CAMPOS_FICHA if not p.get(c)]
-        if faltan:
-            aviso("superficie.puntos[%d] (%s)" % (i, p.get("nombre", "?")),
-                  "ficha coja, faltan: %s (el método exige los 7 campos)" % ", ".join(faltan))
-    for i, a in enumerate(sup.get("avisos", []) or []):
+    # cumplimiento: estados válidos
+    for i, c in enumerate(d.get("cumplimiento", []) or []):
+        donde = "cumplimiento[%d] (%s)" % (i, c.get("jurisdiccion", "?"))
+        if c.get("origen") not in ORIGENES:
+            err(donde, "falta origen válido")
+        for categoria in ("laboral", "fiscal", "licencias"):
+            for j, req in enumerate(c.get(categoria, []) or []):
+                if req.get("estado") not in ESTADOS_CUMPLIMIENTO:
+                    err(donde + ".%s[%d]" % (categoria, j), "estado inválido")
+
+    # distribucion: avisos con canal, permisos consistentes
+    dist = d.get("distribucion") or {}
+    for i, ent in enumerate(dist.get("entregas", []) or []):
+        if not ent.get("canal"):
+            aviso("distribucion.entregas[%d]" % i, "entrega sin canal (el método exige canal explícito)")
+    for i, a in enumerate(dist.get("avisos", []) or []):
         if not a.get("canal"):
-            aviso("superficie.avisos[%d]" % i, "aviso sin canal (el método exige canal explícito)")
-    perm = sup.get("permisos")
+            aviso("distribucion.avisos[%d]" % i, "aviso sin canal (el método exige canal explícito)")
+    perm = dist.get("permisos")
     if perm:
         acc = set(perm.get("acciones", []))
         for r in perm.get("roles", []) or []:
             for x in r.get("permitidas", []) or []:
                 if x not in acc:
-                    err("superficie.permisos", 'el rol "%s" tiene permitida "%s", que no está en acciones' % (r.get("rol"), x))
+                    err("distribucion.permisos", 'el rol "%s" tiene permitida "%s", que no está en acciones' % (r.get("rol"), x))
 
     for linea in avisos:
         print("AVISO  %s" % linea)

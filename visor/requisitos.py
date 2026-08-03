@@ -32,10 +32,17 @@ BASE = Path(__file__).resolve().parent
 
 def mapa_workspace(workspace):
     workspace = Path(workspace).expanduser().resolve()
-    mapa = workspace / "docs" / "02-flujos" / "planos" / "planos.json"
-    if not mapa.is_file():
-        raise ValueError("no encuentro los planos canónicos en %s" % mapa)
-    return workspace, mapa
+    # Soporte dual: v2 (software) y v3 (planificación empresarial)
+    ruta_v2 = workspace / "docs" / "02-flujos" / "planos" / "planos.json"
+    ruta_v3 = workspace / "docs" / "01-entregables" / "planos" / "planos.json"
+    if ruta_v2.is_file():
+        return workspace, ruta_v2
+    if ruta_v3.is_file():
+        return workspace, ruta_v3
+    raise ValueError(
+        "no encuentro planos canónicos en %s ni %s"
+        % (ruta_v2, ruta_v3)
+    )
 
 
 def puerto_determinista(workspace):

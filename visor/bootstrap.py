@@ -71,6 +71,7 @@ BIAS_POR_TIPO = {
     "automatizacion": "generico.md",  # pipelines, informes, procesos por lotes
     "agente": "generico.md",          # asistentes/chatbots/agentes como producto
     "otro": "generico.md",            # todo lo demás (la estructura vale igual)
+    "empresarial": "generico.md",     # planificación empresarial v3 (sin receta tecnológica)
 }
 
 IGNORAR = {"__pycache__", ".DS_Store"}
@@ -718,7 +719,7 @@ def main():
             morir(f"plantilla incompleta: falta {pieza} en {PLANTILLA}")
 
     if args.compilar:
-        r = subprocess.run([sys.executable, str(BASE / "compilar.py"), "--mapa", str(mapa)],
+        r = subprocess.run([sys.executable, str(BASE / "compilar.py"), "--planos", str(mapa)],
                            capture_output=True, text=True)
         if r.returncode != 0:
             morir(f"compilar.py falló:\n{r.stdout}{r.stderr}")
