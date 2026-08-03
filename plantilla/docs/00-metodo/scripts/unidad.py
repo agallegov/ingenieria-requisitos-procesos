@@ -22,6 +22,7 @@ Exit 0 si todo bien; exit 1 con mensaje claro si una precondición bloquea.
 """
 import argparse
 import datetime
+import posixpath
 import re
 import shutil
 import subprocess
@@ -151,25 +152,37 @@ def frontmatter(path):
 
 
 def ficheros_de(fm):
-    """Conjunto de rutas que declara una unidad. Mismo criterio que lint_metodo.py."""
+    """Conjunto de rutas NORMALIZADAS que declara una unidad. Mismo criterio que lint_metodo.py.
+
+    La puerta de paralelismo compara CONJUNTOS DE CADENAS, así que `api/x.py`, `./api/x.py` y
+    `API/x.py` —el mismo fichero en disco, en macOS y en Windows— eran tres rutas distintas y
+    dos unidades podían declarar el mismo fichero con el visto bueno de la puerta. Y esas
+    variantes no son rebuscadas: las produce solo un agente que copia rutas de contextos
+    distintos. Se normaliza el separador, los `./` y las mayúsculas.
+
+    `casefold` acerca de más en sistemas de ficheros sensibles a mayúsculas (Linux): allí
+    `API/x.py` y `api/x.py` PUEDEN ser dos ficheros. Se prefiere ese error, que bloquea un
+    paralelismo legítimo y raro, al contrario, que bendice un choque real.
+    """
     crudos = (fm.get("ficheros") or "").strip("[]").split(",")
-    return {f.strip().strip("'\"") for f in crudos if f.strip().strip("'\"")}
+    limpias = set()
+    for crudo in crudos:
+        ruta = crudo.strip().strip("'\"")
+        if not ruta:
+            continue
+        limpias.add(posixpath.normpath(ruta.replace("\\", "/")).casefold())
+    return limpias
 
 
 def aprobacion(fm):
     """Fecha de aprobación del contrato, o None si nadie lo ha aprobado todavía.
 
     `aprobado:` es el ÚNICO rastro de que el usuario dio su OK. Se exige fecha ISO a propósito:
-    un `sí` lo teclea cualquiera sin haber leído nada, una fecha dice CUÁNDO se leyó.
+    un `sí` lo teclea cualquiera sin haber leído nada, una fecha dice CUÁNDO se leyó. Y no
+    puede ser futura (mismo criterio que el OK del usuario, `fecha_ok`): `aprobado: 2030-01-01`
+    es lo que teclea un agente que deja "preparada" la aprobación, no un usuario que leyó.
     """
-    valor = (fm.get("aprobado") or "").strip().strip("`'\"")
-    if not RE_FECHA.match(valor):
-        return None
-    try:
-        datetime.date.fromisoformat(valor)
-    except ValueError:
-        return None
-    return valor
+    return fecha_ok(fm.get("aprobado"))
 
 
 def severidad_declarada(texto):
@@ -840,21 +853,107 @@ def sin_cosechar(texto):
     return pendientes
 
 
-def rama_mergeada(repo, rama, principal):
-    """(mergeada, motivo). Si la rama ya no existe, el merge se da por hecho (cierre a medias)."""
-    if git(repo, "rev-parse", "--verify", "--quiet", f"refs/heads/{rama}", silencioso=True)[0]:
-        return True, "la rama ya no existe (cierre a medias: sigo con lo que falta)"
-    base = principal
-    if git(repo, "rev-parse", "--verify", "--quiet", f"refs/heads/{principal}",
-           silencioso=True)[0]:
-        base = f"origin/{principal}"
-        if git(repo, "rev-parse", "--verify", "--quiet", f"refs/remotes/{base}",
-               silencioso=True)[0]:
-            return False, f"no encuentro la rama principal '{principal}' en el repo de código"
-    if git(repo, "merge-base", "--is-ancestor", rama, base, silencioso=True)[0] == 0:
-        return True, f"la rama está dentro de {base}"
-    return False, (f"la rama '{rama}' NO está fusionada en {base}: cerrar ahora dejaría el "
-                   f"trabajo fuera de la rama principal (que es perderlo)")
+def sha_de(repo, referencia):
+    """El SHA de una referencia (rama, remoto o SHA suelto), o None si no existe en el repo."""
+    if not referencia:
+        return None
+    codigo, salida = git(repo, "rev-parse", "--verify", "--quiet", f"{referencia}^{{commit}}",
+                         silencioso=True)
+    return salida.strip() if codigo == 0 and salida.strip() else None
+
+
+def base_principal(repo, principal):
+    """La rama contra la que se mide la fusión: la principal local, o la del remoto."""
+    if sha_de(repo, f"refs/heads/{principal}"):
+        return principal
+    if sha_de(repo, f"refs/remotes/origin/{principal}"):
+        return f"origin/{principal}"
+    return None
+
+
+def rama_mergeada(repo, rama, principal, fusion_declarada=""):
+    """(mergeada, motivo, prueba_fuerte, sha). Prueba de que el trabajo está en la principal.
+
+    Antes, que la rama no existiera se tomaba como prueba de que ya se había fusionado, para
+    poder reanudar un cierre a medias. Es exactamente lo contrario: la forma NORMAL de perder
+    trabajo es un `git branch -D` sobre una rama sin fusionar —que es lo que el propio git
+    sugiere cuando `-d` se queja— y el cierre lo archivaba como `mergeada`, con acta de que se
+    entregó. Ausencia de rama no es prueba de nada.
+
+    Se buscan pruebas de verdad, en orden de fiabilidad, y basta con que una diga que sí:
+
+      1. la rama local,
+      2. `origin/<rama>` — que ya no se borra en el cierre, justo para esto,
+      3. el SHA que este mismo cierre anotó (`fusion:`) o el que declara `--fusion`,
+      4. como último recurso, un commit de la principal que NOMBRE a la unidad: es la huella
+         que deja un squash merge, donde el commit original no queda como ancestro de nada.
+         Es prueba débil y se dice que lo es; sirve para no bloquear un flujo legítimo.
+
+    Sin ninguna de las cuatro, FAIL: cerrar ahí es firmar una entrega que no existe.
+    """
+    base = base_principal(repo, principal)
+    if base is None:
+        return False, f"no encuentro la rama principal '{principal}' en el repo de código", \
+            False, ""
+
+    # Si la rama LOCAL existe, manda ella y nadie más: es la que tiene el trabajo más nuevo.
+    # Mirar además `origin/<rama>` aquí bendeciría un cierre con la foto vieja del remoto
+    # mientras quedan commits locales sin fusionar. Los otros dos rastros solo entran en juego
+    # cuando la rama ya no está, que es justo el agujero que se está tapando.
+    if sha_de(repo, f"refs/heads/{rama}"):
+        candidatos = [(f"refs/heads/{rama}", f"la rama {rama}")]
+    else:
+        candidatos = [(f"refs/remotes/origin/{rama}", f"origin/{rama}")]
+        if fusion_declarada:
+            candidatos.append((fusion_declarada, f"el commit anotado {fusion_declarada[:8]}"))
+
+    vivos = [(sha, etiqueta) for sha, etiqueta in
+             ((sha_de(repo, ref), etiqueta) for ref, etiqueta in candidatos) if sha]
+    for sha, etiqueta in vivos:
+        if git(repo, "merge-base", "--is-ancestor", sha, base, silencioso=True)[0] == 0:
+            return True, f"{etiqueta} está dentro de {base} ({sha[:8]})", True, sha
+
+    # Ninguna referencia viva es ancestro de la principal. Antes de bloquear, la huella del
+    # squash: el método exige NNN-slug en el título del PR, y el squash lo hereda como asunto.
+    codigo, salida = git(repo, "log", base, f"--grep={rama}", "--format=%H %s", "-1",
+                         silencioso=True)
+    if codigo == 0 and salida.strip():
+        sha, _, asunto = salida.strip().partition(" ")
+        return True, (f"prueba INDIRECTA: {base} tiene «{sha[:8]} {asunto}», que nombra a "
+                      f"{rama} (huella típica de un squash merge). Ninguna referencia de la "
+                      f"unidad es ancestro de {base}"), False, sha
+
+    if vivos:
+        etiquetas = " ni ".join(etiqueta for _, etiqueta in vivos)
+        return False, (f"{etiquetas} NO está fusionada en {base}: cerrar ahora dejaría el "
+                       f"trabajo fuera de la rama principal (que es perderlo)"), False, ""
+    return False, (f"no queda NI UNA prueba de que {rama} se fusionara en {base}: ni la rama "
+                   f"local, ni origin/{rama}, ni un 'fusion:' anotado en la ficha, ni un "
+                   f"commit de {base} que la nombre. Una rama que ya no existe NO prueba que "
+                   f"se fusionara: prueba que alguien la borró. Recupérala (git reflog) o, si "
+                   f"sabes con qué commit entró, cierra con --fusion <sha>"), False, ""
+
+
+def anotar_fusion(ruta, sha):
+    """Deja el commit que probó la fusión en el frontmatter, ANTES de borrar nada.
+
+    Es la única forma de que un cierre reanudado —o uno en un proyecto sin remoto, donde no
+    hay `origin/<rama>` que mirar— siga teniendo prueba después de que desaparezca la rama.
+    """
+    if not sha:
+        return False
+    texto = ruta.read_text(encoding="utf-8")
+    if re.search(r"^fusion:\s*\S", texto, flags=re.M):
+        return False
+    lineas = texto.splitlines()
+    if not lineas or lineas[0].strip() != "---":
+        return False
+    for i, linea in enumerate(lineas[1:], start=1):
+        if linea.strip() == "---":
+            lineas.insert(i, f"fusion: {sha}")
+            ruta.write_text("\n".join(lineas) + "\n", encoding="utf-8")
+            return True
+    return False
 
 
 def escribir_ok_usuario(ruta, fecha):
@@ -968,13 +1067,18 @@ def cmd_cerrar(args):
 
     # --- Puerta 5: la rama está fusionada en la principal ------------------------------------
     hay_repo = git(repo, "rev-parse", "--is-inside-work-tree", silencioso=True)[0] == 0
+    sha_fusion = ""
     if documental:
         ok("unidad documental: sin rama ni worktree que comprobar")
     elif not hay_repo:
         problemas.append(f"no encuentro el repo de código en {rel(repo)} (repos.yaml)")
     else:
-        fusionada, motivo = rama_mergeada(repo, nombre, principal)
-        (ok if fusionada else problemas.append)(motivo)
+        fusionada, motivo, fuerte, sha_fusion = rama_mergeada(
+            repo, nombre, principal, args.fusion or fm.get("fusion", ""))
+        if not fusionada:
+            problemas.append(motivo)
+        else:
+            (ok if fuerte else warn)(motivo)
 
     if problemas:
         err(f"\n  CIERRE BLOQUEADO ({len(problemas)}):")
@@ -982,6 +1086,12 @@ def cmd_cerrar(args):
             err(f"       · {p}")
         err("\n  El cierre es indivisible: se arregla lo de arriba y se vuelve a ejecutar.")
         return 1
+
+    # La prueba de la fusión se escribe ANTES de tocar nada, y vale para los dos caminos: si
+    # este cierre se queda en `en_validacion` y días después alguien borra la rama, la ficha
+    # sigue sabiendo con qué commit entró el trabajo.
+    if sha_fusion and anotar_fusion(ruta, sha_fusion):
+        ok(f"prueba de fusión anotada en {rel(ruta)} (fusion: {sha_fusion[:8]})")
 
     # --- Cierre parcial: todo hecho salvo lo que solo puede hacer el usuario ------------------
     if not ok_usuario:
@@ -1031,12 +1141,14 @@ def cmd_cerrar(args):
             codigo, salida = git(repo, "branch", "-d", nombre)
             (ok if codigo == 0 else warn)(
                 f"rama local {nombre}: {'borrada' if codigo == 0 else salida}")
-        if git(repo, "remote", "get-url", "origin", silencioso=True)[0] == 0 and \
-                git(repo, "rev-parse", "--verify", "--quiet",
-                    f"refs/remotes/origin/{nombre}", silencioso=True)[0] == 0:
-            codigo, salida = git(repo, "push", "origin", "--delete", nombre)
-            (ok if codigo == 0 else warn)(
-                f"rama remota origin/{nombre}: {'borrada' if codigo == 0 else salida}")
+        # La rama REMOTA no se borra, a propósito. Es la única copia del trabajo que no vive
+        # en este disco, y borrarla convierte cualquier accidente local en pérdida definitiva.
+        # Cuesta nada dejarla y es la prueba que mira `rama_mergeada` cuando la local ya no
+        # está. Si el repositorio tiene "delete branch on merge" activado en su servidor, esto
+        # no lo impide: eso se decide allí, no aquí.
+        if git(repo, "rev-parse", "--verify", "--quiet",
+               f"refs/remotes/origin/{nombre}", silencioso=True)[0] == 0:
+            ok(f"rama remota origin/{nombre}: se conserva (respaldo del trabajo entregado)")
 
     # Camino B (merge local, sin `gh`): si la principal se queda sin empujar, la SIGUIENTE
     # unidad nacerá de una `origin/<principal>` vieja y su merge ya no será fast-forward.
@@ -1185,6 +1297,11 @@ def main():
                             "pone el usuario, igual que 'aprobado:' al despachar. Sin ella, si "
                             "todo lo demás está en verde, la unidad pasa a 'en_validacion': "
                             "deja de contar para el tope pero NO queda cerrada")
+    p_cer.add_argument("--fusion", default="", metavar="SHA",
+                       help="commit con el que el trabajo entró en la rama principal. Solo "
+                            "hace falta si no queda rastro de la rama (ni local, ni remota, "
+                            "ni anotada). No es un pase: el SHA tiene que existir y estar "
+                            "dentro de la principal, o el cierre sigue bloqueado")
     p_cer.set_defaults(func=cmd_cerrar)
 
     p_est = sub.add_parser("estado", help="resumen: unidades, bugs, worktrees y su coherencia")

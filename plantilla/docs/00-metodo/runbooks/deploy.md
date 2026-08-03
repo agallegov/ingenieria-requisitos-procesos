@@ -12,9 +12,12 @@ anotado qué commit corre dónde, desde cuándo y quién lo puso.
 
 ## Precondiciones que BLOQUEAN (se comprueban antes de tocar la máquina)
 
-1. `<HARD-GATE>` **Plano de deploy escrito**: `docs/conocimiento/plano-deploy.md` (entrevista de
-   arranque del rol, `roles.md`). Máquinas, etapas, comandos y quién da el OK salen de ahí, nunca
-   de la memoria. Sin plano, lo primero de la sesión es la entrevista.
+1. `<HARD-GATE>` **Plano de deploy escrito**: `docs/conocimiento/plano-deploy.md` con su ficha
+   §3bis completa (`etapa`, `camino`, `vuelta_atras`, `datos`, `vigilancia`) — es lo que
+   comprueba el gate del paso 3. Máquinas, comandos y quién da el OK salen de ahí, nunca de la
+   memoria. Sin plano, lo primero de la sesión es la entrevista de arranque del rol
+   (`roles.md`); y si el usuario **no ha desplegado nunca nada**, esa entrevista no tiene
+   respuestas: se empieza por `runbooks/primer-despliegue.md`.
 2. `<HARD-GATE>` **Backup verificado = restaurado de prueba**, hecho AHORA (no vale el de anoche
    si hay migración de datos). El detalle no se repite aquí: `migracion.md` §Subir de etapa, paso
    1. Las dos evidencias —volcado y restauración— van pegadas en la ficha.

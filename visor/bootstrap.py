@@ -73,7 +73,8 @@ IGNORAR = {"__pycache__", ".DS_Store"}
 # El método se publica mediante una lista cerrada. Así un apunte local o un residuo
 # histórico no puede colarse en todos los workspaces por estar dentro de la carpeta.
 RUNBOOKS = ("adopcion", "auditoria", "bug", "cierre", "deploy", "documentacion", "expres",
-            "feature", "hotfix", "investigacion", "migracion", "planificacion", "refactor")
+            "feature", "hotfix", "investigacion", "migracion", "planificacion",
+            "primer-despliegue", "refactor")
 PLANTILLAS = ("agents-repo-codigo", "bug", "conocimiento", "decision", "despliegue",
               "especificacion", "hallazgos", "informe", "investigacion", "plano-operativo",
               "roadmap", "sintesis")
@@ -90,6 +91,7 @@ DECISIONES = (
     "008-entrevistas-de-arranque-de-roles-operativos.md",
     "009-cierre-scriptado-y-entorno-comprobado.md",
     "010-estado-en-validacion-y-guardianes-que-miran.md",
+    "011-salida-del-trabajo-probada-y-deploy-sin-stack.md",
 )
 METODO_RAIZ = (
     "README.md", "roles.md", "auditoria-calidad.md", "auditoria-metodo.md",
@@ -225,7 +227,7 @@ def generar_indice_bugs():
     )
 
 
-def generar_repos_yaml(nombre, remoto):
+def generar_repos_yaml(nombre, remoto, rama_principal="main"):
     recrear = ("# Re-crear este workspace en otra máquina:\n"
                "#   git clone <remoto-del-meta>\n"
                "#   python setup.py\n")
@@ -236,14 +238,14 @@ def generar_repos_yaml(nombre, remoto):
         "codigo:\n"
         f"  nombre: {nombre}\n"
         f"  remoto: {remoto}\n"
-        "  rama_principal: main\n"
+        f"  rama_principal: {rama_principal}\n"
         "  ruta_local: main/\n"
         "  # baseline_sha: <sha>   # solo en repos ADOPTADOS: el detector de drift solo\n"
         "  #                         cuenta commits POSTERIORES a este (lo escribe la adopción).\n"
         "\n"
         f"{recrear}"
         "# Crear worktree de una unidad (desde main/):\n"
-        "#   git -C main worktree add ../worktrees/NNN-slug -b NNN-slug origin/main\n"
+        f"#   git -C main worktree add ../worktrees/NNN-slug -b NNN-slug origin/{rama_principal}\n"
         "# Borrarlo en el cierre:\n"
         "#   git -C main worktree remove ../worktrees/NNN-slug && git -C main branch -d NNN-slug\n"
     )
@@ -402,20 +404,35 @@ def remoto_esta_vacio(url):
     return not out.strip()
 
 
+def rama_por_defecto(url):
+    """La rama principal REAL del remoto, preguntándosela a él.
+
+    Un repo que ya existía puede llamarla `master`, `develop` o cualquier cosa. Dar por hecho
+    `main` mataba la adopción de código existente en el primer comando del Modo B: el clon
+    fallaba y el mensaje hablaba de una rama que en ese repo no existe.
+    """
+    rc, out = git(Path.cwd(), "ls-remote", "--symref", url, "HEAD")
+    if rc == 0:
+        m = re.search(r"^ref:\s+refs/heads/(\S+)\s+HEAD", out, flags=re.M)
+        if m:
+            return m.group(1)
+    return "main"
+
+
 def remoto_tiene_codigo(url):
     """Distingue un repo con implementación de uno que solo tiene README/CI de arranque."""
     if remoto_esta_vacio(url):
         return False
     with tempfile.TemporaryDirectory(prefix="ingenieria-requisitos-detectar-") as temporal:
+        # Sin `--branch`: se clona la rama por defecto que diga el remoto, sea cual sea.
         r = subprocess.run(
-            ["git", "clone", "--depth", "1", "--branch", "main", "--no-checkout",
-             url, temporal],
+            ["git", "clone", "--depth", "1", "--no-checkout", url, temporal],
             capture_output=True,
             text=True,
         )
         if r.returncode:
             morir(
-                f"no puedo inspeccionar la rama main de {url}:\n"
+                f"no puedo inspeccionar el contenido de {url}:\n"
                 f"{r.stdout}{r.stderr}"
             )
         listado = subprocess.run(
@@ -499,7 +516,7 @@ def montar_git(destino, nombre_codigo, titulo, remoto_codigo, remoto_meta):
     # --- El repo de código, en main/ ---
     main_dir = destino / "main"
     if remoto_codigo and not remoto_esta_vacio(remoto_codigo):
-        rc, out = git(destino, "clone", "--branch", "main", remoto_codigo, "main")
+        rc, out = git(destino, "clone", remoto_codigo, "main")   # su rama por defecto, no `main`
         if rc != 0:
             morir(f"no pude clonar el repo de código ({remoto_codigo}):\n{out}")
     else:
@@ -637,6 +654,8 @@ def main():
 
     # Brownfield: si el repo de código YA tiene contenido, el stack ya está elegido —
     # viaja el bias brownfield (adopción obligatoria como primera unidad), sea cual sea --tipo.
+    # La rama principal se le PREGUNTA al remoto: un repo adoptado puede ser `master`.
+    rama_codigo = rama_por_defecto(remoto_codigo) if remoto_codigo else "main"
     brownfield = bool(remoto_codigo) and remoto_tiene_codigo(remoto_codigo)
     fichero_bias = "brownfield.md" if brownfield else BIAS_POR_TIPO[args.tipo]
 
@@ -717,7 +736,7 @@ def main():
     # setup.py: deja el workspace listo en cualquier ordenador (lee repos.yaml, clona o
     # actualiza main/, crea las carpetas que git no trae y linta). Idempotente.
     shutil.copyfile(PLANTILLA / "setup.py", destino / "setup.py")
-    (destino / "repos.yaml").write_text(generar_repos_yaml(nombre_codigo, remoto),
+    (destino / "repos.yaml").write_text(generar_repos_yaml(nombre_codigo, remoto, rama_codigo),
                                         encoding="utf-8")
     ignora = (PLANTILLA / "gitignore").read_text(encoding="utf-8")
     (destino / ".gitignore").write_text(ignora, encoding="utf-8")

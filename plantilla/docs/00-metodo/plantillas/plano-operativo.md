@@ -50,6 +50,20 @@ actualizado: YYYY-MM-DD
 |---|---|---|---|
 | <p.ej. no hay backup de la base de datos> | <un fallo de disco se lleva el negocio> | `NNN-backup-pg-dump-diario` (tipo `feature`) | propuesta / en ROADMAP / NNN asignado |
 
+## 3bis · Ficha de despliegue (SOLO `rol: deploy` — la lee `scripts/lint_deploy.py`)
+
+> Las cinco decisiones que tiene todo despliegue, se despliegue como se despliegue. El gate
+> no las juzga: comprueba que están DECIDIDAS. Una casilla con el menú sin elegir o con un
+> hueco `<...>` cuenta como no decidida y cierra el gate.
+
+| clave | valor |
+|---|---|
+| `etapa` | <local — solo el usuario · lan — la gente de su sitio · internet — cualquiera con el enlace> |
+| `camino` | <el comando o los pasos EXACTOS con que sube: `flyctl deploy`, `docker compose up -d`, `eas build`, "copiar la carpeta X a la máquina Y"> |
+| `vuelta_atras` | <qué se deshace, con qué, y en cuánto tiempo> |
+| `datos` | <qué se copia y adónde antes de tocar nada, y cuándo se restauró la última prueba — o `SIN DATOS` si esta app no guarda nada propio> |
+| `vigilancia` | <dónde se mira si falla: fichero de registro, panel, comando> |
+
 ## 4 · Comandos y accesos
 
 > Copiables y verificados: el que los escribe los ha ejecutado. Si un comando no se ha

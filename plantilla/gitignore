@@ -10,6 +10,7 @@ worktrees/*
 !.private/README.md
 .runtime/*
 !.runtime/README.md
+.caja-negra/
 .env
 .env.*
 !.env.example

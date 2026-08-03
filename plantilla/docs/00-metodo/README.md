@@ -128,9 +128,10 @@ fallo crítico permite una segunda ronda. Preparar hoy problemas que aún no exi
   entorno, suite, e2e, instancia para el usuario y seguridad).
 - `roles.md` — los roles del padre (analista de flujos, constructor, observabilidad, deploy),
   con la entrevista de arranque `<HARD-GATE>` de los dos operativos (ADR-008).
-- `decisiones/` — **los ADR DEL MÉTODO** (`ADR-001`…`ADR-008`): el porqué de estas reglas.
-  Se leen, no se editan; cuando un runbook cita "ADR-005", está aquí. Los ADR de TU proyecto
-  van en `docs/decisiones/`, con numeración propia desde `001` (ver `decisiones/README.md`).
+- `decisiones/` — **los ADR DEL MÉTODO**: el porqué de estas reglas. El índice es el listado
+  de la carpeta (`ls`), no una lista escrita a mano que se queda atrás. Se leen, no se editan;
+  cuando un runbook cita "ADR-005", está aquí. Los ADR de TU proyecto van en
+  `docs/decisiones/`, con numeración propia desde `001`.
 - `requisitos/` — el kit heredado de la herramienta de ingeniería de requisitos: runbook,
   visor web y scripts para mantener vivos los `planos.json` de `02-flujos/` (ADR-007).
 - `auditoria-metodo.md`, `auditoria-calidad.md`, `auditoria-seguridad.md`,

@@ -56,6 +56,18 @@ Sin esta excepción escrita, el método obligaba a improvisar justo en el paso m
    pedí" no se discute: se abre una unidad tipo `bug`. La fecha de ese OK es lo que se le
    pasa al comando del paso 6.
 
+   **Lo que se le pega en la conversación** (esto, y nada más):
+
+   | unidad | qué se hizo | estado |
+   |---|---|---|
+   | 007-albaranes | editar un albarán facturado recalcula el total | listo, esperando tu OK |
+
+   App corriendo en: `<enlace>` · Ficha: `docs/05-trabajo/007-albaranes/especificacion.md`
+
+   …y debajo, la tabla **"Cómo lo pruebas tú"** de esa especificación (o la §6 de la ficha,
+   si es un bug), tal cual. Si está en blanco, se escribe ANTES de llamarlo: sin ella el
+   usuario devuelve un "me parece bien" que firma una entrega sin haber comprobado nada.
+
    **Si el usuario no está disponible ahora** (ADR-010): ejecuta el paso 6 SIN `--ok-usuario`.
    Aplica todas las demás puertas y, si están en verde, deja la unidad en `en_validacion`:
    fusionada y terminada, esperando solo a una persona. Deja de contar para el tope de trabajo
@@ -68,9 +80,18 @@ Sin esta excepción escrita, el método obligaba a improvisar justo en el paso m
 
    Comprueba lo que no se puede saltar (OK del usuario con fecha real, revisión con veredicto
    y firma, worktree sin nada sin guardar, rama de verdad fusionada) y solo entonces hace lo
-   mecánico: deja escrito el OK, pone la unidad en `mergeada`, borra el worktree y la rama
-   **local y remota**, archiva la unidad (los bugs no se archivan, ADR-006) y pasa el linter.
-   Si algo falla, dice cuál y no toca nada.
+   mecánico: deja escrito el OK, anota en la ficha el commit con el que entró el trabajo
+   (`fusion:`), pone la unidad en `mergeada`, borra el worktree y la rama **local**, archiva
+   la unidad (los bugs no se archivan, ADR-006) y pasa el linter. Si algo falla, dice cuál y
+   no toca nada.
+
+   **La rama remota NO se borra.** `origin/NNN-slug` es la única copia del trabajo que no vive
+   en este disco: se queda para siempre, y es lo que mira el cierre cuando la rama local ya no
+   está. Una rama que no existe no prueba que se fusionara — prueba que alguien la borró — y
+   ese es el único camino por el que este método puede perder trabajo entregado. Si no queda
+   ningún rastro (proyecto sin remoto, rama borrada y ficha sin `fusion:`), el cierre BLOQUEA
+   y solo se desatasca con `--fusion <sha>`, que exige un commit que exista y esté de verdad
+   dentro de la principal.
 7. **Lo que el script no hace, porque es criterio y no mecánica:** aplicar los deltas
    declarados a `02-flujos/` y pasar el flujo a `entregada` · promover los hallazgos a
    `conocimiento/`, `decisiones/` o al ROADMAP · actualizar `ESTADO.md` (e `INDICE.md` si es

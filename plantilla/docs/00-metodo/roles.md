@@ -102,6 +102,10 @@ Reglas de la entrevista:
 máquina.** Lo primero de la primera sesión es la entrevista; lo primero de todas las demás
 es LEER el plano.
 
+**Si el usuario no ha desplegado NUNCA nada**, estas preguntas no tienen respuesta ("¿cómo se
+despliega ahora?" → "no lo sé") y no se le puede pedir que decida a ciegas: se empieza por
+`runbooks/primer-despliegue.md`, que pregunta por su negocio y deduce lo técnico.
+
 Se pregunta al usuario, en su idioma, una por una:
 
 1. **¿Dónde corre esto hoy, y dónde debería correr?** (¿en tu ordenador, en un equipo de la

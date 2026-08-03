@@ -95,4 +95,7 @@ actualizado: YYYY-MM-DD
 - **Revisión (revisor fresco, ANTES del merge):** LIMPIO | HUECOS DE CORRECCIÓN → <cuáles;
   cada uno vuelve al subagente antes del merge> · Fecha: YYYY-MM-DD
 - Merge del PR: — · Suite end-to-end completa tras el merge: — · Instancia lanzada: —
+- **Cómo lo pruebas tú** (se escribe ANTES de llamar al usuario y se le pega con el enlace a
+  la app corriendo): 1. Abre <dónde>. 2. Repite <lo que fallaba, con el dato del reporte>.
+  3. Deberías ver <lo correcto>. 4. NO debe haber cambiado: <lo de al lado>.
 - **Validación del usuario:** PENDIENTE | OK (YYYY-MM-DD) | REABIERTO → <por qué; vuelta a la sección 2>

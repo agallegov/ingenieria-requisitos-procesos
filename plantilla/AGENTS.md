@@ -38,6 +38,7 @@ y trabajado en `worktrees/` (una copia por unidad de trabajo). Ambos ignorados p
 | Saber qué hay instalado en esta máquina | `python docs/00-metodo/scripts/doctor.py` |
 | Cambio trivial que no cambia comportamiento | `docs/00-metodo/runbooks/expres.md` |
 | Producción caída / urgencia | `docs/00-metodo/runbooks/hotfix.md` |
+| "Quiero que lo use mi gente" / ponerlo en internet | `docs/00-metodo/runbooks/primer-despliegue.md` (la primera vez) · `runbooks/deploy.md` (las demás) |
 | Añadir, cambiar o aprobar flujos y requisitos | `docs/00-metodo/requisitos/RUNBOOK.md` |
 | Consultar cimientos técnicos del proyecto | `docs/03-investigacion/SINTESIS.md` (lo escribe la fase 3) |
 | Ver el roadmap | `docs/04-planificacion/ROADMAP.md` (lo escribe la fase 4) |
@@ -115,6 +116,11 @@ y trabajado en `worktrees/` (una copia por unidad de trabajo). Ambos ignorados p
   lo generado (logs, capturas, dumps), en `.runtime/`. Ambos fuera de git.
 - **Escribir sobre material del usuario se anuncia y se deja escrito** (su instancia, sus datos).
 - **Antes de afirmar que algo funciona, ejecutar la verificación que lo demuestra.**
+- **Caja negra.** Todo lo raro que te encuentres y tengas que arreglar sobre la marcha —algo
+  que no estaba donde decía, un comando que falla por el entorno, un rodeo que hubo que dar—
+  se anota en `.caja-negra/diario.md` (fuera de git; créalo si no existe). Una línea:
+  `AAAA-MM-DD · qué pasó · qué hice · dónde`. No es documentación del proyecto: es el rastro
+  de lo que cuesta trabajar aquí, y es lo que permite arreglar la causa en vez del síntoma.
 
 ## Autoridad de la información (qué fuente manda en conflicto)
 

@@ -258,8 +258,8 @@ orden"):
   (el bootstrap se niega a entregar un workspace mal formado).
 - El workspace queda apuntado en el registro local ignorado por Git. Así una
   versión futura puede localizarlo. `METODO.json` conserva la huella de la
-  plantilla. Una actualización posterior la juzga un agente siguiendo
-  `ACTUALIZAR-PROYECTOS.md`; la huella orienta, nunca sobrescribe. Si el registro
+  plantilla, para saber de un vistazo si ese workspace va atrasado; el reparto
+  de una versión nueva es el Modo D, al final de este documento. Si el registro
   no está disponible, puede rehacerse con
   `python visor/proyectos.py registrar RUTA_DEL_WORKSPACE`.
 
@@ -768,6 +768,16 @@ enteran solos**: cada uno es un repositorio aparte y su copia del método salió
 de aquí por copia de ficheros, no por clonado. Un `git pull` allí trae el
 historial de ESE proyecto; del método, nada. Esto es lo que lo reparte.
 
+**Cómo se deshace — que es lo que permite que todo lo demás sea simple.** Antes
+de tocar un solo fichero, `aplicar` commitea el estado actual del workspace (y
+hace `git init` si aún no era un repositorio). Volver atrás es
+`git checkout <ese commit>`, y ese commit queda escrito en
+`docs/00-metodo/HISTORIAL.md`. Por eso el método se sobrescribe ENTERO, sin
+clasificar fichero por fichero ni preguntar por cada uno: si ese proyecto había
+adaptado un runbook a su gusto, esa versión no se pierde — está a un checkout de
+distancia. Si NO se puede dejar el punto de retorno (git sin identidad
+configurada en esa máquina), no se toca nada y se dice por qué.
+
 0. **Encuentra los proyectos.** El registro local solo conoce lo que se creó en
    ESTA máquina con esta herramienta; un workspace clonado, movido o hecho en
    otro ordenador no está. Así que primero se rastrea y se registra lo que
@@ -782,31 +792,25 @@ historial de ESE proyecto; del método, nada. Esto es lo que lo reparte.
 
    `python RUTA_HERRAMIENTA/visor/actualizar.py revisar --todos`
 
-   Sale, proyecto por proyecto, qué se actualizaría solo, qué se añadiría, qué
-   está modificado ALLÍ y qué sobra. Cuéntaselo en cristiano ("de tus tres
-   proyectos, dos están al día y uno tiene veintisiete cosas nuevas del
-   método") y **pregúntale cuáles quiere actualizar**: todos, algunos o
-   ninguno.
+   Sale, proyecto por proyecto, qué ficheros del método cambian y cuáles hay
+   allí que el método ya no publica (esos NO se borran: solo se avisan).
+   Cuéntaselo en cristiano ("de tus tres proyectos, dos están al día y uno tiene
+   veintisiete cosas nuevas del método") y **pregúntale cuáles quiere
+   actualizar**: todos, algunos o ninguno.
 
 2. **Aplica lo que te diga:**
 
    `python RUTA_HERRAMIENTA/visor/actualizar.py aplicar --todos` (o con la ruta
-   de uno). Exige que el workspace esté limpio y sin trabajo en vuelo —no se le
-   cambia el método por debajo a una unidad abierta—, escribe solo lo que nadie
-   había tocado allí, deja en `METODO.json` la huella de cada fichero para que
-   la próxima vez sea exacta, y pasa el linter de ese workspace.
+   de uno). No exige nada del workspace —ni árbol limpio ni trabajo cerrado—
+   porque el punto de retorno lo deja él mismo. Sobrescribe el método, lo anota
+   en el HISTORIAL, commitea y pasa el linter de ese workspace.
 
-3. **Lo modificado allí lo juzgas tú, no el script.** Para cada fichero que ese
-   proyecto había adaptado a propósito: compáralo, decide si es personalización
-   que se conserva (y le adaptas la mejora), regla vieja que se retira, o duda
-   que se pregunta. El detalle del criterio y los límites duros están en
-   `ACTUALIZAR-PROYECTOS.md`. Nunca se sobrescribe a ciegas y nunca se borra
-   nada por sobrar.
-
-4. **El commit lo pide el usuario.** Enseña `git -C <workspace> diff`, explica
-   qué cambió en negocio ("ahora el cierre es un comando y avisa si algo se
-   quedó sin guardar") y commitea solo si dice que sí. Si ese workspace tiene
-   remoto, sus otras máquinas ya sí se lo bajan con un `git pull` normal.
+3. **Enséñale el resultado.** `git -C <workspace> log --oneline -2` y
+   `git -C <workspace> show`: qué ha cambiado, contado en negocio ("ahora el
+   cierre avisa si algo se quedó sin guardar"). Si algo no le convence, el
+   comando para deshacerlo está escrito en `docs/00-metodo/HISTORIAL.md`. Si ese
+   workspace tiene remoto, un `git push` y sus otras máquinas se lo bajan con un
+   `git pull` normal.
 
 Límites que el modo D no cruza jamás: no toca `01-constitucion/`,
 `02-flujos/`, `03-investigacion/`, `04-planificacion/`, `05-trabajo/`,

@@ -29,10 +29,14 @@ files) de su aplicación, con una web local para que los valide mirando.
    trabajes a pelo saltándote el método. Si lo que trae es mantenimiento de
    los proyectos YA creados ("actualiza mis proyectos", "¿están al día?"),
    es el **Modo D** del RUNBOOK: `visor/actualizar.py revisar --todos`,
-   preguntar cuáles quiere y aplicar; el criterio para lo que ese workspace
-   haya adaptado está en `ACTUALIZAR-PROYECTOS.md`. Si dudas de
+   preguntar cuáles quiere y aplicar. Si dudas de
    si algún flujo aplica, la duda se resuelve leyendo `RUNBOOK.md`, nunca
    concluyendo desde este resumen que "ningún flujo aplica".
+1bis. **Caja negra.** Todo lo raro que te encuentres trabajando aquí y tengas que arreglar
+   sobre la marcha —algo que no estaba donde el documento decía, un script que falla por el
+   entorno, un rodeo que hubo que dar— se anota en `.caja-negra/diario.md` (fuera de git;
+   créalo si no existe). Una línea: `AAAA-MM-DD · qué pasó · qué hice · dónde`. Es el rastro
+   de lo que cuesta usar esta herramienta, y es de donde salen los arreglos de causa.
 2. Regla dura: NO guardes proyectos dentro de esta carpeta. La única escritura
    local permitida es el registro ignorado `.ingenieria-requisitos-local/`.
    Ni proyectos, ni
@@ -46,4 +50,5 @@ files) de su aplicación, con una web local para que los valide mirando.
    `visor/bootstrap.py` (monta el workspace de trabajo completo desde los
    planos: meta-repo + repo de código, con el método de `plantilla/`) y
    `visor/actualizar.py` (Modo D: reparte el método a los workspaces ya
-   creados; `revisar` informa, `aplicar` escribe solo lo que nadie tocó allí).
+   creados; `revisar` informa y `aplicar` sobrescribe el método tras dejar el
+   estado anterior en un commit, así que se deshace con `git checkout`).

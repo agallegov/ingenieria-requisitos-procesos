@@ -76,6 +76,9 @@ def main():
     configuracion = repos.read_text(encoding="utf-8")
     remoto = valor_config(configuracion, "remoto")
     ruta_local = valor_config(configuracion, "ruta_local")
+    # La rama principal la dice repos.yaml, igual que en unidad.py y lint_metodo.py: un repo
+    # adoptado puede llamarla `master` y dar por hecho `main` rompe el clon y cada pull.
+    rama = valor_config(configuracion, "rama_principal") or "main"
     if not ruta_local:
         morir("repos.yaml no declara ruta_local")
 
@@ -84,25 +87,25 @@ def main():
 
     if es_repo_git(codigo):
         if remoto:
-            print(f"[3/5] {ruta_local} ya existe: actualización desde origin/main.")
+            print(f"[3/5] {ruta_local} ya existe: actualización desde origin/{rama}.")
             actualizado = ejecutar(
-                "git", "-C", codigo, "fetch", "origin", "main"
+                "git", "-C", codigo, "fetch", "origin", rama
             )
             if actualizado.returncode == 0:
-                rama = ejecutar(
-                    "git", "-C", codigo, "switch", "main"
+                cambio = ejecutar(
+                    "git", "-C", codigo, "switch", rama
                 )
-                if rama.returncode:
-                    rama = ejecutar(
-                        "git", "-C", codigo, "switch", "-c", "main",
-                        "--track", "origin/main"
+                if cambio.returncode:
+                    cambio = ejecutar(
+                        "git", "-C", codigo, "switch", "-c", rama,
+                        "--track", f"origin/{rama}"
                     )
-                if rama.returncode == 0:
+                if cambio.returncode == 0:
                     actualizado = ejecutar(
-                        "git", "-C", codigo, "pull", "--ff-only", "origin", "main"
+                        "git", "-C", codigo, "pull", "--ff-only", "origin", rama
                     )
                 else:
-                    actualizado = rama
+                    actualizado = cambio
             if actualizado.returncode:
                 morir(
                     f"no pude actualizar {ruta_local}:\n{actualizado.stdout.strip()}"
@@ -113,7 +116,7 @@ def main():
         morir(f"{codigo} existe, pero no es un repositorio Git")
     elif remoto:
         print(f"[3/5] clonando el repo de código en {ruta_local}…")
-        clonado = ejecutar("git", "clone", "--branch", "main", remoto, codigo)
+        clonado = ejecutar("git", "clone", "--branch", rama, remoto, codigo)
         if clonado.returncode:
             morir(f"no pude clonar {remoto}:\n{clonado.stdout.strip()}")
     else:

@@ -33,6 +33,21 @@ del negocio. Numerados R1, R2…>
 - **R2** — …
 - **R3** — (caso límite) Cuando <situación rara>, <resultado>.
 
+## Cómo lo pruebas tú (máximo 10 filas, sin tecnicismos)
+
+<Lo escribe el padre ANTES de pedir la aprobación; es lo que el usuario tendrá delante al dar
+el OK sobre la app corriendo (paso 5 de `runbooks/cierre.md`). Los R* dicen QUÉ debe pasar;
+esto, DÓNDE se mira y QUÉ se toca, con datos reales suyos. Si no cabe en 10 filas, la unidad
+es demasiado grande.>
+
+| # | Dónde | Qué haces | Qué deberías ver |
+|---|---|---|---|
+| 1 | <pantalla o menú> | <acción con un dato real: "busca el albarán 4471"> | <lo que aparece> |
+| 2 | <…> | <…> | <…> |
+
+- **NO debe haber cambiado:** <lo de al lado que sigue igual — donde es más fácil romper algo>.
+- **Si algo no cuadra:** dilo con lo que viste → se abre un bug con tu ejemplo.
+
 ## Deltas al mapa
 
 <Qué cambiará en 02-flujos/ cuando esta unidad se mergee. El cierre los APLICA tal cual.>

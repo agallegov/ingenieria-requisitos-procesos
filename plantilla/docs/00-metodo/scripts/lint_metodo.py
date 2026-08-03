@@ -7,6 +7,7 @@ Se ejecuta: al arrancar sesión del padre, en cada cierre, y en CI del meta-repo
 Sin dependencias: solo stdlib. El disco es la verdad; este script solo la comprueba.
 """
 import datetime
+import posixpath
 import re
 import subprocess
 import sys
@@ -115,15 +116,18 @@ def evidencia_rojo_verde(texto):
 
 
 def aprobado_por_el_usuario(fm):
-    """¿El frontmatter lleva una fecha de aprobación real? (`no`, vacío o ausente = no)."""
+    """¿El frontmatter lleva una fecha de aprobación real? (`no`, vacío o ausente = no).
+
+    Ni futura: una aprobación fechada en 2030 no la firmó nadie que hubiera leído el contrato.
+    Mismo criterio que `unidad.py`, que es quien bloquea el despacho.
+    """
     valor = (fm.get("aprobado") or "").strip().strip("`'\"")
     if not RE_FECHA.match(valor):
         return False
     try:
-        datetime.date.fromisoformat(valor)
+        return datetime.date.fromisoformat(valor) <= HOY
     except ValueError:
         return False
-    return True
 
 
 def revisar_deuda_hotfix(nombre, ruta, fm):
@@ -379,8 +383,20 @@ elif len(activas) > 1:
 
 
 def ficheros_de(fm):
+    """Rutas declaradas por una unidad, normalizadas. Misma implementación que unidad.py.
+
+    Se comparan conjuntos de CADENAS, así que sin normalizar `api/x.py`, `./api/x.py` y
+    `API/x.py` son tres ficheros distintos para el linter y el mismo en disco: dos unidades
+    paralelas podían poseer el mismo fichero sin que nadie lo viera.
+    """
     crudos = (fm.get("ficheros") or "").strip("[]").split(",")
-    return {f.strip().strip("'\"") for f in crudos if f.strip().strip("'\"")}
+    limpias = set()
+    for crudo in crudos:
+        ruta = crudo.strip().strip("'\"")
+        if not ruta:
+            continue
+        limpias.add(posixpath.normpath(ruta.replace("\\", "/")).casefold())
+    return limpias
 
 
 # Esperando al usuario: ni en vuelo ni cerradas (ADR-010). Se dicen en CADA arranque, porque
@@ -438,11 +454,29 @@ for nombre in sorted(en_obra):
             else:
                 warn(f"{aviso}: pide commits al constructor")
     if estado_unidad == "en_revision" and hay_repo:
-        codigo, salida = git(repo_cod, "rev-list", "--count", f"{rama_principal}..{nombre}")
-        if codigo == 0 and salida.strip() == "0":
-            fail(f"{nombre}: en_revision y su rama no tiene NI UN commit por encima de "
-                 f"{rama_principal} — no hay nada que revisar ni que mergear (¿el constructor "
-                 f"murió a mitad?)")
+        # Una unidad en_revision se declara TERMINADA y esperando merge. Lo primero es que su
+        # trabajo exista en algún sitio: la rama local es lo normal, `origin/<unidad>` es lo
+        # que sobrevive a un `git branch -D` (por eso el cierre ya no la borra) y `fusion:` es
+        # el commit que el propio cierre anotó al comprobar el merge. Sin ninguna de las tres,
+        # lo que hay es una ficha diciendo "hecho" sobre un trabajo que ya no existe.
+        def existe(ref):
+            return git(repo_cod, "rev-parse", "--verify", "--quiet", ref)[0] == 0
+
+        tiene_local = existe(f"refs/heads/{nombre}")
+        tiene_remota = existe(f"refs/remotes/origin/{nombre}")
+        anotada = (unidades[nombre].get("fusion") or "").strip()
+        if not (tiene_local or tiene_remota or anotada):
+            fail(f"{nombre}: en_revision y NO queda rastro de su trabajo — ni la rama "
+                 f"{nombre}, ni origin/{nombre}, ni un 'fusion:' anotado en su ficha. Una "
+                 f"rama que no existe no prueba que se fusionara: prueba que alguien la "
+                 f"borró. Búscala con `git -C {repo_cod.name} reflog` antes de tocar nada; si "
+                 f"aparece, recupérala con `git -C {repo_cod.name} branch {nombre} <sha>`")
+        elif tiene_local:
+            codigo, salida = git(repo_cod, "rev-list", "--count", f"{rama_principal}..{nombre}")
+            if codigo == 0 and salida.strip() == "0":
+                fail(f"{nombre}: en_revision y su rama no tiene NI UN commit por encima de "
+                     f"{rama_principal} — no hay nada que revisar ni que mergear (¿el "
+                     f"constructor murió a mitad?)")
 
 # --- 6. Archivo: lo archivado debe estar mergeada/descartada ---
 archivo = trabajo / "archivo"

@@ -17,8 +17,25 @@ for _salida in (sys.stdout, sys.stderr):
 
 WORKSPACE = Path(__file__).resolve().parents[1]
 UNIDAD = re.compile(r"^\d{3}-[a-z0-9][a-z0-9-]*$")
-NO_PROSA = re.compile(r"^\s*(#{1,6}\s|---\s*$|\w+:\s|[-*]\s*\*\*R\d)|<[^>]+>")
+# Se descuenta lo que NO es contrato escrito por una persona: cabeceras, frontmatter, citas
+# `>` (las instrucciones de la plantilla), viñetas `R*` vacías y huecos `<...>` sin rellenar.
+NO_PROSA = re.compile(r"^\s*(#{1,6}\s|>|---\s*$|\w+:\s|[-*]\s*\*\*R\d)|<[^>]+>")
 MIN_PROSA = 200
+
+
+def lineas_de_plantilla(nombre_plantilla, unidad):
+    """Las líneas literales de la plantilla, con el nombre de esta unidad ya sustituido.
+
+    Sin esto el hook no bloqueaba NADA: una plantilla recién copiada trae miles de caracteres
+    de prosa fija (reglas del constructor, definición de hecho) y pasaba el umbral por veinte
+    veces sin que nadie hubiera escrito una línea de contrato.
+    """
+    ruta = WORKSPACE / "docs" / "00-metodo" / "plantillas" / nombre_plantilla
+    try:
+        texto = ruta.read_text(encoding="utf-8", errors="replace").replace("NNN-slug", unidad)
+    except OSError:
+        return set()
+    return {l.strip() for l in texto.splitlines() if l.strip()}
 
 
 def prosa(unidad):
@@ -32,8 +49,10 @@ def prosa(unidad):
     spec = next((c for c in candidatos if c.exists()), None)
     if spec is None:
         return -1
+    plantilla = lineas_de_plantilla(
+        "bug.md" if spec.parent.name == "bugs" else "especificacion.md", unidad)
     return sum(len(l.strip()) for l in spec.read_text(encoding="utf-8", errors="replace").splitlines()
-               if l.strip() and not NO_PROSA.search(l))
+               if l.strip() and l.strip() not in plantilla and not NO_PROSA.search(l))
 
 
 def main():

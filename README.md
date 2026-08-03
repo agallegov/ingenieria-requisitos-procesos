@@ -51,9 +51,8 @@ completa:
 
 ## Qué hay en esta carpeta
 
-- `RUNBOOK.md`: el método completo que sigue tu IA.
-- `ACTUALIZAR-PROYECTOS.md`: el playbook para que un agente audite workspaces
-  creados con versiones anteriores.
+- `RUNBOOK.md`: el método completo que sigue tu IA (incluido el Modo D, que
+  reparte las mejoras del método a los proyectos ya creados).
 - `visor/`: la web local y las herramientas. No se tocan.
 - `plantilla/`: el molde del proyecto de trabajo que monta el bootstrap
   (el método de desarrollo por fases). No se toca; su README lo explica.
