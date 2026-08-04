@@ -302,6 +302,7 @@ let docEncargo = null;
 let cargando = false;
 let seleccion = "mapa";
 let pestanaActiva = "resumen";
+let flujoActivo = null;
 let historialActual = [];
 let comparacionActual = { hay_aprobacion: false, identico: false, planos: {} };
 
@@ -445,6 +446,12 @@ function tabla(cabeceras, filas) {
   });
   env.appendChild(t);
   return env;
+}
+
+function textoNunca(valor) {
+  if (typeof valor === "string") return valor;
+  const refs = [valor.requisito, valor.criterio].filter(Boolean).join(" · ");
+  return (valor.accion || "") + (refs ? " (" + refs + ")" : "");
 }
 
 /* ---------- pestañas ---------- */
@@ -617,7 +624,16 @@ function pintarFlujo(f) {
 function tabFlujos(d) {
   const s = el("section", "seccion");
   s.appendChild(el("h2", null, "Cómo funciona el proceso"));
-  const hayFuturo = d.flujos.some(f => f.momento === "futuro");
+  const flujosVisibles = flujoActivo
+    ? d.flujos.filter(f => f.id === flujoActivo)
+    : d.flujos;
+  const hayFuturo = flujosVisibles.some(f => f.momento === "futuro");
+  if (flujoActivo) {
+    const volver = el("button", null, "← Mostrar todos los flujos");
+    volver.style.cssText = "font:13px var(--sans);border:1px solid var(--line);border-radius:999px;padding:5px 12px;background:var(--sheet);cursor:pointer;color:var(--ink);margin-bottom:14px;";
+    volver.addEventListener("click", () => { flujoActivo = null; ultimaFoto = ""; cargar(); });
+    s.appendChild(volver);
+  }
   s.appendChild(el("div", "nota", (hayFuturo
     ? "Este es el proceso CON LA APP: lo que se va a construir. Debajo, plegada, queda la foto de cómo funciona hoy, por si quieres comparar el antes y el después. "
     : "Este es el proceso tal y como funciona HOY, sin la app; cuando acordemos el reparto aparecerá aquí la versión con la app. ") +
@@ -633,8 +649,8 @@ function tabFlujos(d) {
     d.actores.forEach(x => a.appendChild(el("span", null, x.nombre)));
     s.appendChild(a);
   }
-  const futuros = d.flujos.filter(f => f.momento === "futuro");
-  const hoys = d.flujos.filter(f => f.momento === "hoy");
+  const futuros = flujosVisibles.filter(f => f.momento === "futuro");
+  const hoys = flujosVisibles.filter(f => f.momento === "hoy");
   futuros.forEach(f => s.appendChild(pintarFlujo(f)));
   if (hoys.length && futuros.length) {
     const det = el("details", "flujo-hoy");
@@ -660,6 +676,13 @@ function tabRecorridos(d) {
     cab.appendChild(el("span", "chip " + (r.estado === "entregado" ? "chip-hecho" : "chip-neutro"), r.estado === "entregado" ? "entregado" : "pendiente"));
     c.appendChild(cab);
     if (r.objetivo) c.appendChild(el("div", "objetivo", r.objetivo));
+    const criteriosRecorrido = new Set((r.criterios || []).map(x => x.id));
+    const pruebasRecorrido = (d.pruebas_e2e || []).filter(prueba =>
+      (prueba.criterios || []).some(id => criteriosRecorrido.has(id))
+    );
+    pruebasRecorrido.forEach(prueba =>
+      cab.appendChild(el("span", "chip chip-spec", prueba.id + " · E2E"))
+    );
     if (Array.isArray(r.requisitos) && r.requisitos.length) {
       c.appendChild(el("div", "mini-titulo", "Qué hará la app (las promesas)"));
       r.requisitos.forEach(q => {
@@ -689,6 +712,18 @@ function tabRecorridos(d) {
     }
     s.appendChild(c);
   });
+  if (Array.isArray(d.pruebas_e2e) && d.pruebas_e2e.length) {
+    s.appendChild(el("div", "mini-titulo", "Pruebas E2E seleccionadas"));
+    d.pruebas_e2e.forEach(prueba => {
+      const fila = el("div", "req");
+      fila.appendChild(el("span", "idtag", prueba.id));
+      fila.appendChild(el("span", null,
+        "criterios " + (prueba.criterios || []).join(", ") +
+        " · personas " + (prueba.personas || []).join(", ") +
+        " · fronteras " + (prueba.fronteras || []).join(", ")));
+      s.appendChild(fila);
+    });
+  }
   return s;
 }
 
@@ -747,6 +782,7 @@ function tabDatos(d) {
 
 function tabSuperficie(d) {
   const sup = d.superficie;
+  const permisos = sup.permisos || {};
   const s = el("section", "seccion");
   s.appendChild(el("h2", null, "Por dónde se usa la app"));
   s.appendChild(el("div", "nota", "Cada puerta de entrada a la app (un panel, un WhatsApp, un correo): quién entra por ella, qué ve, qué puede hacer y qué no debe poder hacer JAMÁS. Más abajo: quién puede hacer qué (la tabla de permisos), quién recibe avisos y por dónde, y las condiciones del día a día."));
@@ -759,14 +795,28 @@ function tabSuperficie(d) {
       ["Cuándo lo usa", p.cuando || ""],
       ["Qué ve nada más entrar", p.ve || ""],
       ["Qué puede hacer", (p.puede || []).join(" · ")],
-      ["Qué NO debe poder jamás", (p.nunca || []).join(" · ")]
+      ["Qué NO debe poder jamás", (p.nunca || []).map(textoNunca).join(" · ")]
     ]));
     s.appendChild(c);
   });
-  if (sup.permisos && Array.isArray(sup.permisos.acciones) && sup.permisos.acciones.length) {
+  if (Array.isArray(permisos.acciones) && permisos.acciones.length) {
     s.appendChild(el("div", "mini-titulo", "Quién puede hacer qué"));
-    s.appendChild(tabla([""].concat(sup.permisos.acciones),
-      (sup.permisos.roles || []).map(r => [r.rol].concat(sup.permisos.acciones.map(a => (r.permitidas || []).includes(a) ? "✓" : "")))));
+    s.appendChild(tabla([""].concat(permisos.acciones),
+      (permisos.roles || []).map(r => [r.rol].concat(permisos.acciones.map(a => (r.permitidas || []).includes(a) ? "✓" : "")))
+        .concat((permisos.grupos || []).map(g => ["grupo: " + g.grupo].concat(
+          permisos.acciones.map(a => (g.permitidas || []).includes(a) ? "✓" : "")
+        )))));
+  }
+  if (Array.isArray(permisos.restricciones) && permisos.restricciones.length) {
+    s.appendChild(el("div", "mini-titulo", "Restricciones de permisos"));
+    s.appendChild(tabla(
+      ["ID", "Sujeto", "Acción", "Recurso", "Alcance / condición", "Prueba"],
+      permisos.restricciones.map(r => [
+        r.id, r.rol ? "rol: " + r.rol : "grupo: " + r.grupo, r.accion, r.recurso,
+        [r.alcance, r.condicion].filter(Boolean).join(" · "),
+        [r.requisito, r.criterio].filter(Boolean).join(" · ")
+      ])
+    ));
   }
   if (Array.isArray(sup.avisos) && sup.avisos.length) {
     s.appendChild(el("div", "mini-titulo", "Avisos"));
@@ -802,6 +852,11 @@ function tabActores(d) {
     const cab = el("div", "tarjeta-cabecera");
     cab.appendChild(el("span", "nombre", a.nombre));
     if (a.rol) cab.appendChild(el("span", "chip chip-neutro", a.rol));
+    if (a.organizacion) cab.appendChild(el("span", "chip chip-neutro", a.organizacion));
+    (a.grupos || []).forEach(grupo =>
+      cab.appendChild(el("span", "chip chip-neutro", grupo))
+    );
+    if (a.estado) cab.appendChild(el("span", "chip chip-spec", a.estado));
     c.appendChild(cab);
 
     const tareas = [];
@@ -828,15 +883,40 @@ function tabActores(d) {
       });
     }
 
-    const rol = ((sup.permisos || {}).roles || []).find(r => r.rol.toLowerCase() === clave);
-    if (rol) {
+    const filasRoles = ((sup.permisos || {}).roles || []);
+    const claveRol = (a.rol || "").toLowerCase();
+    const claveLegacy = (a.nombre || "").toLowerCase();
+    const rol = filasRoles.find(r => r.rol.toLowerCase() === claveRol) ||
+      filasRoles.find(r => r.rol.toLowerCase() === claveLegacy);
+    const gruposActor = new Set((a.grupos || []).map(g => g.toLowerCase()));
+    const permisosEfectivos = new Set((rol || {}).permitidas || []);
+    ((sup.permisos || {}).grupos || [])
+      .filter(g => gruposActor.has((g.grupo || "").toLowerCase()))
+      .forEach(g => (g.permitidas || []).forEach(accion => permisosEfectivos.add(accion)));
+    if (rol || permisosEfectivos.size) {
       c.appendChild(el("div", "mini-titulo", "Qué puede hacer"));
-      c.appendChild(el("div", "objetivo", (rol.permitidas || []).join(" · ") || "nada"));
+      c.appendChild(el("div", "objetivo", Array.from(permisosEfectivos).join(" · ") || "nada"));
     }
     const nunca = puntos.reduce((acc, p) => acc.concat(p.nunca || []), []);
     if (nunca.length) {
       c.appendChild(el("div", "mini-titulo", "Qué NO debe poder jamás"));
-      c.appendChild(el("div", "objetivo", nunca.join(" · ")));
+      c.appendChild(el("div", "objetivo", nunca.map(textoNunca).join(" · ")));
+    }
+    const restricciones = ((sup.permisos || {}).restricciones || []).filter(
+      r => (r.rol || "").toLowerCase() === claveRol ||
+        (a.grupos || []).some(g => g.toLowerCase() === (r.grupo || "").toLowerCase())
+    );
+    if (restricciones.length) {
+      c.appendChild(el("div", "mini-titulo", "Restricciones aplicables"));
+      restricciones.forEach(r => {
+        const fila = el("div", "req");
+        fila.appendChild(el("span", "idtag", r.id));
+        fila.appendChild(el("span", null,
+          r.accion + " sobre " + r.recurso +
+          ([r.alcance, r.condicion].filter(Boolean).length
+            ? " · " + [r.alcance, r.condicion].filter(Boolean).join(" · ") : "")));
+        c.appendChild(fila);
+      });
     }
     const avisos = (sup.avisos || []).filter(x => (x.quien || "").toLowerCase() === clave);
     if (avisos.length) {
@@ -970,23 +1050,11 @@ function seleccionar(id) {
 }
 
 function seleccionarFlujo(id) {
+  if (flujoActivo === id) return;
+  flujoActivo = id;
   pestanaActiva = "flujos";
-  activar("flujos");
-  document.querySelectorAll("#menuIzq button").forEach(
-    b => b.classList.toggle("activo", b.dataset.flujo === id)
-  );
-  const destino = document.getElementById("flujo-" + id);
-  if (!destino) return;
-  const plegado = destino.closest("details");
-  if (plegado) plegado.open = true;
-  requestAnimationFrame(() => {
-    document.querySelectorAll(".flujo.fila-resaltada").forEach(
-      x => x.classList.remove("fila-resaltada")
-    );
-    destino.classList.add("fila-resaltada");
-    destino.scrollIntoView({ behavior: "smooth", block: "start" });
-    destino.focus({ preventScroll: true });
-  });
+  ultimaFoto = "";
+  cargar();
 }
 
 function aplicarFiltrosMenu() {
@@ -1056,7 +1124,7 @@ function pintarMenu(dRoot) {
     });
   } else if (flujos.length) {
     flujos.forEach(f => {
-      const b = el("button", null, f.titulo);
+      const b = el("button", flujoActivo === f.id ? "activo" : null, f.titulo);
       b.dataset.flujo = f.id;
       b.dataset.busqueda = [f.titulo, f.descripcion || ""].join(" ");
       b.dataset.filtros = [f.momento || "", f.origen || ""].join(" ");
@@ -1162,7 +1230,14 @@ function pintar(d) {
     cont.appendChild(sec);
     const b = el("button", null, titulo);
     b.dataset.id = id;
-    b.addEventListener("click", () => activar(id));
+    b.addEventListener("click", () => {
+      if (id === "flujos" && flujoActivo !== null) {
+        flujoActivo = null;
+        ultimaFoto = "";
+        cargar();
+      }
+      activar(id);
+    });
     nav.appendChild(b);
   });
   nav.hidden = false;
@@ -1234,7 +1309,16 @@ function tabV3Flujos(d) {
     s.appendChild(el("p", null, "Sin flujos definidos."));
     return s;
   }
-  d.flujos.forEach(f => {
+  const flujosVisibles = flujoActivo
+    ? d.flujos.filter(f => f.id === flujoActivo)
+    : d.flujos;
+  if (flujoActivo) {
+    const volver = el("button", null, "← Mostrar todos los flujos");
+    volver.style.cssText = "font:13px var(--sans);border:1px solid var(--line);border-radius:999px;padding:5px 12px;background:var(--sheet);cursor:pointer;color:var(--ink);margin-bottom:14px;";
+    volver.addEventListener("click", () => { flujoActivo = null; ultimaFoto = ""; cargar(); });
+    s.appendChild(volver);
+  }
+  flujosVisibles.forEach(f => {
     s.appendChild(el("h3", null, f.titulo + (f.momento ? " (" + f.momento + ")" : "")));
     if (f.descripcion) s.appendChild(el("p", null, f.descripcion));
     if (f.pasos && f.pasos.length) {
@@ -1481,7 +1565,14 @@ function pintarV3(d) {
     cont.appendChild(sec);
     const b = el("button", null, titulo);
     b.dataset.id = id;
-    b.addEventListener("click", () => activar(id));
+    b.addEventListener("click", () => {
+      if (id === "flujos" && flujoActivo !== null) {
+        flujoActivo = null;
+        ultimaFoto = "";
+        cargar();
+      }
+      activar(id);
+    });
     nav.appendChild(b);
   });
   nav.hidden = false;
