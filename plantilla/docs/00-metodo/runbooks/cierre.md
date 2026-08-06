@@ -116,4 +116,4 @@ casillas — lo marcado no se repite, lo no marcado no se da por hecho— en vez
 - Nada sin guardar en el worktree: es lo único del método que no respalda nadie.
 - Nada se cierra sin estar fusionado en la rama principal.
 - Sin un resumen que el usuario entienda, no hay cierre: si para pedirle el OK hay que
-  explicarle el método, el mensaje está mal escrito (`AGENTS.md` §Cómo se le informa).
+  explicarle el método, el mensaje está mal escrito (`00-metodo/comunicacion.md`).
