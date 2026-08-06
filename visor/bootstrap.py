@@ -84,7 +84,7 @@ RUNBOOKS = ("adopcion", "auditoria", "bug", "cierre", "deploy", "documentacion",
 PLANTILLAS = ("agents-repo-codigo", "bug", "conocimiento", "decision", "despliegue",
               "especificacion", "hallazgos", "informe", "investigacion", "plano-operativo",
               "roadmap", "sintesis")
-SCRIPTS = ("doctor.py", "lint_deploy.py", "lint_metodo.py", "sandbox_lanzar.py", "unidad.py")
+SCRIPTS = ("caja_negra.py", "doctor.py", "lint_deploy.py", "lint_metodo.py", "sandbox_lanzar.py", "unidad.py")
 DECISIONES = (
     "README.md",
     "001-docs-fuera-del-repo.md",

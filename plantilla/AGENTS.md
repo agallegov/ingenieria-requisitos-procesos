@@ -119,11 +119,9 @@ y trabajado en `worktrees/` (una copia por unidad de trabajo). Ambos ignorados p
 - **Se escribe según se hace:** cada paso, en el momento, con fecha y con quién lo hizo. Lo que
   solo está en el contexto de tu sesión está perdido; lo rellenado después de memoria es
   inventado (por eso una revisión sin firma se repite, no se firma).
-- **Caja negra.** Todo lo raro que te encuentres y tengas que arreglar sobre la marcha —algo
-  que no estaba donde decía, un comando que falla por el entorno, un rodeo que hubo que dar—
-  se anota en `.caja-negra/diario.md` (fuera de git; créalo si no existe). Una línea:
-  `AAAA-MM-DD · qué pasó · qué hice · dónde`. No es documentación del proyecto: es el rastro
-  de lo que cuesta trabajar aquí, y es lo que permite arreglar la causa en vez del síntoma.
+- **Caja negra.** Dos niveles: `.caja-negra/diario.md` (una línea por tropiezo, para
+  arreglar la causa) y `scripts/caja_negra.py registrar` (incidentes estructurados con
+  contexto, sin secretos, para revisión posterior). Ambos fuera de git.
 
 ## Cómo se le informa al usuario (todo mensaje, no solo los documentos)
 
