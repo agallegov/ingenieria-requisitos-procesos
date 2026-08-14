@@ -136,6 +136,8 @@ def comprobar_lateral_v3(page, datos, ancho):
     datos_normas = datos.get("normas") or []
     datos_proveedores = datos.get("proveedores") or []
     datos_glosario = datos.get("glosario") or []
+    datos_fuera = datos.get("fuera") or []
+    datos_preguntas = datos.get("preguntas") or []
 
     if datos_estructura:
         secciones_esperadas.append("Estructura organizativa")
@@ -157,6 +159,10 @@ def comprobar_lateral_v3(page, datos, ancho):
         secciones_esperadas.append("Calidad")
     if datos_glosario:
         secciones_esperadas.append("Glosario")
+    if datos_fuera:
+        secciones_esperadas.append("Fuera de alcance")
+    if datos_preguntas:
+        secciones_esperadas.append("Preguntas")
 
     textos = page.locator("#menuIzq button").all_inner_texts()
     if textos != secciones_esperadas:

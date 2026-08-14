@@ -1038,6 +1038,7 @@ function activar(id) {
   pestanaActiva = id;
   history.replaceState(null, "", "#" + (seleccion === "mapa" ? "" : seleccion + "::") + id);
   document.querySelectorAll("nav.pestanas button").forEach(b => b.classList.toggle("activa", b.dataset.id === id));
+  document.querySelectorAll("#menuIzq button[data-seccion]").forEach(b => b.classList.toggle("activo", b.dataset.seccion === id));
   document.querySelectorAll("main .seccion").forEach(sec => sec.classList.toggle("activa", sec.id === "s-" + id));
 }
 
@@ -1094,7 +1095,26 @@ function aplicarFiltrosMenu() {
 function pintarMenu(dRoot) {
   const menu = document.getElementById("menuIzq");
   const entradas = document.getElementById("menuEntradas");
+  const filtros = menu.querySelector(".menu-filtros");
+  const titulo = menu.querySelector(".titulo-menu");
   entradas.textContent = "";
+  if (dRoot.version === 3) {
+    titulo.textContent = "Plan";
+    filtros.hidden = true;
+    menu.setAttribute("aria-label", "Secciones del plan");
+    definicionesV3(dRoot, []).filter(x => x[2]).forEach(([id, texto]) => {
+      const b = el("button", pestanaActiva === id ? "activo" : null, texto);
+      b.dataset.seccion = id;
+      b.addEventListener("click", () => activar(id));
+      entradas.appendChild(b);
+    });
+    menu.hidden = false;
+    document.body.classList.add("con-menu");
+    return;
+  }
+  titulo.textContent = "Flujos";
+  filtros.hidden = false;
+  menu.setAttribute("aria-label", "Flujos de la aplicación");
   const actividades = Array.isArray(dRoot.actividades) ? dRoot.actividades : [];
   const flujos = Array.isArray(dRoot.flujos) ? dRoot.flujos : [];
   if (actividades.length) {
@@ -1509,12 +1529,8 @@ function tabV3Preguntas(d) {
   return s;
 }
 
-function pintarV3(d) {
-  document.title = d.titulo + " · planos";
-  document.getElementById("titulo").textContent = d.titulo;
-  document.getElementById("proyecto").textContent = d.proyecto ? "Proyecto: " + d.proyecto : "";
-
-  const defs = [
+function definicionesV3(d, progreso) {
+  return [
     ["resumen", "🗺 El mapa", true, () => tabV3Resumen(d, progreso)],
     ["estructura", "Estructura organizativa", Array.isArray(d.estructura_organizativa) && d.estructura_organizativa.length > 0, () => tabV3Estructura(d)],
     ["flujos", "Flujos", Array.isArray(d.flujos) && d.flujos.length > 0, () => tabV3Flujos(d)],
@@ -1529,6 +1545,12 @@ function pintarV3(d) {
     ["fuera", "Fuera de alcance", Array.isArray(d.fuera) && d.fuera.length > 0, () => tabV3Fuera(d)],
     ["preguntas", "Preguntas", Array.isArray(d.preguntas) && d.preguntas.length > 0, () => tabV3Preguntas(d)],
   ];
+}
+
+function pintarV3(d) {
+  document.title = d.titulo + " · planos";
+  document.getElementById("titulo").textContent = d.titulo;
+  document.getElementById("proyecto").textContent = d.proyecto ? "Proyecto: " + d.proyecto : "";
 
   const cuentas = {
     estructura: (d.estructura_organizativa || []).length + " unidades",
@@ -1544,7 +1566,7 @@ function pintarV3(d) {
     preguntas: (d.preguntas || []).length + " sin responder"
   };
   const noAplican = new Set(((d.definicion || {}).bloques_no_aplican || []));
-  const progreso = defs
+  const progreso = definicionesV3(d, [])
     .filter(([id]) => id !== "resumen")
     .map(([id, titulo, presente]) => [
       titulo,
@@ -1552,6 +1574,7 @@ function pintarV3(d) {
       cuentas[id] || ""
     ]);
 
+  const defs = definicionesV3(d, progreso);
   const pestañas = defs.filter(x => x[2]);
 
   const cont = document.getElementById("contenido");
@@ -1563,19 +1586,8 @@ function pintarV3(d) {
     const sec = render(d);
     sec.id = "s-" + id;
     cont.appendChild(sec);
-    const b = el("button", null, titulo);
-    b.dataset.id = id;
-    b.addEventListener("click", () => {
-      if (id === "flujos" && flujoActivo !== null) {
-        flujoActivo = null;
-        ultimaFoto = "";
-        cargar();
-      }
-      activar(id);
-    });
-    nav.appendChild(b);
   });
-  nav.hidden = false;
+  nav.hidden = true;
 
   const ids = pestañas.map(x => x[0]);
   activar(ids.includes(pestanaActiva) ? pestanaActiva : "resumen");
