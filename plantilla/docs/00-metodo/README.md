@@ -99,12 +99,14 @@ vive en **`runbooks/cierre.md`**, que es por donde cierran TODOS los tipos. En c
 (requisitos, edge cases, alcance; **que los ficheros de test no se tocaron después del commit
 que los creó** y **que no se ha duplicado un módulo que ya existía en `main/`**) — veredicto a
 la sección **Revisión** de `hallazgos.md`, firmado con `revisor:` y `revisado:`; huecos →
-vuelven al constructor · 3. merge · 4. **suite end-to-end completa sobre main** · 5. **lanzar
+vuelven al constructor · 3. merge · 4. **tests sobre main al nivel del carril** (ADR-016;
+tabla exacta en `runbooks/cierre.md`) · 5. **lanzar
 una instancia de la app** (comando de arranque: el `AGENTS.md` del repo de código) y
 **validación del usuario sobre ella**; sin su OK no hay cierre, "no es lo que pedí" → unidad
 `bug` · 6. `unidad.py cerrar NNN-slug --ok-usuario YYYY-MM-DD`, que aplica las puertas y hace
 lo mecánico (estado `mergeada`, archivar la unidad — los bugs no, ADR-006 —, borrar worktree y
-rama local **y remota**, y lintar) · 7. lo que es criterio y no mecánica, que sigue siendo del
+rama **local** — la remota NO se borra jamás: es la única copia del trabajo fuera de este
+disco (ADR-011) —, y lintar) · 7. lo que es criterio y no mecánica, que sigue siendo del
 padre: aplicar deltas a `02-flujos/`, promover hallazgos → `conocimiento/` y decisiones →
 `decisiones/`, y actualizar `ESTADO.md` + `INDICE.md`.
 
@@ -130,8 +132,9 @@ fallo crítico permite una segunda ronda. Preparar hoy problemas que aún no exi
   con la entrevista de arranque `<HARD-GATE>` de los dos operativos (ADR-008).
 - `decisiones/` — **los ADR DEL MÉTODO**: el porqué de estas reglas. El índice es el listado
   de la carpeta (`ls`), no una lista escrita a mano que se queda atrás. Se leen, no se editan;
-  cuando un runbook cita "ADR-005", está aquí. Los ADR de TU proyecto van en
-  `docs/decisiones/`, con numeración propia desde `001`.
+  cuando un runbook cita "ADR-005", está aquí. Las decisiones de TU proyecto van en
+  `docs/decisiones/`, con numeración propia desde `001` y citadas como `DP-NNN`: así
+  `ADR-NNN` señala siempre, sin ambigüedad, a esta carpeta.
 - `requisitos/` — el kit heredado de la herramienta de ingeniería de requisitos: runbook,
   visor web y scripts para mantener vivos los `planos.json` de `02-flujos/` (ADR-007).
 - `auditoria-metodo.md`, `auditoria-calidad.md`, `auditoria-seguridad.md`,

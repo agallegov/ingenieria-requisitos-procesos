@@ -30,7 +30,9 @@ transversal → escalar a decisión con el usuario.
    GitHub) con su checkout en `worktrees/NNN-slug`, deja la ficha
    en `en_obra`, y **aplica las precondiciones** (ficha con prosa real, tope de trabajo en
    vuelo, rama no reutilizada). **El camino manual las salta todas: no se usa.** `--force` es la
-   válvula EXCLUSIVA de `hotfix.md`. Con el worktree creado, el padre lanza el **subagente del
+    válvula EXCLUSIVA de `hotfix.md`. Si el bug es del PROPIO meta-repo (un runbook, un script
+   del método, una ficha) y su `ficheros:` no toca `main/`, se despacha con `--documental`:
+   sin rama ni worktree de código, y el cierre no exige un merge que nunca existirá. Con el worktree creado, el padre lanza el **subagente del
    bug**, que escribe SOLO en su worktree y en SU fichero `docs/bugs/NNN-slug.md`. Después,
    `ESTADO.md` (lo escribe el padre).
 3. **Reproducir (primera misión del subagente).** Crear un test end-to-end que reproduzca el
@@ -75,7 +77,8 @@ transversal → escalar a decisión con el usuario.
    contraprobados (rojo sin el arreglo, verde con él), y que no se tocó nada fuera del alcance
    del bug. Reporta solo huecos de corrección, no preferencias de estilo."* — veredicto a la
    sección 6 · Cierre de la ficha; huecos → vuelven al subagente.
-   Limpio → merge del PR → **suite end-to-end completa** sobre main → **lanzar una instancia
+    Limpio → merge del PR → **tests sobre main al nivel del carril** (ADR-016; tabla en
+   `runbooks/cierre.md`) → **lanzar una instancia
    de la app** (comando de arranque: el `AGENTS.md` del repo de código) y el usuario la prueba.
    `<HARD-GATE>` **Sin ese OK no hay cierre**: el estado NO pasa a `mergeada` y el bug sigue
    ABIERTO (`en_revision`). Con el OK → estado `mergeada`, sección Cierre rellenada

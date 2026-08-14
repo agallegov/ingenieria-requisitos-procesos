@@ -20,7 +20,7 @@ Cabe en una frase (si necesitas dos, no es exprés) **y** nadie que use la app n
 
 `<HARD-GATE>` **Un bug JAMÁS es exprés, sin excepciones.** Un bug restaura comportamiento
 prometido, luego cambia comportamiento, y lo que cambia comportamiento nunca es exprés
-(`00-metodo/README.md`, los 3 carriles). No importa que el diff quepa en una frase ni que sea
+(`00-metodo/README.md`, §Los 4 carriles). No importa que el diff quepa en una frase ni que sea
 "solo texto": una errata que ve el usuario es comportamiento observable. Este carril **no
 tiene ficha, ni `NNN`, ni test rojo, ni OK del usuario** — es decir, no tiene ninguna de las
 tres cosas que hacen verificable el arreglo de un bug. Si lo que llega es "esto está mal" →

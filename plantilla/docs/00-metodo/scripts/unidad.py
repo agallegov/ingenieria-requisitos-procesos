@@ -574,13 +574,29 @@ def cmd_despachar(args):
     ok(f"{nombre} existe con frontmatter válido ({fm.get('tipo')} · {fm.get('estado')})")
 
     if args.documental and fm.get("tipo") not in {
-        "auditoria", "investigacion", "documentacion"
+        "auditoria", "investigacion", "documentacion", "bug"
     }:
         fail(
-            "--documental solo vale para auditoria, investigacion o documentacion "
-            "que NO tocan el repositorio de código"
+            "--documental solo vale para auditoria, investigacion, documentacion "
+            "o un bug del META-repo que NO toca el repositorio de código"
         )
         return 1
+    if args.documental and fm.get("tipo") == "bug":
+        rutas_bug = ficheros_de(fm)
+        if not rutas_bug:
+            fail(f"{nombre}: --documental en un bug exige declarar `ficheros:` en la ficha "
+                 f"(al menos una ruta dentro de docs/, para demostrar que es del meta-repo "
+                 f"y no del código)")
+            return 1
+        meta = [r for r in rutas_bug if r.startswith("docs/")]
+        if not meta:
+            fail(f"{nombre}: --documental en un bug con ficheros TODOS fuera de docs/ — "
+                 f"un bug que toca el repositorio de código se despacha SIN --documental")
+            return 1
+        if any(not r.startswith("docs/") for r in rutas_bug):
+            warn(f"{nombre}: bug meta con ficheros MIXTOS docs/ y código — el worktree de "
+                 f"código NO se crea (la parte de código la trabaja el subagente sin rama)")
+        ok(f"{nombre}: bug del meta-repo confirmado — ficheros dentro de docs/")
     if args.documental and args.force:
         fail("--documental no se combina con --force; un hotfix siempre toca código")
         return 1

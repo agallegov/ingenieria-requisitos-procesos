@@ -15,10 +15,12 @@ una garantía de seguridad.
 4. Solo después usa `--ejecutar`. Si cambia el sistema operativo o la herramienta de
    aislamiento, repite la comprobación.
 
-El script busca, por este orden, `srt`, `sandbox-exec` o `bwrap`. Si no encuentra un
-mecanismo se niega a ejecutar, salvo que la persona acepte expresamente
-`--permitir-sin-sandbox`. La disponibilidad y el comportamiento de esas herramientas
-dependen del ordenador; el workspace nunca debe fingir que las ha validado.
+Mecanismos por plataforma, en el orden real del código: en macOS, `sandbox-exec` (Seatbelt) y
+después `srt`; en Linux, `bwrap` y después `srt`. Un `srt` que no sea propiedad de root se
+rechaza (`EXIGIR_OWNER_SISTEMA`): un binario que puede reemplazar el mismo usuario no es una
+frontera. Consecuencia honesta: en un macOS típico el mecanismo será Seatbelt, cuyo perfil NO
+limita la red. Si no encuentra ningún mecanismo se niega a ejecutar. No hay bypass ni modo que
+solo imprima un perfil.
 
 ## Límites que intenta aplicar
 
@@ -32,7 +34,10 @@ común es una decisión explícita (`--git-compartido`) y debe evitarse si no ha
 Las ramas alternativas de sistema operativo pueden tener limitaciones distintas; el
 resultado impreso por el programa es la fuente que se debe revisar antes de lanzar.
 
-Para código hostil o ejecución desatendida se necesita una frontera administrada por
-el dueño de la máquina —por ejemplo un contenedor o una política corporativa— y una
-comprobación específica. Un repositorio clonado no puede concederse ni imponerse por
-sí mismo privilegios de seguridad en el equipo del usuario.
+Para código hostil o ejecución desatendida se necesita además una frontera administrada por el
+dueño de la máquina. Seatbelt está deprecado y ni Seatbelt ni bwrap filtran red por dominio;
+esa garantía solo la da un `srt` propiedad de root o un contenedor con política de red
+validada — y en su ausencia este método NO promete red limitada: lo dice el recibo de la
+ejecución, no lo disimula.
+La ruta y el SHA-256 no protegen frente a un atacante con el mismo UID que pueda sustituir el
+wrapper justo antes de `exec`; ese caso necesita aislamiento administrado por otro principal.
