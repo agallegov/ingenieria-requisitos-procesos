@@ -364,11 +364,18 @@ def rama_fusionada(repo, rama, principal, metadata):
 
 
 def fecha_iso_valida(valor):
+    if not isinstance(valor, str):
+        return False
     try:
         datetime.date.fromisoformat(valor)
-    except (TypeError, ValueError):
+        return True
+    except ValueError:
+        pass
+    try:
+        instante = datetime.datetime.fromisoformat(valor)
+    except ValueError:
         return False
-    return True
+    return instante.tzinfo is not None
 
 
 CAMPOS_DEPLOY_OBLIGATORIOS = (
