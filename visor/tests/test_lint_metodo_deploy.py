@@ -15,6 +15,7 @@ from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parent.parent.parent / "plantilla/docs/00-metodo/scripts/lint_metodo.py"
 DENUNCIA = "proceso deploy inexistente"
+DENUNCIA_CARPETA = "unidad con nombre fuera de convención NNN-slug: despliegues"
 
 
 class DeployDeUnidadArchivadaTest(unittest.TestCase):
@@ -58,7 +59,13 @@ class DeployDeUnidadArchivadaTest(unittest.TestCase):
         self.ficha_despliegue(ref)
         self.peticion_con_deploy(ref)
         salida = self.lint()
-        self.assertNotIn(DENUNCIA, salida.stdout + salida.stderr)
+        texto = salida.stdout + salida.stderr
+        self.assertNotIn(DENUNCIA, texto)
+        self.assertNotIn(
+            DENUNCIA_CARPETA,
+            texto,
+            "la carpeta canónica de deploy por lote no forma parte del censo de unidades",
+        )
 
     def test_peticion_py_acepta_la_misma_ruta_de_archivo_que_el_linter(self):
         # Las dos mordazas: sin esto, la ruta que el linter acepta es la que peticion.py rechaza.
