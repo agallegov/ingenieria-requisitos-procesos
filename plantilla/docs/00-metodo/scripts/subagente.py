@@ -8,6 +8,8 @@ criptográfica ni permisos de sistema operativo que la herramienta no expone.
 """
 import argparse
 import contextlib
+import datetime
+import difflib
 import hashlib
 import json
 import os
@@ -104,8 +106,80 @@ def huella_contrato(ficha):
         # La ficha del bug incluye SU informe; la sección de cierre es la única mutable
         # por el revisor. El contrato anterior y las demás fichas siguen independientes.
         texto = re.split(r"(?m)^## 6[^\n]*Cierre", texto, maxsplit=1)[0]
-        texto = re.sub(r"(?m)^(revisor|revisado|revisado_patch_id|ronda|correccion):.*$", "", texto)
+        texto = re.sub(r"(?m)^(revisor|revisado|revisado_patch_id|ronda|correccion):.*(?:\n|$)", "", texto)
     return hashlib.sha256(texto.encode("utf-8")).hexdigest()
+
+
+def huella_texto(texto):
+    return hashlib.sha256(texto.encode("utf-8")).hexdigest()
+
+
+def partes_informe_revisor(texto):
+    """Separa permisos de escritura; conserva hashes, nunca copia el informe al recibo."""
+    texto = re.sub(r"(?ms)^```aprendizajes-revisor[ \t]*\n.*?^```[ \t]*(?:\n|\Z)", "", texto)
+    firmas = {}
+    cabecera = re.match(r"\A---\n(.*?)^---(?:\n|\Z)", texto, re.M | re.S)
+    if cabecera:
+        def firma(match):
+            firmas[match[1]] = match[2].split("#", 1)[0].strip()
+            return ""
+        limpia = re.sub(r"(?m)^(revisor|revisado):([^\n]*)\n", firma, cabecera[1])
+        texto = texto[:cabecera.start(1)] + limpia + texto[cabecera.end(1):]
+    revision = []
+    def extraer(match):
+        revision.append(match[0].strip())
+        return ""
+    texto = re.sub(r"(?ms)^## Revisión[^\n]*\n.*?(?=^## |\Z)", extraer, texto)
+    # En bugs el informe vive en una viñeta de Cierre, junto a evidencia del padre.
+    texto = re.sub(r"(?m)^- \*\*Revisión[^\n]*(?:\n[ \t]+[^\n]*)*\n?", extraer, texto)
+    trabajo = re.search(r"(?ms)(^## Trabajo descubierto[^\n]*\n)(.*?)(?=^## |\Z)", texto)
+    lineas = trabajo[2].splitlines(keepends=True) if trabajo else []
+    if trabajo:
+        texto = texto[:trabajo.start(2)] + texto[trabajo.end(2):]
+    return {"protegido": huella_texto(texto.strip()),
+            "revision": huella_texto("\n".join(revision)), "firma": firmas,
+            "trabajo": [huella_texto(linea) for linea in lineas]}, "\n".join(revision), lineas
+
+
+def validar_informe_revisor(datos, informe):
+    anterior = datos.get("informe_revisor_inicial")
+    if anterior is None:
+        error("preparación sin fronteras del informe; prepara una revisión nueva con este protocolo")
+    actual, revision, lineas = partes_informe_revisor(informe.read_text(encoding="utf-8"))
+    if actual["protegido"] != anterior["protegido"]:
+        error("revisor modificó Plan, evidencia u otra parte protegida del informe")
+    diferencias = difflib.SequenceMatcher(a=anterior["trabajo"], b=actual["trabajo"], autojunk=False)
+    for op, _, _, inicio, fin in diferencias.get_opcodes():
+        if op == "equal":
+            continue
+        nuevas = lineas[inicio:fin]
+        marcada = False
+        for linea in nuevas:
+            if not linea.strip():
+                continue
+            if re.match(r"^- \[revisor\](?:\s|$)", linea):
+                marcada = True
+            elif not (marcada and linea.startswith(("  ", "\t"))):
+                error("Trabajo descubierto solo admite añadidos nuevos [revisor]")
+        if op != "insert" or not marcada:
+            error("el revisor no puede borrar ni reescribir hallazgos previos")
+    firma = actual["firma"]
+    if (firma == anterior["firma"] or
+            firma.get("revisor", "").split(" · ", 1)[0] != datos["native_task_id"]):
+        error("falta firma nueva del native_task_id de esta revisión")
+    try:
+        fecha = datetime.date.fromisoformat(firma.get("revisado", ""))
+        inicio = datetime.date.fromisoformat(datos["checkpoints"][0]["cuando"][:10])
+        if not inicio <= fecha <= datetime.datetime.now(datetime.timezone.utc).date():
+            raise ValueError()
+    except ValueError:
+        error("firma de revisión sin fecha válida de esta ejecución")
+    if not revision or actual["revision"] == anterior["revision"]:
+        error("falta revisión nueva: el veredicto anterior no pertenece a esta ejecución")
+    veredicto = ejecucion.veredicto_ultimo(revision)
+    if veredicto not in ("LIMPIO", "HUECOS DE CORRECCIÓN"):
+        error("falta veredicto LIMPIO o HUECOS DE CORRECCIÓN en la revisión nueva")
+    return actual, veredicto
 
 
 def cmd_preparar(args):
@@ -186,6 +260,7 @@ def _preparar(args, cleanup):
         "ficha": str(ficha), "contrato_inicial": huella_contrato(ficha),
         "informe": str(informe), "informe_inicial": hashlib.sha256(informe.read_bytes()).hexdigest() if informe.exists() else None,
         "documentos_inicial": documentos_snapshot(ficha.parent, informe),
+        "informe_revisor_inicial": partes_informe_revisor(informe.read_text(encoding="utf-8") if informe.exists() else "")[0] if args.rol == "revisor" else None,
         "revisado_patch_id": patch_id if args.rol == "revisor" else None,
         "ancla_motivo": ancla_motivo, "base": base,
         "ronda_previa": previa, "ronda": ronda,
@@ -204,6 +279,7 @@ def _preparar(args, cleanup):
         raise
     print(json.dumps({"recibo_id": rid, "estado": "preparado", "modelo_solicitado": modelo,
                       "esfuerzo": esfuerzo, "encargo": datos["aislamiento"]["instruccion"], "senales": datos["senales"],
+                      "firma_revisor": "revisor: <native_task_id> · <modelo>; revisado: YYYY-MM-DD; escribe Revisión nueva, aprendizajes-revisor y solo añadidos [revisor] sin alterar evidencia previa" if args.rol == "revisor" else None,
                       "siguiente": "Usa Agent o collaboration.spawn_agent; conserva el resultado y vincúlalo con --evidencia"}, ensure_ascii=False))
     return 0
 
@@ -358,10 +434,7 @@ def cmd_finalizar(args):
                 patch_id, _ = ejecucion.patch_id_y_motivo(worktree, datos.get("base"))
                 if patch_id != datos["revisado_patch_id"]:
                     error("contenido revisado cambió")
-                veredicto = ejecucion.veredicto_ultimo(informe.read_text())
-                if veredicto not in ("LIMPIO", "HUECOS DE CORRECCIÓN"):
-                    error("falta veredicto LIMPIO o HUECOS DE CORRECCIÓN")
-                datos["veredicto"] = veredicto
+                datos["informe_revisor_final"], datos["veredicto"] = validar_informe_revisor(datos, informe)
                 ejecucion.sellar_patch_id(informe, patch_id)
     datos["git"]["final"] = final
     if datos["rol"] == "constructor" and final:

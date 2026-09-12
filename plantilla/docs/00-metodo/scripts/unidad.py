@@ -3019,7 +3019,7 @@ def puerta_recibo_revisor(nombre):
             return ["firma, contenido o ronda no corresponden al recibo nativo. SALIDA: " + comando_revision(nombre)], []
         validos = coherentes
     constructores = [r for r in recibos if str(r.get("rol") or "").strip() == "constructor"
-                    and r.get("estado_nativo") != "preparado"]
+                    and r.get("estado_nativo") != "preparado" and not r.get("sin_ejecucion")]
     sesiones_constructor = {sesion_de(r) for r in constructores} - {""}
     limpios = [r for r in validos if sesion_de(r) not in sesiones_constructor]
     if not limpios:

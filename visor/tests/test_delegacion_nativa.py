@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import subprocess
+import re
 import tempfile
 import shutil
 import unittest
@@ -83,6 +84,107 @@ class NativoTest(unittest.TestCase):
         return self.call("finalizar", self.name, "--recibo-id", r["id"], "--rol", role or r["rol"],
                          "--native-task-id", task, "--resultado", result, "--motivo", "prueba")
 
+    def write_review(self, task="child-1", detail="Revisión nueva", path=None):
+        path = path or self.h
+        text = path.read_text()
+        for key, value in (("revisor", task + " · modelo"), ("revisado", subagente.ahora()[:10])):
+            text = re.sub(r"(?m)^" + key + r":.*\n", "", text)
+            text = text.replace("---\n", "---\n" + key + ": " + value + "\n", 1)
+        text = re.sub(r"(?ms)^## Revisión[^\n]*\n.*?(?=^## |\Z)", "", text)
+        path.write_text(text + "\n## Revisión\n- **Veredicto:** LIMPIO\n- " + detail + "\n")
+
+    def test_R5_cancelado_sin_hijo_no_invalida_revision_valida(self):
+        r = self.prepare()
+        self.bind(r, model="constructor")
+        self.wt.commitear()
+        self.h.write_text(self.h.read_text().replace("[ ]", "[x]"))
+        self.assertEqual(self.finish(r), 0)
+        review = self.prepare("revisor")
+        self.assertEqual(self.bind(review, "review", "revisor"), 0)
+        self.write_review("review")
+        self.assertEqual(self.finish(review, "review"), 0)
+        self.assertEqual(unidad.puerta_recibo_revisor(self.name), ([], []))
+        empty = self.prepare()
+        self.assertEqual(self.call("cancelar", self.name, "--recibo-id", empty["id"], "--rol", "constructor", "--motivo", "sin hijo"), 0)
+        self.assertEqual(unidad.puerta_recibo_revisor(self.name), ([], []))
+
+    def test_R3_revisor_no_puede_reescribir_plan_ni_evidencia(self):
+        self.wt.commitear()
+        r = self.prepare("revisor")
+        self.bind(r, model="revisor")
+        self.write_review()
+        self.h.write_text(self.h.read_text().replace("[ ]", "[x]"))
+        self.assertNotEqual(self.finish(r), 0)
+        self.assertNotIn("resultado", json.loads(Path(r["_ruta"]).read_text()))
+
+    def test_R3_aprendizaje_no_atribuye_veredicto_preexistente(self):
+        self.wt.commitear()
+        self.write_review("antiguo")
+        r = self.prepare("revisor")
+        self.bind(r, model="revisor")
+        self.h.write_text(self.h.read_text() + "\n```aprendizajes-revisor\n- Aprendizaje nuevo\n```\n")
+        self.assertNotEqual(self.finish(r), 0)
+        self.assertNotIn("resultado", json.loads(Path(r["_ruta"]).read_text()))
+
+    def test_R3_frontera_preserva_evidencia_y_hallazgos_previos(self):
+        self.wt.commitear()
+        self.h.write_text(self.h.read_text() + "\n## Evidencia\npruebas: 42\n"
+                          "\n## Trabajo descubierto\n- Previo del constructor\n- [revisor] Previo de otro revisor\n"
+                          "\n## Aprendizajes\n```aprendizajes-constructor\n- Del constructor\n```\n"
+                          "```aprendizajes-revisor\n- Anterior\n```\n")
+        r = self.prepare("revisor")
+        self.bind(r, model="revisor")
+        self.write_review()
+        valido = self.h.read_text()
+        for old, new in (("pruebas: 42", "pruebas: 999"),
+                         ("[ ] tarea", "[x] tarea"),
+                         ("Previo del constructor", "Reescrito"),
+                         ("Previo de otro revisor", "Reescrito"),
+                         ("Del constructor", "Reescrito"),
+                         ("ronda: 1", "ronda: 2"),
+                         ("revisado_patch_id: no", "revisado_patch_id: falsificado"),
+                         ("child-1 · modelo", "hijo-ajeno · modelo"),
+                         (subagente.ahora()[:10], "2000-01-01")):
+            with self.subTest(old=old):
+                self.h.write_text(valido.replace(old, new))
+                self.assertNotEqual(self.finish(r), 0)
+        self.h.write_text(valido.replace("- Previo del constructor", "- Nuevo sin marca\n- Previo del constructor"))
+        self.assertNotEqual(self.finish(r), 0)
+        self.h.write_text(valido.replace("- Anterior", "- Aprendizaje de esta revisión").replace(
+            "## Aprendizajes", "- [revisor] Nuevo hallazgo\n  Evidencia reproducible\n\n## Aprendizajes"))
+        self.assertEqual(self.finish(r), 0)
+        final = json.loads(Path(r["_ruta"]).read_text())
+        self.assertEqual(final["informe_revisor_final"]["firma"]["revisor"], "child-1 · modelo")
+
+    def test_R3_firma_nueva_no_reutiliza_revision_anterior(self):
+        self.wt.commitear()
+        self.write_review("anterior")
+        r = self.prepare("revisor")
+        self.bind(r, model="revisor")
+        self.h.write_text(self.h.read_text().replace("anterior · modelo", "child-1 · modelo"))
+        self.assertNotEqual(self.finish(r), 0)
+        self.write_review(detail="El nuevo hijo revisó de nuevo los seis criterios")
+        self.assertEqual(self.finish(r), 0)
+
+    def test_R3_bug_solo_permite_su_revision_sin_reescribir_cierre(self):
+        self.wt.commitear()
+        ficha = self.docs / "especificacion.md"
+        bug = self.root / "docs/bugs" / (self.name + ".md")
+        bug.parent.mkdir(parents=True)
+        bug.write_text(ficha.read_text().replace("carril: completo", "carril: directo") +
+                       "\n## 6 · Cierre\n- **Revisión (revisor fresco):** pendiente\n"
+                       "- Merge del PR: pendiente\n- **Validación del usuario:** PENDIENTE\n")
+        ficha.unlink()
+        self.assertEqual(self.call("preparar", self.name, "--rol", "revisor", "--plataforma", "codex", "--modelo", "r"), 0)
+        r = entrega.recibos_de(self.name, self.receipts)[-1]
+        self.bind(r, model="revisor")
+        text = bug.read_text().replace("---\n", "---\nrevisor: child-1\nrevisado: " + subagente.ahora()[:10] + "\n", 1)
+        text = text.replace("** pendiente", "** LIMPIO")
+        bug.write_text(text.replace("Merge del PR: pendiente", "Merge del PR: inventado"))
+        self.assertNotEqual(self.finish(r), 0)
+        bug.write_text(text)
+        self.assertEqual(self.finish(r), 0)
+
     def test_R1_lanzador_retirado_no_invoca_ningun_proceso(self):
         with mock.patch.object(ejecucion.subprocess, "Popen") as popen:
             with mock.patch.object(ejecucion.subprocess, "run") as run:
@@ -123,7 +225,7 @@ class NativoTest(unittest.TestCase):
         r = self.prepare("revisor")
         self.bind(r, model="modelo-observado")
         head = self.wt.head()
-        self.h.write_text(self.h.read_text() + "\n- **Veredicto:** LIMPIO\n")
+        self.write_review()
         self.assertEqual(self.finish(r), 0)
         self.assertEqual(self.wt.head(), head)
         final = json.loads(Path(r["_ruta"]).read_text())
@@ -138,7 +240,7 @@ class NativoTest(unittest.TestCase):
         self.wt.commitear()
         r = self.prepare("revisor")
         self.bind(r)
-        self.h.write_text(self.h.read_text() + "\n- **Veredicto:** LIMPIO\n")
+        self.write_review()
         self.assertEqual(self.finish(r), 0)
         final = json.loads(Path(r["_ruta"]).read_text())
         self.assertIsNone(final["modelo_acreditado"])
@@ -224,7 +326,7 @@ class NativoTest(unittest.TestCase):
         self.wt.commitear()
         r = self.prepare("revisor")
         self.bind(r, model="revisor")
-        self.h.write_text(self.h.read_text() + "\n- **Veredicto:** LIMPIO\n")
+        self.write_review()
         self.assertEqual(self.finish(r), 0)
         before = r["revisado_patch_id"]
         git(self.wt.ruta, "checkout", "main")
@@ -277,7 +379,7 @@ class NativoTest(unittest.TestCase):
         self.assertTrue(r["worktree_efimero"])
         self.assertTrue(Path(r["cwd"]).is_dir())
         self.bind(r, model="observado")
-        self.h.write_text(self.h.read_text() + "\n- **Veredicto:** LIMPIO\n")
+        self.write_review()
         self.assertEqual(self.finish(r), 0)
         self.assertFalse(Path(r["cwd"]).exists())
 
@@ -338,7 +440,7 @@ class NativoTest(unittest.TestCase):
         r = entrega.recibos_de(self.name, self.receipts)[-1]
         self.bind(r, model="observado")
         (bug.parent / "999-otro.md").write_text("Otro agente trabaja independiente")
-        bug.write_text(bug.read_text() + "\n- **Veredicto:** LIMPIO\n")
+        self.write_review(path=bug)
         self.assertEqual(self.finish(r), 0)
 
 
@@ -346,7 +448,7 @@ class NativoTest(unittest.TestCase):
         self.wt.commitear()
         r = self.prepare("revisor")
         self.bind(r, model="revisor-observado")
-        self.h.write_text(self.h.read_text() + "\n- **Veredicto:** LIMPIO\n")
+        self.write_review()
         self.assertEqual(self.finish(r), 0)
         self.assertEqual(unidad.puerta_recibo_revisor(self.name)[0], [])
         self.h.write_text(self.h.read_text().replace("ronda: 1", "ronda: 2"))

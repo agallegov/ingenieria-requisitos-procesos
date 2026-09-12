@@ -157,6 +157,12 @@ casillas — lo marcado no se repite, lo no marcado no se da por hecho— en vez
    collaboration.spawn_agent), le pasa contrato/diff y vincula el resultado al recibo exacto.
    Al terminar, `subagente.py finalizar` verifica la evidencia por rol. Los comandos completos
    y el formato de evidencia están en `runbooks/control-plane.md`.
+   La firma lleva `revisor: <native_task_id> · <modelo>` y `revisado: YYYY-MM-DD` de
+   esta ejecución, también en el frontmatter del bug. El nuevo hijo escribe su propia
+   sección Revisión (en bugs, su viñeta de revisión en Cierre): conservar un veredicto
+   anterior y cambiar solo aprendizajes no acredita revisión. Puede actualizar
+   `aprendizajes-revisor` y añadir viñetas `[revisor]` en Trabajo descubierto; el protocolo
+   rechaza cambios al Plan, evidencia, rondas y hallazgos preexistentes.
 
    Código y documentos del contrato son de lectura; la escritura permitida es su informe y
    firma. El recibo declara los permisos que la herramienta permite observar y los snapshots
