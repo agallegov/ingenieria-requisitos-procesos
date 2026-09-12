@@ -165,13 +165,15 @@ class EscenariosCuelgues(Escenario):
         self.assertEqual(lineas[0], "0", "git no puede preguntar por terminal")
         self.assertEqual(lineas[1], "''", "el stdin de los hijos va cerrado")
 
-    def test_escenario_06_el_launcher_acepta_tope_explicito(self):
+    def test_escenario_06_el_launcher_retirado_guia_a_la_sesion_nativa(self):
         ayuda = subprocess.run(
             [sys.executable, str(SCRIPTS / "ejecucion.py"), "lanzar", "--help"],
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
         )
         self.assertEqual(ayuda.returncode, 0, ayuda.stdout + ayuda.stderr)
-        self.assertIn("--tope-minutos", ayuda.stdout)
+        self.assertIn("RETIRADO", ayuda.stdout)
+        self.assertIn("subagente.py preparar", ayuda.stdout)
+        self.assertNotIn("--tope-minutos", ayuda.stdout)
 
     def test_escenario_07_el_despacho_guia_al_subagente_del_padre(self):
         # Hasta la 1.8.1 el despacho guiaba a lanzar `ejecucion.py` en SEGUNDO PLANO y a

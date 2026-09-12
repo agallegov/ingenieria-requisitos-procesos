@@ -33,7 +33,7 @@ placeholder o vacío: ni lo apliques ni lo menciones; si NO existe, créalo tú 
 6. **Mira el canario:** `python3 docs/00-metodo/scripts/canario.py`, y otra vez tras cada tarea larga. Si avisa
    —capacidad ("zona de riesgo") o conducta ("ya está degradando")— pega el parte de `canario.py retomada` y di que
    esta sesión está degradada: mejor cortar y seguir en una NUEVA. En Codex, sin hook, es el ÚNICO mecanismo.
-7. **Si abres la sesión con Codex CLI, confía los hooks del método UNA vez** (`/hooks` en la sesión y acéptalos): sin eso Codex no los ejecuta y no te avisa: te quedas sin canario ni aviso de fin de turno. En Claude Code no existe esta puerta; el constructor y el revisor de `ejecucion.py` no lo necesitan (el lanzador pasa `--dangerously-bypass-hook-trust`: los hooks son los del método).
+7. **Si abres la sesión con Codex CLI, confía los hooks del método UNA vez** (`/hooks` en la sesión y acéptalos): sin eso Codex no los ejecuta y no te avisa: te quedas sin canario ni aviso de fin de turno. La delegación nativa conserva las reglas de la sesión; ningún lanzador externo evita esta puerta.
 
 ## Orden de lectura (router) — lee solo lo que tu tarea necesita
 
@@ -66,8 +66,8 @@ placeholder o vacío: ni lo apliques ni lo menciones; si NO existe, créalo tú 
 1. **Quién construye lo dice el CARRIL (ADR-017).** En **exprés y directo construye el PADRE**,
    en el worktree de la unidad, a la vista del usuario: delegar trabajo pequeño cuesta la caché,
    un salto de contexto y toda la visibilidad, y no devuelve casi nada. En **normal y completo** lo hace un
-   **subagente del propio padre** (ADR-033) en `worktrees/NNN-slug/`, con el encargo, modelo y esfuerzo que imprime `unidad.py despachar`: el padre lo ve, le habla y lo corta — nunca un `claude -p` aparte y mudo. **El revisor es SIEMPRE un agente
-   fresco de solo lectura, distinto de quien construyó**, lanzado por `scripts/ejecucion.py` (deja recibo) — eso no lo relaja ningún carril.
+   **subagente del propio padre** (ADR-038) en `worktrees/NNN-slug/`, con el encargo, modelo y esfuerzo que imprime `unidad.py despachar`: el padre lo ve, le habla y lo corta. **El revisor es SIEMPRE un agente
+   nativo fresco de solo lectura, distinto de quien construyó**; `scripts/subagente.py` prepara, vincula y finaliza su recibo — eso no lo relaja ningún carril.
 2. **Escritura.** Quien construye escribe en su worktree y en su unidad: `hallazgos.md`, y las
    casillas `[x]` del plan las marca AHÍ, en su `## Plan` (que siembra `unidad.py despachar`): la ficha es el contrato y está en solo lectura mientras dura la obra — en un bug, todo va a `docs/bugs/NNN-slug.md`. Los ficheros compartidos —
    `ESTADO.md`, `INDICE.md`, `ROADMAP.md`, `conocimiento/`, `decisiones/`— los escribe SOLO el
@@ -109,7 +109,7 @@ placeholder o vacío: ni lo apliques ni lo menciones; si NO existe, créalo tú 
 14. **Los flujos siguen vivos — la puerta la abre el DELTA, no el cambio.** Si el trabajo **añade, quita o contradice** algo del mapa, asume el rol ANALISTA DE FLUJOS y sigue `docs/00-metodo/requisitos/RUNBOOK.md`: modifica `docs/02-flujos/planos/`, enseña el visor web y obtén la aprobación ANTES de crear unidades de código (ADR-007). Si cabe dentro de un
     flujo ya escrito, esa puerta NO se abre: el delta, si lo hay, se escribe en el cierre con el trabajo ya visto funcionando (ADR-014).
 15. **Proceso nativo (ADR-021).** Diseño, plan, debugging, TDD, revisión y cierre son locales;
-    skills de proceso no, skills técnicas sí. El revisor pasa por `ejecucion.py` (ADR-022); el constructor es un subagente del padre (ADR-033), `ejecucion.py` le queda como vía opcional.
+    skills de proceso no, skills técnicas sí. TODA delegación —constructor, revisor, investigador, auditor y validador— usa hijos nativos de la sesión, en Claude y Codex (ADR-038). Prohibidos `claude -p`, `codex exec` y cualquier fallback de IA externo; si falta capacidad, explica la salida sin inventar ejecución.
 16. **Nadie espera a ciegas** (§ más abajo): un rato largo callado es un fallo, no una espera.
 
 ## Reglas de oro (siempre)

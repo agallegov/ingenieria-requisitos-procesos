@@ -128,12 +128,11 @@ casillas — lo marcado no se repite, lo no marcado no se da por hecho— en vez
    misma escritura que el veredicto** — es el único que sabe quién es; el despacho del revisor
    se lo pide con esas palabras.
 
-   **El QUÉ se revisó no lo escribe nadie a mano.** Al lanzarlo, `ejecucion.py` sella
-   `revisado_patch_id` en esa misma cabecera y en su recibo: es el `git patch-id --stable`
-   del diff de la rama contra la principal, o sea la huella del contenido exacto que el
-   revisor tiene delante. Sobrevive a un rebase limpio (mismo contenido, otro SHA) y muere
-   con cualquier línea nueva. El revisor no lo toca; si al firmar la huella no está, la
-   revisión se lanzó fuera del launcher y hay que repetirla por él.
+   **El QUÉ se revisó lo mide el protocolo.** `subagente.py preparar` conserva el
+   `revisado_patch_id` del contenido y su ronda. Al finalizar vuelve a comprobarlos y sella
+   el ancla del informe: un rebase limpio conserva contenido, una modificación lo invalida.
+   El revisor no inventa la huella; si falta el recibo o no corresponde al contenido actual,
+   se prepara otra revisión nativa fresca.
 
    **Y mira la contraprueba, no la cree.** En normal y completo, el revisor comprueba que la
    sección Contraprueba de `hallazgos.md` está pagada de verdad: que el criterio es el
@@ -144,7 +143,7 @@ casillas — lo marcado no se repite, lo no marcado no se da por hecho— en vez
    comprobar ningún script —por eso lo hace una persona leyendo el parte— y por eso está
    escrito aquí en vez de fingir un linter que no puede fallar.
 
-   **El revisor es SIEMPRE una sesión o subagente NUEVO** (ADR-017), en todo carril que
+   **El revisor es SIEMPRE un subagente nativo NUEVO** (ADR-017), en todo carril que
    revisa (el exprés no revisa: solo el verde). "De solo lectura" significa sobre el CÓDIGO
    y los papeles de la unidad: su única escritura permitida —y obligada— es su veredicto y
    su firma (`revisor:`, `revisado:`) en la sección Revisión de `hallazgos.md`, en la misma
@@ -152,33 +151,29 @@ casillas — lo marcado no se repite, lo no marcado no se da por hecho— en vez
    mapa o toca hotspots; en `directo` es además obligado, porque ahí quien construyó fue el
    padre (regla 1 de `AGENTS.md`).
 
-   Se lanza por `ejecucion.py lanzar NNN-slug --rol revisor --prompt
-   "Revisa el diff contra el contrato y firma hallazgos.md"`. **Sin `--modelo`**: el del
-   revisor lo deriva la tabla de la regla 10 (`roles.md` §Modelo y esfuerzo del subagente).
-   **Y sin `--harness`**: el lanzador usa el que esté **disponible** en esta máquina y
-   prefiere, para revisar, el distinto del que construyó (se lo dicen los recibos, no la
-   memoria de nadie). Si solo hay uno instalado, revisa con ese: la revisión fresca la define
-   que el agente sea nuevo y de solo lectura, no la marca del binario, y el modelo distinto lo
-   sigue poniendo la tabla. Si no hay ninguno, el rechazo dice cuál instalar y cómo. Nombrar
-   uno a mano (`--harness claude`, `--harness codex`) sigue valiendo cuando lo quieras forzar.
-   El perfil hace read-only el código y solo permite como escritura persistente la firma
-   derivada de esa unidad; cwd, rama, harness, modelo y esfuerzo quedan en el recibo
-   `ejecucion/v1` (ADR-022).
+   Se prepara con `subagente.py preparar NNN-slug --rol revisor`. El modelo sale de
+   la tabla y la plataforma de la sesión padre; si no se identifica, se indica
+   `--plataforma claude|codex`. El padre crea un hijo nativo fresco (Agent o
+   collaboration.spawn_agent), le pasa contrato/diff y vincula el resultado al recibo exacto.
+   Al terminar, `subagente.py finalizar` verifica la evidencia por rol. Los comandos completos
+   y el formato de evidencia están en `runbooks/control-plane.md`.
+   La firma lleva `revisor: <native_task_id> · <modelo>` y `revisado: YYYY-MM-DD` de
+   esta ejecución, también en el frontmatter del bug. El nuevo hijo escribe su propia
+   sección Revisión (en bugs, su viñeta de revisión en Cierre): conservar un veredicto
+   anterior y cambiar solo aprendizajes no acredita revisión. Puede actualizar
+   `aprendizajes-revisor` y añadir viñetas `[revisor]` en Trabajo descubierto; el protocolo
+   rechaza cambios al Plan, evidencia, rondas y hallazgos preexistentes.
 
-   **En Windows la firma la sella el lanzador.** El sandbox de Windows sin elevación no admite
-   varios conjuntos de rutas escribibles, así que allí el revisor Codex corre bajo un perfil de
-   **una sola raíz** (el temporal de la sesión) y no puede escribir `hallazgos.md`: su
-   `revisor:`/`revisado:` los pone el lanzador desde el recibo —la misma puerta que
-   `revisado_patch_id`—, y el recibo deja escrito bajo qué perfil corrió. **Y solo firma si la
-   sesión ACREDITÓ con qué modelo corrió**: si el rollout no se deja leer, el recibo se queda
-   declarando lo que se pidió, el lanzador NO firma y lo dice — la revisión se repite, porque
-   estampar el modelo pedido sería afirmar algo que nadie comprobó. El veredicto sí lo dice el
-   revisor por su salida, y se transcribe a la sección Revisión tal cual.
+   Código y documentos del contrato son de lectura; la escritura permitida es su informe y
+   firma. El recibo declara los permisos que la herramienta permite observar y los snapshots
+   antes/después; no promete un sandbox de SO ni copia credenciales a una sesión alternativa.
+   El modelo acreditado se deriva de los metadatos del hijo concreto, nunca de lo solicitado.
+   Si falta esa fuente, se declara el límite y no se satisface una puerta que la exija.
+   Esto vale también en Windows; ninguna plataforma vuelve al lanzador IA externo.
 
-   **Si el worktree ya no existe** (la unidad está en `en_validacion` o `mergeada` y el cierre
-   se lo llevó), el mismo comando sigue valiendo: el lanzador se crea uno efímero, detached
-   sobre el `fusion:` de la ficha, y lo borra al terminar. No hay que recrear rama ni worktree
-   a mano.
+   **Si el worktree ya no existe**, una revisión de una unidad entregada usa una copia
+   efímera del contenido de `fusion:` preparada por el protocolo. El historial anterior sigue
+   siendo consultable. No se inventa una rama de construcción para leer una entrega.
 
    **El revisor no puede ser quien construyó.** Esto no lo relaja ningún carril:
    lo que los carriles cambian es cuánto papeleo hay, no que la revisión exista.
@@ -195,7 +190,7 @@ casillas — lo marcado no se repite, lo no marcado no se da por hecho— en vez
    la app.
 
    **Y las vueltas se CUENTAN, no se recuerdan (069).** El `ronda: N` de la cabecera de
-   `hallazgos.md` lo escribe `ejecucion.py` al lanzar al constructor —nunca a mano—: sube en 1
+   `hallazgos.md` lo registra el protocolo nativo del constructor —nunca a mano—: sube en 1
    cada vez que la última revisión dijo `HUECOS DE CORRECCIÓN`, y una ejecución que termina con
    el mismo commit y el mismo diff con los que empezó no gasta ronda (queda marcada como vacía).
    **El tope es dos.** Lanzar la tercera se rechaza, y la decisión pasa a ti: subir de carril,

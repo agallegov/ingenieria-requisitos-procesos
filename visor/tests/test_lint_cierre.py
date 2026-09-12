@@ -279,7 +279,7 @@ class ValidadorTest(unittest.TestCase):
             "revisor: agente-fresco", "revisado: 2026-08-25", "revisado_patch_id:"])
         texto = self.denegado(self.validar())
         self.assertIn("revisado_patch_id", texto)
-        self.assertIn("ejecucion.py lanzar", texto)
+        self.assertIn("subagente.py preparar", texto)
 
     def test_firma_con_la_huella_en_el_marcador_de_la_plantilla_se_deniega(self):
         self.escribir_parte(self.parte_honesto(), frontmatter=[
@@ -529,7 +529,7 @@ class AnclaEnElCierreTest(unittest.TestCase):
         bloqueos = self.bloqueo_del_ancla(texto)
         self.assertTrue(bloqueos, texto)
         self.assertIn("SALIDA:", bloqueos[0])
-        self.assertIn("ejecucion.py lanzar 001-demo", bloqueos[0])
+        self.assertIn("subagente.py preparar 001-demo", bloqueos[0])
 
     def test_deshacer_el_cambio_devuelve_la_firma_a_valida(self):
         """Fila 3 de la tabla del usuario: el patch-id habla del CONTENIDO, no de la historia."""

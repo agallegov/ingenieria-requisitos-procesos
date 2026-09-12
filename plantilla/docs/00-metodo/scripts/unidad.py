@@ -2609,51 +2609,33 @@ def anotar_serie_en_el_despacho(referencias, tipo_proceso, nombre):
 
 
 def encargo_subagente_del_padre(nombre, fm, destino, ruta_ficha):
-    """El «siguiente paso» de normal/completo: un subagente DEL PADRE, no un `claude -p`.
-
-    Hasta la 1.8.1 aquí se imprimía `ejecucion.py lanzar … --rol constructor`: un proceso
-    aparte, mudo, que el padre solo podía vigilar por su recibo (bug 084, ADR-033). Ahora el
-    padre delega en un subagente propio —lo ve, le habla y lo corta— aislado en el worktree
-    de la unidad y con el modelo y el esfuerzo que la tabla de la regla 10 le da al carril
-    (`repo_config.plan_de_modelo`). El revisor NO cambia: sigue siendo un agente fresco
-    lanzado por `ejecucion.py`, porque su recibo es lo que acredita la firma en el cierre.
-    """
-    carril = (fm.get("carril") or "normal").strip() or "normal"
-    documental = bool(fm.get("documental"))
+    """Encargo para la herramienta nativa de ESTA sesión, en ambas plataformas."""
+    carril = (fm.get("carril") or "normal").strip()
     try:
-        plan = repo_config.plan_de_modelo(carril, "constructor", documental=documental)
+        plataforma = repo_config.plataforma_sesion()
+        plan = repo_config.plan_de_modelo(carril, "constructor", documental=bool(fm.get("documental")), harness=plataforma)
         modelo, esfuerzo = plan.modelo, plan.esfuerzo
-    except repo_config.RepoConfigError:
-        modelo, esfuerzo = "(el de la tabla de la regla 10)", "(el del carril)"
+    except repo_config.RepoConfigError as exc:
+        modelo, esfuerzo = "pendiente de plataforma de sesión", "pendiente"
+        plataforma = str(exc)
     return (
-        f"    1. Delega en un SUBAGENTE DEL PADRE (ADR-033) — no en un `claude -p` aparte:\n"
+        f"    1. Prepara el recibo: python3 docs/00-metodo/scripts/subagente.py preparar {nombre} --rol constructor\n"
+        f"    2. Delega en un SUBAGENTE DEL PADRE con la herramienta nativa de esta sesión:\n"
         f"       · cwd y frontera de escritura: {rel(destino)} (rama {nombre})\n"
-        f"       · modelo {modelo} · esfuerzo {esfuerzo} (tabla de la regla 10, carril {carril})\n"
-        f"       · encargo: «Lee {rel(ruta_ficha)} y ejecuta solo su plan aprobado; escribe\n"
-        f"         SOLO en tu worktree, en hallazgos.md y en las casillas del plan; termina con\n"
-        f"         el PR abierto y PARA»\n"
-        f"       Lo gestionas tú: parte de avance por casilla, tope de silencio de 5 min,\n"
-        f"       y lo cortas si se desvía del contrato (regla 8).\n"
-        f"       Al recibir el PR, el revisor sigue siendo fresco y por el lanzador (deja recibo):\n"
-        f"       {comando_revision(nombre)}"
+        f"       · modelo {modelo} · esfuerzo {esfuerzo} (carril {carril}; {plataforma})\n"
+        f"       · Lee {rel(ruta_ficha)} y ejecuta solo su plan aprobado; escribe en tu worktree\n"
+        f"         y hallazgos.md; termina con el PR abierto.\n"
+        f"    3. Vincula el ID REAL devuelto por Agent/collaboration.spawn_agent con subagente.py vincular;\n"
+        f"       conserva evidencia de identidad y modelo. Parte de avance por casilla; silencio máximo 5 min.\n"
+        f"    4. Finaliza el recibo exacto con subagente.py finalizar. Revisión nativa FRESCA,\n"
+        f"       contexto independiente, modelo distinto: {comando_revision(nombre)}"
     )
 
 
 def abrir_entrega_del_subagente(nombre, fm):
-    """Abre el recibo con la base git antes de entregar el encargo al ayudante."""
-    carril = (fm.get("carril") or "normal").strip() or "normal"
-    try:
-        plan = repo_config.plan_de_modelo(carril, "constructor", documental=False)
-        modelo, esfuerzo = plan.modelo, plan.esfuerzo
-    except repo_config.RepoConfigError:
-        modelo, esfuerzo = "tabla-del-carril", "medio"
-    orden = [
-        sys.executable,
-        str(Path(__file__).with_name("subagente.py")),
-        "abrir", nombre, "--modelo", modelo, "--rol", "constructor",
-        "--esfuerzo", esfuerzo,
-    ]
-    return subprocess.run(orden, cwd=str(RAIZ), check=False).returncode
+    """El despacho entrega la orden; preparar no se finge como un agente ya lanzado."""
+    print(f"Pendiente de preparación nativa: subagente.py preparar {nombre} --rol constructor")
+    return 0
 
 
 def lanzamiento_interrumpido(manager, nombre):
@@ -2890,11 +2872,13 @@ def recibos_ejecucion(nombre):
 
 
 def sesion_de(recibo):
-    return str((recibo.get("lease") or {}).get("session_id") or "").strip()
+    return str((recibo.get("native_task_id") if recibo.get("protocolo") == "nativo/v1"
+               else (recibo.get("lease") or {}).get("session_id")) or "").strip()
 
 
 def modelo_de(recibo):
-    return str(recibo.get("modelo") or "").strip()
+    return str((recibo.get("modelo_observado") if recibo.get("protocolo") == "nativo/v1"
+               else recibo.get("modelo")) or "").strip()
 
 
 def esfuerzo_de(recibo):
@@ -2935,21 +2919,8 @@ def lineas_de_modelo(recibos):
 PROMPT_REVISION = "Revisa el diff contra el contrato y firma hallazgos.md"
 
 def comando_revision(nombre):
-    """La salida de las tres variantes del bloqueo del revisor, tal como se teclea.
-
-    Se compone contra el `argparse` real de `ejecucion.py`: subcomando `lanzar`, la unidad
-    como POSICIONAL (no existe ningún `--unidad`) y `--prompt`, que es obligatorio. La 033
-    publicó aquí un comando que respondía `invalid choice` (bug 034, hallazgo A).
-
-    Ya NO lleva `--modelo`. Hasta el bug 065 ofrecía `--modelo
-    <modelo-distinto-del-constructor>`: un hueco que el lector tenía que rellenar
-    adivinando, porque desde aquí no se sabe con qué construyó el otro. Ahora el modelo del
-    revisor lo deriva la tabla de la regla 10 (`repo_config.plan_de_modelo`) y el comando se
-    pega tal cual; ponerlo a mano exigiría además `--motivo-modelo`, así que el hueco de
-    ayer sería hoy un comando que ni arranca.
-    """
-    return (f"python3 docs/00-metodo/scripts/ejecucion.py lanzar {nombre} "
-            f"--rol revisor --prompt \"{PROMPT_REVISION}\"")
+    """Prepara la revisión; después el padre usa la herramienta nativa de su sesión."""
+    return f"python3 docs/00-metodo/scripts/subagente.py preparar {nombre} --rol revisor"
 
 
 def mensaje_sin_recibo_revisor(nombre):
@@ -2971,6 +2942,20 @@ def acredita_revision(recibo):
     `rol: revisor` habilitaba el cierre con una revisión que falló, que se quedó a medias
     o que ni siquiera arrancó — exactamente lo que la puerta existe para impedir.
     """
+    if recibo.get("protocolo") == "nativo/v1":
+        vinculo = entrega.validar_vinculo_nativo(recibo)
+        if vinculo:
+            return vinculo
+        if recibo.get("rol") != "revisor" or recibo.get("estado_nativo") != "terminado":
+            return "recibo nativo no es una revisión terminada"
+        if not recibo.get("native_task_id") or recibo.get("native_task_id") == (recibo.get("lease") or {}).get("session_id"):
+            return "identidad nativa ausente o confundida con el cerrojo"
+        if recibo.get("contexto") != "fresco":
+            return "revisor sin contexto fresco"
+        if not recibo.get("modelo_acreditado") or not recibo.get("evidencia_nativa"):
+            return "modelo efectivo sin acreditar: usa una sesión que exponga su metadata nativa"
+        if (recibo.get("git") or {}).get("final", {}).get("tree") != (recibo.get("git") or {}).get("inicial", {}).get("tree"):
+            return "contenido modificado durante revisión"
     identificador = str(recibo.get("id") or "sin id")
     resultado = str(recibo.get("resultado") or "").strip()
     exit_code = recibo.get("exit_code")
@@ -3022,14 +3007,30 @@ def puerta_recibo_revisor(nombre):
     if not validos:
         return [mensaje_recibo_no_acredita(
             nombre, [motivo for _, motivo in motivos if motivo])], []
-    constructores = [r for r in recibos if str(r.get("rol") or "").strip() == "constructor"]
+    nativos = [r for r in validos if r.get("protocolo") == "nativo/v1"]
+    if nativos:
+        informe = RAIZ / "docs/05-trabajo" / nombre / "hallazgos.md"
+        if not informe.is_file():
+            informe = RAIZ / "docs/bugs" / f"{nombre}.md"
+        cabecera = frontmatter(informe) if informe.is_file() else {}
+        coherentes = [r for r in nativos if str(r.get("revisado_patch_id") or "") == str(cabecera.get("revisado_patch_id") or "")
+                      and str(r.get("ronda")) == str(cabecera.get("ronda"))]
+        if not coherentes:
+            return ["firma, contenido o ronda no corresponden al recibo nativo. SALIDA: " + comando_revision(nombre)], []
+        validos = coherentes
+    constructores = [r for r in recibos if str(r.get("rol") or "").strip() == "constructor"
+                    and r.get("estado_nativo") != "preparado" and not r.get("sin_ejecucion")]
     sesiones_constructor = {sesion_de(r) for r in constructores} - {""}
     limpios = [r for r in validos if sesion_de(r) not in sesiones_constructor]
     if not limpios:
         return [mensaje_auto_sello(nombre, sorted(sesiones_constructor)[0])], []
     avisos = []
+    if nativos and any(r.get("protocolo") == "nativo/v1" and not r.get("modelo_acreditado") for r in constructores):
+        return ["modelo del constructor sin acreditar: falta evidencia para comparar independencia. SALIDA: " + comando_revision(nombre)], []
     modelos_constructor = {modelo_de(r) for r in constructores} - {""}
     repetidos = sorted({modelo_de(r) for r in limpios} & modelos_constructor)
+    if repetidos and any(r.get("protocolo") == "nativo/v1" for r in limpios):
+        return ["revisor y constructor requieren modelo distinto. SALIDA: " + comando_revision(nombre)], []
     if repetidos:
         avisos.append(
             f"revisor y constructor de {nombre} usaron el mismo modelo ({', '.join(repetidos)}): "
@@ -4851,8 +4852,13 @@ def _subagente_de(nombre):
             continue
         if (datos.get("harness") == "subagente-del-padre"
                 and datos.get("unidad") == nombre and "resultado" not in datos):
-            modelo = datos.get("modelo") or "?"
             rol = datos.get("rol") or "constructor"
+            if datos.get("protocolo") == "nativo/v1":
+                if datos.get("estado_nativo") == "preparado":
+                    return f"  · delegación {rol} preparada (sin hijo vinculado)"
+                modelo = datos.get("modelo_observado") or "sin acreditar"
+                return f"  · subagente {rol} {modelo} (solicitado: {datos.get('modelo_solicitado') or '?'})"
+            modelo = datos.get("modelo") or "?"
             return f"  · subagente {rol} {modelo}"
     return ""
 

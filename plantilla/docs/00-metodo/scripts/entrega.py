@@ -116,6 +116,9 @@ def recibos_de(unidad, ejecuciones=None):
         except (OSError, ValueError):
             recibos.append({"_corrupto": str(ruta)})
             continue
+        if not isinstance(datos, dict):
+            recibos.append({"_corrupto": str(ruta)})
+            continue
         datos["_ruta"] = str(ruta)
         recibos.append(datos)
     return recibos
@@ -174,6 +177,36 @@ def _problema(texto, comando="git status --porcelain"):
     return f"{texto}. {SALIDA} {comando}"
 
 
+def validar_vinculo_nativo(recibo, exigir_terminado=True):
+    """Integridad estructural de evidencia nativa; históricos conservan su lector."""
+    task = recibo.get("native_task_id")
+    if not task or task in ((recibo.get("lease") or {}).get("session_id"), recibo.get("native_parent_session_id")):
+        return "identidad nativa ausente o confundida con padre/cerrojo"
+    evidencia = recibo.get("evidencia_nativa") or {}
+    try:
+        raw = Path(evidencia["ruta"]).read_bytes()
+        payload = json.loads(raw)
+    except (KeyError, OSError, ValueError, TypeError):
+        return "falta evidencia nativa legible"
+    if hashlib.sha256(raw).hexdigest() != evidencia.get("sha256"):
+        return "evidencia nativa modificada"
+    if payload.get("native_task_id") != task or payload.get("parent_session_id") != recibo.get("native_parent_session_id"):
+        return "vínculo nativo no coincide con su fuente"
+    if recibo.get("contexto") != payload.get("contexto"):
+        return "contexto no coincide con la herramienta nativa"
+    metadata = recibo.get("metadata_observada") or {}
+    if recibo.get("modelo_acreditado") and (
+        metadata.get("modelo") != recibo.get("modelo_acreditado")
+        or metadata.get("modelo") != recibo.get("modelo_observado")
+        or not metadata.get("ruta") or not payload.get("metadata_path")
+        or Path(metadata["ruta"]).resolve() != Path(payload["metadata_path"]).resolve()
+    ):
+        return "modelo acreditado no corresponde a su fuente de metadata"
+    if exigir_terminado and recibo.get("estado_nativo") != "terminado":
+        return "tarea nativa no terminada"
+    return None
+
+
 def validar_entrega(worktree, unidad, recibos, base):
     """Puerta pura usada por los fixtures y por los consumidores reales."""
     base = dict(base or {})
@@ -186,18 +219,22 @@ def validar_entrega(worktree, unidad, recibos, base):
         r for r in recibos
         if isinstance(r, dict) and r.get("schema") == "ejecucion/v1"
         and r.get("unidad") == unidad and r.get("rol") == "constructor"
+        and r.get("estado_nativo") != "preparado" and not r.get("sin_ejecucion")
     ]
     if not candidatos:
         if not recibos:
             return [_problema(
                 f"la entrega del ayudante de {unidad} está ausente",
-                f"python3 docs/00-metodo/scripts/ejecucion.py lanzar {unidad} "
-                "--rol constructor --prompt \"termina la entrega\"",
+                f"python3 docs/00-metodo/scripts/subagente.py preparar {unidad} --rol constructor",
             )], []
         return [_problema(f"ningún recibo legible acredita al constructor de {unidad}")], []
 
     propios = [r for r in candidatos if r.get("harness") == "subagente-del-padre"]
     recibo = (propios or candidatos)[-1]
+    if recibo.get("protocolo") == "nativo/v1":
+        problema = validar_vinculo_nativo(recibo)
+        if problema:
+            return [_problema(problema)], []
     resultado = recibo.get("resultado")
     if resultado != "ok":
         return [_problema(
@@ -230,6 +267,9 @@ def validar_entrega(worktree, unidad, recibos, base):
         vigente = final.get("tree") == actual["tree"]
     else:
         vigente = final.get("head") == actual["head"]
+    if not vigente and recibo.get("protocolo") == "nativo/v1" and recibo.get("entregado_patch_id"):
+        import ejecucion  # función compartida, import diferido para evitar ciclo de módulos
+        vigente = ejecucion.patch_id_de_la_rama(repo, recibo.get("base")) == recibo["entregado_patch_id"]
     if not vigente:
         return [_problema(f"el recibo de {unidad} está obsoleto: git cambió después")], []
 
@@ -284,7 +324,8 @@ def exigir_entrega_constructor(unidad, encargo=None):
     ejecucion = ejecucion or fm.get("ejecucion") or ""
     espera = carril.lower() not in EXENTOS and ejecucion.lower() != "documental"
     recibos = recibos_de(unidad)
-    constructores = [r for r in recibos if r.get("rol") == "constructor"]
+    constructores = [r for r in recibos if r.get("rol") == "constructor"
+                    and r.get("estado_nativo") != "preparado" and not r.get("sin_ejecucion")]
     inicial = ((constructores[-1].get("git") or {}).get("inicial")
                if constructores else {}) or {}
     base = {

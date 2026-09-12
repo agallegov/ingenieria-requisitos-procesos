@@ -373,6 +373,7 @@ vista muestra el estado anterior a la escritura hasta la siguiente carga complet
     def trabajar_y_fusionar(self, nombre, cambios, quitar_worktree=True,
                             estado="en_revision", recibos=True):
         worktree = self.ws / "worktrees" / nombre
+        inicial = {"head": self.git(worktree, "rev-parse", "HEAD"), "tree": self.git(worktree, "rev-parse", "HEAD^{tree}"), "plan": {"marcadas": 0}}
         for fichero, lineas in cambios.items():
             (worktree / fichero).write_text(
                 "".join(f"print({indice})\n" for indice in range(lineas)),
@@ -396,11 +397,15 @@ vista muestra el estado anterior a la escritura hasta la siguiente carga complet
                     "- [x] entrega del fixture\n"
                 )
             firma.write_text(texto_marcado, encoding="utf-8")
-            entrega = self.ejecutar(
-                self.ws / "docs/00-metodo/scripts/subagente.py",
-                "cerrar", nombre, "--resultado", "ok",
-            )
-            self.assertEqual(entrega.returncode, 0, entrega.stdout + entrega.stderr)
+            # Fixture histórico: conserva las puertas reales de entrega/revisión sin
+            # invocar la CLI antigua retirada. La nueva CLI tiene integración propia.
+            ruta_recibo = self.recibo_ejecucion(nombre, "constructor", "constructor-historico")
+            r = json.loads(ruta_recibo.read_text())
+            r.update(harness="subagente-del-padre", git={"inicial": inicial, "final": {
+                "head": self.git(worktree, "rev-parse", "HEAD"),
+                "tree": self.git(worktree, "rev-parse", "HEAD^{tree}"), "status_porcelain": []}},
+                trabajo={"acreditado": True, "plan": {"marcadas": 1}})
+            ruta_recibo.write_text(json.dumps(r))
         self.git(self.repo, "merge", "--ff-only", nombre)
         if quitar_worktree:
             self.git(self.repo, "worktree", "remove", str(worktree))
@@ -447,7 +452,7 @@ class RecibosDeRevisionTest(WorkspaceBase):
         salida = resultado.stdout + resultado.stderr
         self.assertEqual(resultado.returncode, 1, salida)
         self.assertIn("recibo", salida.lower())
-        self.assertIn("ejecucion.py", salida)
+        self.assertIn("subagente.py", salida)
         self.assertIn("--rol revisor", salida)
         self.assertIn(SALIDA, salida)
         self.assertFalse((self.ws / "docs/05-trabajo/archivo" / nombre).exists())
@@ -488,7 +493,7 @@ class RecibosDeRevisionTest(WorkspaceBase):
         salida = resultado.stdout + resultado.stderr
         self.assertEqual(resultado.returncode, 1, salida)
         self.assertIn("no acredita", salida.lower())
-        self.assertIn("ejecucion.py", salida)
+        self.assertIn("subagente.py", salida)
         self.assertIn(SALIDA, salida)
         self.assertFalse((self.ws / "docs/05-trabajo/archivo" / nombre).exists())
 
@@ -1065,8 +1070,8 @@ class UnidadEnValidacionTest(WorkspaceBase):
         nombre = self.unidad_en_validacion("validacion-revisable")
 
         resultado = self.ejecutar(
-            self.ejecucion, "lanzar", nombre, "--harness", "claude",
-            "--rol", "revisor", "--prompt", "Revisa el diff contra el contrato",
+            self.ws / "docs/00-metodo/scripts/subagente.py", "preparar", nombre, "--plataforma", "claude",
+            "--rol", "revisor",
             entorno=self.sin_harness(),
         )
 
@@ -1074,15 +1079,15 @@ class UnidadEnValidacionTest(WorkspaceBase):
         self.assertNotIn("solo en_obra", salida, salida)
         # Que se pare AQUÍ prueba que atravesó entera la puerta de estado: el binario del
         # harness se busca mucho después de validar la ficha.
-        self.assertIn("no encuentro el ejecutable", salida, salida)
+        self.assertIn("preparado", salida, salida)
 
     def test_r2_el_constructor_sigue_sin_entrar_en_una_unidad_en_validacion(self):
         """La salida se abre para revisar, no para seguir construyendo lo ya entregado."""
         nombre = self.unidad_en_validacion("validacion-cerrada-al-constructor")
 
         resultado = self.ejecutar(
-            self.ejecucion, "lanzar", nombre, "--harness", "claude",
-            "--rol", "constructor", "--prompt", "Sigue construyendo",
+            self.ws / "docs/00-metodo/scripts/subagente.py", "preparar", nombre, "--plataforma", "claude",
+            "--rol", "constructor",
             entorno=self.sin_harness(),
         )
 
@@ -1105,18 +1110,18 @@ class UnidadEnValidacionTest(WorkspaceBase):
         self.assertEqual(bloqueado.returncode, 1, salida)
         comandos = comandos_de(salida)
         self.assertTrue(comandos, salida)
-        crudo = next(c for c in comandos if "ejecucion.py" in c)
+        crudo = next(c for c in comandos if "subagente.py" in c)
         piezas = shlex.split(RE_HUECO.sub("un-modelo-cualquiera", crudo))
 
         ejecutado = self.ejecutar(
-            self.ws / piezas[1], *piezas[2:], entorno=self.sin_harness()
+            self.ws / piezas[1], *piezas[2:], "--plataforma", "claude", entorno=self.sin_harness()
         )
 
         rastro = ejecutado.stdout + ejecutado.stderr
         self.assertNotIn("invalid choice", rastro, rastro)
         self.assertNotIn("unrecognized arguments", rastro, rastro)
         self.assertNotIn("solo en_obra", rastro, rastro)
-        self.assertIn("no encuentro el ejecutable", rastro, rastro)
+        self.assertIn("preparado", rastro, rastro)
 
 
 class DocumentalSinWorktreeTest(WorkspaceBase):
@@ -1181,7 +1186,7 @@ class PuertasDeLosBugsTest(WorkspaceBase):
         salida = resultado.stdout + resultado.stderr
         self.assertEqual(resultado.returncode, 1, salida)
         self.assertIn("recibo", salida.lower())
-        self.assertIn("ejecucion.py", salida)
+        self.assertIn("subagente.py", salida)
         self.assertIn(SALIDA, salida)
 
     def test_r4_un_bug_con_recibo_de_revision_pasa_la_puerta(self):

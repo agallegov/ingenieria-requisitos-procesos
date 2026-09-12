@@ -111,41 +111,73 @@ Un prototipo no pasa por `unidad.py cerrar`: aunque declare descarte, el comando
 archivarlo o reconciliarlo como entrega. Se conserva la ficha en estado `descartada` y se cancela
 cada proceso con `peticion.py marcar-proceso P-ID --proceso unidad:NNN-slug --estado cancelado`.
 
-## Un lanzamiento interrumpido no deja rastro (bug 077)
+## Delegar dentro de la sesión (ADR-038)
 
-`ejecucion.py lanzar` sostiene tres cosas a la vez mientras corre el harness: el proceso hijo,
-los leases de la unidad y la ficha en solo lectura (0444). Si lo interrumpes —Ctrl-C, `kill`,
-cierre de la terminal— atiende la señal y las suelta **en este orden**, deja un checkpoint
-`interrumpido` en el recibo y muere con la misma señal (salida distinta de 0):
+El protocolo es el mismo para `constructor`, `revisor`, `investigador`, `auditor` y
+`validador`. Los scripts registran evidencia, nunca arrancan otra IA. Sustituye NNN-slug,
+RECIBO y AGENTE por los valores reales de la unidad, la preparación y la herramienta.
 
-1. **el harness hijo**, entero: nace en su propio grupo de procesos, así que se termina el
-   grupo completo (`taskkill /T /F` en Windows). Si ignora el cierre amable, se escala.
-2. **los leases** de la unidad y de sus recursos, para que quede lanzable otra vez.
-3. **la ficha**, que recupera su modo con la escritura del dueño puesta.
-
-Lo que NINGÚN programa puede atender es `kill -9`, un corte de luz o la sesión cortada de
-golpe: ahí no corre ningún manejador. Lo que queda es un lease a nombre de un PID muerto y,
-detrás, un harness huérfano y la ficha congelada. El siguiente `lanzar` sobre esa unidad **no
-lo atraviesa en silencio**: para y nombra el comando que lo deshace.
-
-```
-python3 docs/00-metodo/scripts/lease.py desbloquear NNN-slug
+```sh
+python3 docs/00-metodo/scripts/subagente.py preparar NNN-slug --rol revisor
+python3 docs/00-metodo/scripts/subagente.py vincular NNN-slug --rol revisor --recibo-id RECIBO --native-task-id AGENTE --evidencia .runtime/resultado-nativo.json
+python3 docs/00-metodo/scripts/subagente.py finalizar NNN-slug --rol revisor --recibo-id RECIBO --native-task-id AGENTE --resultado ok
 ```
 
-Retira los leases huérfanos, remata al harness que quedara vivo (comprobando la marca de
-arranque, para no matar a otro proceso que herede el PID), devuelve la escritura a la ficha y
-marca el recibo como recuperado. **Nunca le quita el lease a un dueño vivo**: con el proceso
-todavía ahí, se niega y te dice cómo comprobarlo. Eso no es un rodeo del bloqueo de otra
-sesión, es lo contrario.
+Entre preparar y vincular, el padre invoca la herramienta nativa de su sesión: en Codex,
+`collaboration.spawn_agent`; en Claude, `Agent`. Puede comunicarse con el hijo y detenerlo
+mediante las herramientas de la misma sesión. La preparación entrega modelo/esfuerzo; si la
+plataforma no puede derivarse, se indica `--plataforma codex` o `--plataforma claude`.
+Para usar la herramienta desde otra copia local durante una migración existe la opción global
+`--workspace RUTA`, antes del subcomando. No cambia el origen de la sesión IA.
 
-En Windows la limpieza automática cubre MENOS de lo que parece, y conviene saber qué
-exactamente. Solo las señales de consola —**Ctrl-C y Ctrl-Break**— llegan al manejador:
-son las únicas que Windows entrega como tales, y por eso el hijo nace con
-`CREATE_NEW_PROCESS_GROUP`. **Todo lo demás termina el proceso sin darle turno a nadie**:
-`taskkill` (con o sin `/F`), el "Finalizar tarea" del administrador de tareas y cerrar la
-ventana de la consola. Ahí no corre ningún manejador, igual que un `kill -9` en POSIX, y lo
-que queda atrás es el lease huérfano, el harness vivo y la ficha congelada. Ese hueco lo
-cubre `desbloquear`, y es la vía declarada para esa plataforma (R3).
+La evidencia conserva el resultado de la herramienta y referencia metadatos de ese hijo:
+
+```json
+{
+  "tool": "collaboration.spawn_agent",
+  "native_task_id": "/root/revisor_de_la_unidad",
+  "parent_session_id": "identidad-real-del-padre",
+  "contexto": "fresco",
+  "metadata_path": "ruta-al-rollout-exacto-del-hijo"
+}
+```
+
+En Claude `tool` es `Agent`, `native_task_id` es su agentId y metadata_path apunta a su
+transcript. Una llamada síncrona puede devolver el ID al terminar: el recibo queda preparado
+hasta vincular ese resultado, sin fingir que preparación equivale a ejecución. Los metadatos
+validan hijo, padre y modelo; un modelo escrito en este JSON no se considera observado.
+La revisión nunca usa un hijo reutilizado ni el contexto del constructor. El informe conserva
+veredicto y firma; el protocolo mide contenido y ronda, sin pedir commits de constructor a un
+revisor. Las rutas de evidencias quedan en .runtime/, y las conversaciones o secretos no se
+copian al informe público.
+
+`subagente.py estado NNN-slug` muestra preparaciones, tareas vinculadas y resultados, incluidos
+los recibos históricos. Solo se finaliza el recibo indicado y con la identidad y rol correctos.
+Repetir la misma finalización no cambia su resultado; una preparación vacía no reemplaza una
+entrega acreditada.
+
+## Interrupción y recuperación
+
+Primero se comprueba el estado del hijo con la herramienta nativa. Para parar una tarea viva,
+el padre la interrumpe allí y finaliza su recibo con `--resultado cancelado --motivo ...` y
+los mismos IDs. El script no mata procesos por PID ni convierte una interrupción en entrega.
+Los cerrojos se liberan solo cuando coinciden dueño y fencing; no se borra el de otro agente.
+
+Una preparación sin hijo se cancela con
+`subagente.py cancelar NNN-slug --recibo-id RECIBO --rol ROL --motivo ...`.
+No exige inventar un ID nativo para un agente que todavía no existe.
+
+Si el padre desaparece, se conserva el recibo incompleto. Para el protocolo nativo existe
+`subagente.py recuperar NNN-slug --recibo-id RECIBO --rol ROL --motivo ...`:
+comprueba que el proceso del padre ya no esté vivo y libera únicamente los registros de
+cerrojo exactos, con su fencing. Deja el intento fallido; no afirma que el hijo haya parado.
+Consultar y detener ese hijo sigue correspondiendo a la herramienta nativa. Si el dueño sigue
+vivo, se explica el límite y no se le quita el cerrojo.
+
+`lease.py desbloquear NNN-slug` se conserva para ejecuciones históricas; puede limpiar un
+proceso legado que estuviera registrado, nunca lanzar otro. Recuperar no acredita éxito:
+se reanuda con una preparación nueva y se conserva el motivo y referencia al intento anterior.
+Una firma ausente se obtiene con otra revisión fresca, no se reconstruye de memoria.
 
 ## Suites de este método
 

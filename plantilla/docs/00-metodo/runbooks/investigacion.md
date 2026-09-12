@@ -91,3 +91,11 @@ reciente.
   `conocimiento/` en el cierre. NO necesita worktree.
 - `investigacion.md` de un carril completo: se rellena ANTES de la spec (plantilla
   `investigacion.md`); sus respuestas alimentan el Cómo y los criterios.
+
+## Delegación nativa (ADR-038)
+
+Cada ayudante es un hijo de la sesión que lo coordina, en Claude y Codex. El padre usa
+Agent o collaboration.spawn_agent, conserva contexto independiente para cada lente y registra
+el encargo mediante subagente.py con rol investigador. Preparar, vincular el resultado real y
+finalizar con el informe siguen runbooks/control-plane.md. Sin herramienta nativa disponible,
+la tarea queda pendiente con una salida explícita; no se abre una sesión IA externa.

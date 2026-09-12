@@ -138,6 +138,7 @@ DECISIONES = (
     "035-sin-ci-remoto-por-defecto.md",
     "036-paralelizar-por-defecto.md",
     "037-paridad-codex-claude.md",
+    "038-toda-delegacion-dentro-de-la-sesion.md",
 )
 METODO_RAIZ = (
     "README.md", "VERSION", "roles.md", "comunicacion.md", "auditoria-calidad.md",
