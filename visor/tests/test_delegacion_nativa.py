@@ -151,10 +151,19 @@ class NativoTest(unittest.TestCase):
         self.h.write_text(valido.replace("- Previo del constructor", "- Nuevo sin marca\n- Previo del constructor"))
         self.assertNotEqual(self.finish(r), 0)
         self.h.write_text(valido.replace("- Anterior", "- Aprendizaje de esta revisión").replace(
-            "## Aprendizajes", "- [revisor] Nuevo hallazgo\n  Evidencia reproducible\n\n## Aprendizajes"))
+            "## Aprendizajes", "- [revisor] Nuevo hallazgo\n  Evidencia reproducible\n  ```text\n  muestra\n  ```\n\n## Aprendizajes"))
         self.assertEqual(self.finish(r), 0)
         final = json.loads(Path(r["_ruta"]).read_text())
         self.assertEqual(final["informe_revisor_final"]["firma"]["revisor"], "child-1 · modelo")
+
+    def test_R3_evidencia_con_ejemplo_de_revision_sigue_protegida(self):
+        for valla, cierre in (("```markdown", "```"), ("~~~markdown", "~~~"),
+                              ("```aprendizajes-revisor", "")):
+            with self.subTest(valla=valla, cierre=cierre):
+                original = "## Evidencia\n" + valla + "\n## Revisión\npruebas: 42\n" + cierre + "\n## Plan\n- [x] tarea\n"
+                antes = subagente.partes_informe_revisor(original)[0]
+                despues = subagente.partes_informe_revisor(original.replace("42", "999"))[0]
+                self.assertNotEqual(antes["protegido"], despues["protegido"])
 
     def test_R3_firma_nueva_no_reutiliza_revision_anterior(self):
         self.wt.commitear()

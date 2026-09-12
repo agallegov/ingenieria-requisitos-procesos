@@ -114,9 +114,31 @@ def huella_texto(texto):
     return hashlib.sha256(texto.encode("utf-8")).hexdigest()
 
 
+def proteger_bloques_del_informe(texto):
+    """Los ejemplos de Markdown son evidencia, no secciones ni firmas editables."""
+    salida, bloque, marca, aprendizaje = [], [], "", False
+    for linea in texto.splitlines(keepends=True):
+        if marca:
+            bloque.append(linea)
+            if re.fullmatch(r"[ ]{0,3}" + re.escape(marca[0]) + "{" + str(len(marca)) + r",}[ \t]*\n?", linea):
+                if not aprendizaje:
+                    salida.append(re.match(r"[ \t]*", bloque[0])[0] + "bloque:" + huella_texto("".join(bloque)) + "\n")
+                bloque, marca = [], ""
+            continue
+        inicio = re.match(r"[ ]{0,3}(`{3,}|~{3,})([^\n]*)\n?$", linea)
+        if inicio:
+            marca, aprendizaje = inicio[1], inicio[2].strip() == "aprendizajes-revisor"
+            bloque = [linea]
+        else:
+            salida.append(linea)
+    if bloque:  # Una valla sin cerrar nunca concede permiso sobre el resto del informe.
+        salida.append(re.match(r"[ \t]*", bloque[0])[0] + "bloque:" + huella_texto("".join(bloque)) + "\n")
+    return "".join(salida)
+
+
 def partes_informe_revisor(texto):
     """Separa permisos de escritura; conserva hashes, nunca copia el informe al recibo."""
-    texto = re.sub(r"(?ms)^```aprendizajes-revisor[ \t]*\n.*?^```[ \t]*(?:\n|\Z)", "", texto)
+    texto = proteger_bloques_del_informe(texto)
     firmas = {}
     cabecera = re.match(r"\A---\n(.*?)^---(?:\n|\Z)", texto, re.M | re.S)
     if cabecera:
