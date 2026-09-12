@@ -46,14 +46,15 @@ class SinSandboxDeSOTest(unittest.TestCase):
             "(regla 13, AGENTS.md) — no colarlo sin pasar por ahí",
         )
 
-    def test_lanzar_sigue_fijando_cwd_por_codigo_sin_shell(self):
+    def test_lanzar_retirado_no_contiene_un_proceso_ia(self):
         # La garantía real del incidente Aurora (ADR-022) sigue viva: argv como
         # lista, cwd derivado por resolver_worktree() y pasado explícito a
         # subprocess.run — nunca una cadena de shell.
         import inspect
 
         fuente = inspect.getsource(ejecucion._lanzar_bajo_lease)
-        self.assertIn("cwd=str(worktree)", fuente)
+        self.assertIn("subagente.py preparar", fuente)
+        self.assertNotIn("subprocess.", fuente)
         self.assertNotIn("/bin/sh", fuente)
         self.assertNotIn("shell=True", fuente)
 

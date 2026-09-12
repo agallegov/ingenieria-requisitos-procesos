@@ -31,7 +31,6 @@ if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import ejecucion                                    # noqa: E402
-from test_paridad_codex import BaseLanzadorCodex    # noqa: E402
 
 CIERRE = RAIZ / "plantilla/docs/00-metodo/runbooks/cierre.md"
 ROLES = RAIZ / "plantilla/docs/00-metodo/roles.md"
@@ -221,86 +220,8 @@ class SoloSeFirmaConModeloAcreditadoTest(unittest.TestCase):
 
 
 # ================================================== (b) de punta a punta, con el doble de codex
-class BaseSoloCodex(BaseLanzadorCodex):
-    """Escenario compartido, sin casos propios: Codex instalado y `claude` en ninguna parte."""
-
-    def setUp(self):
-        super().setUp()
-        # PATH sin `claude` de ninguna clase, pero con `git` (el lanzador lo necesita).
-        solo_git = self.base / "bin-sistema"
-        solo_git.mkdir()
-        for orden in ("git", "python3"):
-            ruta = shutil.which(orden)
-            if not ruta:
-                self.skipTest(f"sin `{orden}` en el PATH")
-            os.symlink(ruta, solo_git / orden)
-        self.env["PATH"] = os.pathsep.join([str(self.bin), str(solo_git)])
-
-    def recibo(self):
-        """El del REVISOR: la entrega del constructor la siembra un fixture y también deja
-        recibo, así que el de la base (que exige uno solo) no vale aquí."""
-        carpeta = self.ws / ".runtime/ejecuciones"
-        recibos = [json.loads(r.read_text(encoding="utf-8"))
-                   for r in sorted(carpeta.glob(f"{self.unidad}-*.json"))]
-        revisores = [r for r in recibos if r.get("rol") == "revisor"]
-        self.assertEqual(len(revisores), 1, recibos)
-        return revisores[0]
-
-    def lanzar_sin_harness(self, rol="revisor"):
-        import subprocess
-        if rol == "revisor":
-            self.sembrar_entrega_constructor()
-        return subprocess.run(
-            [sys.executable, str(self.launcher), "lanzar", self.unidad,
-             "--rol", rol, "--prompt", "Revisa el diff contra el contrato"],
-            cwd=str(self.main), env=self.env, text=True, encoding="utf-8",
-            errors="replace", capture_output=True)
 
 
-class SoloCodexInstaladoTest(BaseSoloCodex):
-    """El taller de Javier: Codex instalado, `claude` no. El cierre TIENE que poder revisar."""
-
-    def test_sin_claude_el_revisor_sale_igual_con_codex(self):
-        resultado = self.lanzar_sin_harness()
-
-        self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
-        recibo = self.recibo()
-        self.assertEqual(recibo["harness"], "codex")
-        self.assertTrue(recibo.get("harness_origen"), recibo)
-
-    def test_el_recibo_deja_constancia_de_por_que_ese_harness(self):
-        self.lanzar_sin_harness()
-
-        self.assertIn("codex", self.recibo()["harness_origen"])
-
-    def test_pedir_claude_a_mano_rechaza_nombrando_la_salida(self):
-        import subprocess
-        self.sembrar_entrega_constructor()
-        resultado = subprocess.run(
-            [sys.executable, str(self.launcher), "lanzar", self.unidad,
-             "--harness", "claude", "--rol", "revisor", "--prompt", "Revisa"],
-            cwd=str(self.main), env=self.env, text=True, encoding="utf-8",
-            errors="replace", capture_output=True)
-
-        self.assertNotEqual(resultado.returncode, 0)
-        self.assertIn(ejecucion.SALIDA, resultado.stderr)
-        self.assertIn("--harness auto", resultado.stderr)
-
-    def test_el_recibo_separa_el_modelo_acreditado_del_pedido(self):
-        # H1: con rollout, `modelo_acreditado` existe y es el que corrió de verdad.
-        self.lanzar_sin_harness()
-
-        recibo = self.recibo()
-        self.assertEqual(recibo["modelo_acreditado"], recibo["model_slug"])
-        self.assertEqual(recibo["modelo_origen"], "harness-acreditado")
-
-    def test_el_recibo_dice_bajo_que_perfil_corrio_el_revisor(self):
-        self.lanzar_sin_harness()
-
-        perfil = self.recibo().get("perfil_revisor")
-        self.assertIsInstance(perfil, dict, self.recibo())
-        self.assertEqual(perfil["nombre"], ejecucion.PERFIL_REVISOR_CODEX)
-        self.assertTrue(perfil["escribibles"])
 
 
 # ======================================================== (a) los dos papeles dicen lo mismo
@@ -316,14 +237,14 @@ class LaProsaNoContradiceAlLanzadorTest(unittest.TestCase):
         texto = CIERRE.read_text(encoding="utf-8")
 
         self.assertIn("--rol revisor", texto)
-        self.assertIn("harness", texto)
-        self.assertIn("disponible", texto)
+        self.assertIn("nativa", texto)
+        self.assertIn("sesión", texto)
 
     def test_roles_explica_la_eleccion_y_el_perfil_de_una_raiz(self):
         texto = ROLES.read_text(encoding="utf-8")
 
-        self.assertIn("una sola raíz", texto)
-        self.assertIn("Windows", texto)
+        self.assertIn("contexto fresco", texto)
+        self.assertIn("sandbox de SO", texto)
 
     def test_el_comando_que_receta_unidad_py_no_cablea_claude(self):
         unidad = (SCRIPTS / "unidad.py").read_text(encoding="utf-8")
@@ -334,26 +255,6 @@ class LaProsaNoContradiceAlLanzadorTest(unittest.TestCase):
 
 
 
-class SinRolloutNoHayModeloAcreditadoTest(BaseSoloCodex):
-    """El escenario exacto de H1 con datos reales: el doble de `codex` NO escribe rollout,
-    así que `acreditar_codex` devuelve `(None, None)` y el recibo se queda DECLARANDO."""
-
-    escribe_rollout = False
-
-    def test_el_recibo_conserva_el_modelo_pedido_pero_no_lo_acredita(self):
-        self.lanzar_sin_harness()
-
-        recibo = self.recibo()
-        # Esto es lo que hacía peligroso firmar desde `modelo`: no está vacío.
-        self.assertTrue(recibo["modelo"])
-        self.assertEqual(recibo["modelo_origen"], "tabla")
-        self.assertIsNone(recibo["modelo_acreditado"])
-        # Y con ese recibo, la decisión de firmar tiene que ser NO.
-        firmar, _, aviso = ejecucion.firma_bajo_perfil_de_una_raiz(
-            {"nombre": ejecucion.PERFIL_REVISOR_CODEX_UNA_RAIZ},
-            recibo["modelo_acreditado"])
-        self.assertFalse(firmar)
-        self.assertIn(ejecucion.SALIDA, aviso)
 
 
 if __name__ == "__main__":

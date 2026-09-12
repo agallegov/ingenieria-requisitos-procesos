@@ -67,13 +67,12 @@ CLAVES = ("veredicto", "tests_cmd", "tests_exit", "tests_output", "tests_sha256"
 # unidad nacida con la plantilla anterior (sin BLOQUES) no se re-exige — ausencia ≠ vacío.
 APRENDIZAJES_QUIENES = ("constructor", "revisor")
 
-# Unidad 068 — el ancla de la firma del revisor. La escribe `ejecucion.py` al lanzarlo, y
+# Unidad 068 — el ancla de la firma del revisor. La prepara el protocolo nativo, y
 # aquí solo se comprueba que no se haya borrado dejando la fecha.
 ANCLA = "revisado_patch_id"
 RE_FECHA = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-COMANDO_REVISION = ("python3 docs/00-metodo/scripts/ejecucion.py lanzar {nombre} "
-                    "--rol revisor "
-                    "--prompt \"Revisa el diff contra el contrato y firma hallazgos.md\"")
+COMANDO_REVISION = ("python3 docs/00-metodo/scripts/subagente.py preparar {nombre} "
+                    "--rol revisor")
 
 # Los marcadores con que la plantilla llega: dejarlos tal cual es no haber rellenado nada.
 MARCADORES = {"", "—", "-", "--", "...", "…", "n/a", "na", "pendiente", "tbd", "xxx",

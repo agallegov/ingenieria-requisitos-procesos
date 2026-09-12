@@ -81,9 +81,10 @@ comandos.
 ### Windows
 
 Todo funciona en Windows nativo tal cual: la entrevista, los planos, y
-también los carriles normal/completo y el revisor (`scripts/ejecucion.py`
-no exige ningún sandbox de sistema operativo — ver
-`plantilla/docs/00-metodo/sandbox.md`). Si `bash` o el intérprete `python3`
+también los carriles normal/completo y el revisor, mediante agentes nativos de la sesión
+Claude o Codex (ADR-038). Los permisos dependen de esa sesión; `scripts/subagente.py`
+registra sus límites y evidencia sin arrancar IA externa — ver
+`plantilla/docs/00-metodo/sandbox.md`. Si `bash` o el intérprete `python3`
 no están disponibles, `visor/doctor.py` lo avisa en el primer arranque
 (bash viene con Git for Windows; donde el manual diga `python3`, en Windows
 puede llamarse `python`).

@@ -7,6 +7,7 @@ la misma frontera antes de pasar la ruta a Git o escribir en ella.
 """
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -76,6 +77,9 @@ ESFUERZO_DOCUMENTAL = "bajo"
 ROLES_CON_MODELO = {
     "constructor": MODELO_CONSTRUCTOR,
     "revisor": MODELO_REVISOR,
+    "investigador": MODELO_CONSTRUCTOR,
+    "auditor": MODELO_REVISOR,
+    "validador": MODELO_REVISOR,
 }
 
 # ------------------------------------------------------- la MISMA regla 10, en Codex (100)
@@ -112,6 +116,20 @@ CatalogoCodex = namedtuple("CatalogoCodex", "constructor revisor pequeno esfuerz
 _CATALOGO_CODEX = {}
 
 
+def plataforma_sesion(explicita=None):
+    """La plataforma pertenece a la sesión, nunca a los binarios instalados."""
+    valor = explicita or os.environ.get("METODO_PLATAFORMA")
+    if not valor:
+        if os.environ.get("CODEX_THREAD_ID") or os.environ.get("CODEX_SESSION_ID"):
+            valor = "codex"
+        elif os.environ.get("CLAUDECODE") or os.environ.get("CLAUDE_CODE_SESSION_ID"):
+            valor = "claude"
+    if valor not in HARNESS_CON_TABLA:
+        raise RepoConfigError("plataforma de sesión desconocida. SALIDA: usa --plataforma codex "
+                              "o --plataforma claude según ESTA sesión; no pruebes un ejecutable alternativo")
+    return valor
+
+
 def olvidar_catalogo_codex():
     """Vacía la caché de sesión del catálogo (los tests y el Modo D la necesitan)."""
     _CATALOGO_CODEX.clear()
@@ -123,7 +141,7 @@ def _ejecutable_codex(ejecutable=None):
         raise RepoConfigError(
             "no encuentro el ejecutable `codex` y la tabla de la regla 10 para ese harness "
             "sale de su catálogo. SALIDA: instala Codex CLI y compruébalo con "
-            "`codex --version`, o lanza con `--harness claude`"
+            "`codex --version`, o continúa en una sesión Codex con catálogo disponible (sin fallback de plataforma)"
         )
     return encontrado
 
@@ -148,19 +166,19 @@ def catalogo_codex(ejecutable=None, *, refrescar=False):
     except OSError as exc:
         raise RepoConfigError(
             f"no pude preguntarle el catálogo de modelos a codex: {exc}. SALIDA: comprueba "
-            f"`codex debug models` a mano, o lanza con `--harness claude`"
+            f"`codex debug models` a mano, o continúa en una sesión Codex con catálogo disponible (sin fallback de plataforma)"
         ) from exc
     except subprocess.TimeoutExpired as exc:
         raise RepoConfigError(
             "`codex debug models` no respondió en 60 s. SALIDA: ejecútalo a mano para ver "
-            "qué le pasa, o lanza con `--harness claude`"
+            "qué le pasa, o continúa en una sesión Codex con catálogo disponible (sin fallback de plataforma)"
         ) from exc
     if salida.returncode != 0:
         raise RepoConfigError(
             f"`codex debug models` falló (exit {salida.returncode}): "
             f"{(salida.stderr or salida.stdout).strip()[:200] or 'sin salida'}. SALIDA: "
-            f"ejecuta `codex debug models` a mano para ver el error completo, o lanza con "
-            f"`--harness claude`"
+            f"ejecuta `codex debug models` a mano para ver el error completo, o continúa en una sesión Codex "
+            f"con catálogo disponible (sin fallback de plataforma)"
         )
     try:
         modelos = json.loads(salida.stdout)["models"]
@@ -168,7 +186,7 @@ def catalogo_codex(ejecutable=None, *, refrescar=False):
         raise RepoConfigError(
             f"no entiendo lo que imprime `codex debug models` ({exc}): se esperaba un JSON "
             f"con la clave `models`. SALIDA: ejecuta `codex debug models` a mano y compara "
-            f"con lo que espera esta versión del método, o lanza con `--harness claude`"
+            f"con lo que espera esta versión del método, o continúa en una sesión Codex con catálogo disponible (sin fallback de plataforma)"
         ) from exc
 
     visibles = [m for m in modelos if (m or {}).get("visibility") == "list" and m.get("slug")]
@@ -265,8 +283,8 @@ def plan_de_modelo(carril, rol, *, documental=False, harness="claude",
     if harness not in HARNESS_CON_TABLA:
         raise RepoConfigError(
             f"harness sin tabla en la regla 10: {harness!r}; los harness con tabla son "
-            f"{' | '.join(HARNESS_CON_TABLA)}. SALIDA: lanza con `--harness "
-            f"{HARNESS_CON_TABLA[0]}`"
+            f"{' | '.join(HARNESS_CON_TABLA)}. SALIDA: indica la plataforma de ESTA "
+            f"sesión con `subagente.py preparar --plataforma codex` o `--plataforma claude`"
         )
     esfuerzo = ESFUERZO_DOCUMENTAL if documental else ESFUERZO_POR_CARRIL[nombre]
     if harness == "claude":
@@ -277,7 +295,7 @@ def plan_de_modelo(carril, rol, *, documental=False, harness="claude",
     if documental:
         slug = catalogo.pequeno
     else:
-        slug = catalogo.constructor if rol == "constructor" else catalogo.revisor
+        slug = catalogo.constructor if rol in ("constructor", "investigador") else catalogo.revisor
     return PlanDeModelo(slug, _esfuerzo_codex(slug, esfuerzo, catalogo.esfuerzos))
 
 

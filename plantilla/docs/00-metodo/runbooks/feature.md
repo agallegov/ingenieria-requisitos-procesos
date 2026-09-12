@@ -129,7 +129,7 @@ mueve el mapa, toca hotspots o no cabe en una ficha— es carril normal, que es 
 6. **Cierre (el padre, a petición del usuario).** Es el ritual indivisible de
    `runbooks/cierre.md` (con `gh` y sin `gh`), cerrado con `unidad.py cerrar`; resumen de
    los 7 pasos en `00-metodo/README.md` — aquí solo lo específico de una feature:
-   - **El prompt del revisor fresco** (sesión/subagente nuevo, solo lectura): *"Revisa el
+   - **El prompt del revisor fresco** (subagente nativo nuevo de la sesión padre, solo lectura): *"Revisa el
      diff contra especificacion.md: cada R\* implementado, los casos límite con test, y nada
      fuera de los ficheros declarados. Comprueba además que los ficheros de test NO se
      modificaron después del commit que los creó —ni se debilitaron, ni se borraron, ni se

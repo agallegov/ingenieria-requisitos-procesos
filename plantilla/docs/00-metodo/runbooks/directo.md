@@ -25,7 +25,7 @@ antes vivía en este runbook —migraciones, rutas, modelos compartidos, lockfil
 líneas: acceso y autenticación, dinero, borrado de datos, secretos y comandos de sistema.
 Cada señal lleva su nombre humano y sus patrones. `unidad.py despachar` cierra el carril
 directo cuando el `ficheros:` declarado casa con una señal ALTA (y nombra cuál, dónde y cómo
-subir de carril), y `ejecucion.py` se las pasa al revisor como foco. Una señal que solo
+subir de carril), y la preparación nativa se las pasa al revisor como foco. Una señal que solo
 aparece dentro de `tests/` o de un fixture se lista como informativa y no cierra nada.
 
 **Ante la duda, no es directo: es normal.** La duda ya es la prueba de que el

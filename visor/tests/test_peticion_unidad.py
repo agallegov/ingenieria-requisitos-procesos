@@ -1168,7 +1168,7 @@ class PeticionUnidadTest(unittest.TestCase):
 
         self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
         self.assertIn("SUBAGENTE DEL PADRE", resultado.stdout)
-        self.assertNotIn("--rol constructor", resultado.stdout)
+        self.assertIn("subagente.py preparar", resultado.stdout)
         self.assertIn("--rol revisor", resultado.stdout)
         self.assertIn("sin_hook", resultado.stdout)
         recibo = self.recibo_preparacion("001-lanzamiento")
@@ -1407,7 +1407,7 @@ class PeticionUnidadTest(unittest.TestCase):
         self.assertNotEqual(resultado.returncode, 0, salida)
         self.assertIn("huecos de corrección", salida.lower())
         self.assertIn("SALIDA:", salida)
-        self.assertIn("ejecucion.py lanzar", salida)
+        self.assertIn("subagente.py preparar", salida)
 
     def test_cerrar_con_veredicto_limpio_sigue_pasando_igual_que_hoy(self):
         """El camino feliz no se toca: una revisión LIMPIA a la primera cierra igual."""

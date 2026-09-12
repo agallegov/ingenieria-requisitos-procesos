@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
-"""Control plane fail-closed para lanzar Claude o Codex en una unidad real.
+"""Evidencia histórica y funciones Git compartidas con la delegación nativa (ADR-038).
 
-Desde la 1.8.2 (ADR-033) es el lanzador del REVISOR fresco —su recibo acredita la firma— y
-una vía OPCIONAL para el constructor (Codex, sesiones desatendidas). El constructor de
-normal/completo es, por defecto, un subagente del propio padre: `unidad.py despachar` imprime
-su encargo.
-
-La unidad, el worktree y la rama se derivan; no se aceptan rutas ni argv arbitrarios.
-El proceso nace siempre con el cwd, la rama y el entorno fijados por código (nunca por
-shell intermedia) — es la garantía que evitó el incidente Aurora (ADR-022). No hay sandbox
-de SO envolviendo al harness (unidad 012, ADR sucesor del 022): la frontera de escritura es
-el cwd correcto más la disciplina del contrato, igual que ya confía el carril directo.
+El comando lanzar está retirado: imprime la migración a subagente.py preparar y nunca
+inicia una IA. Se conservan lectores de recibos, patch-id, rondas y compatibilidad de
+formatos históricos. Los helpers de perfiles/argv describen esos recibos históricos;
+ninguna ruta operativa los usa para ejecutar un proceso de IA.
 """
 import argparse
 import contextlib
@@ -950,6 +944,8 @@ def ronda_acreditada(unidad):
         if not isinstance(datos, dict) or datos.get("unidad") != unidad:
             continue
         if str(datos.get("rol") or "").strip() != "constructor":
+            continue
+        if datos.get("estado_nativo") == "preparado" or datos.get("sin_ejecucion"):
             continue
         if isinstance(datos.get("ronda"), int):
             rondas.append(datos["ronda"])
@@ -1914,334 +1910,9 @@ def _huella_documentos(rutas):
 
 
 def _lanzar_bajo_lease(args, ficha, datos, manager, autoridades):
-    # El `with` envuelve TODO el cuerpo a propósito, en vez de delegar en una función
-    # aparte: `cwd=str(worktree)` tiene que seguir viéndose DENTRO de esta función. Es
-    # lo que lee el guardián de ADR-022 (`test_ejecucion_gate_real`) sobre el código
-    # fuente de `_lanzar_bajo_lease`, y partirla en dos habría vaciado esa comprobación
-    # sin que nadie lo decidiera.
-    with red_de_seguridad(autoridades) as vuelo, \
-            worktree_de_la_ejecucion(args, datos) as (worktree, efimero, origen_worktree):
-        home_original = Path(os.environ.get("HOME", str(Path.home()))).resolve()
-        texto = encargo(
-            args.unidad, args.rol, ficha, args.prompt, args.skill_tecnica, home_original,
-            senales=senales_para_el_revisor(worktree, args.rol),
-        )
-        ficha_bloqueada = None
-        patch_id_revisado = motivo_patch_id = motivo_ronda = ""
-        ronda_previa = ronda_actual = ronda_revisada = None
-        es_bug = ficha.parent == RAIZ / "docs/bugs"
-        if es_bug:
-            # Los bugs no tienen hallazgos.md aparte: su propia ficha es a la vez contrato y
-            # bitácora de casillas (AGENTS.md regla 2), así que R3 no le aplica.
-            documentos = [ficha]
-            cabecera = ficha
-        else:
-            hallazgos = ficha.parent / "hallazgos.md"
-            cabecera = hallazgos
-            if args.rol == "constructor":
-                documentos = perfil_constructor(hallazgos)
-                ficha_bloqueada = ficha
-                # R1/R2 (069): la cuenta se hace y se rechaza AQUÍ, antes de reservar nada
-                # más y mucho antes del harness. Un rechazo posterior costaría el turno del
-                # agente y dejaría trabajo a medias en el worktree.
-                ronda_previa, ronda_actual = rondas_del_constructor(hallazgos, args.unidad)
-            else:
-                documentos = perfil_revisor(hallazgos)
-        if args.rol == "revisor":
-            # R1 (068): el ancla se calcula y se sella ANTES de que el revisor escriba
-            # nada, y la pone el launcher, no el agente — otra huella tecleada a mano
-            # sería el mismo agujero de ADR-029 con otro nombre. Va aquí, antes de
-            # `huella_previa`, para que el sello del launcher no se confunda con el
-            # trabajo del revisor cuando el recibo decida si hubo trabajo (R5/R6).
-            # Bug 117: fuera del `else` de las unidades — para una ficha de `docs/bugs/`
-            # nunca se calculaba y el recibo salía con `revisado_patch_id: null` aunque la
-            # rama tuviera diff.
-            patch_id_revisado, motivo_patch_id = patch_id_y_motivo(
-                worktree, base_registrada_de_la_unidad(datos, args.unidad, ficha))
-            # R3 (113): el recibo del revisor lleva la ronda que declara la cabecera
-            # —la que el constructor gastó y este revisor va a juzgar—; `None` solo si
-            # la cabecera no lleva contador, y entonces el recibo dice por qué (117, R2).
-            # Va en `ronda_revisada`, NO en `ronda_actual`: el revisor no gasta rondas ni
-            # las sella (069), y `cerrar_la_ronda` solo cuenta las del constructor.
-            try:
-                ronda_revisada = ronda_declarada(cabecera.read_text(encoding="utf-8"))
-            except OSError:
-                ronda_revisada = None
-            if ronda_revisada is None:
-                motivo_ronda = (
-                    "la ficha del bug no lleva contador de rondas" if es_bug
-                    else "la cabecera de hallazgos.md no lleva `ronda:` (anterior a la 069)")
-        seguros = []
-        for documento in documentos:
-            try:
-                seguros.append(workspace_paths.regular_file(
-                    RAIZ, documento, label="documento escribible de la unidad"
-                ))
-            except workspace_paths.WorkspacePathError as exc:
-                raise ErrorEjecucion(str(exc)) from exc
-        documentos = seguros
-        if patch_id_revisado and documentos:
-            sellar_patch_id(documentos[0], patch_id_revisado)
-        if ronda_actual and ronda_actual != ronda_previa and documentos:
-            # Antes de `huella_previa` a propósito: el sello lo pone el lanzador, y si
-            # entrara en la huella el recibo contaría como «trabajo del agente» una línea
-            # que el agente no escribió (R5/R6 de la 028).
-            sellar_clave(documentos[0], "ronda", str(ronda_actual))
-        huella_previa = _huella_documentos(documentos)
-        ejecutable = shutil.which(args.harness)
-        if not ejecutable:
-            raise ErrorEjecucion(f"no encuentro el ejecutable {args.harness}")
-        runtime = RAIZ / ".runtime"
-        runtime.mkdir(mode=0o700, parents=True, exist_ok=True)
-        resultados = runtime / "ejecuciones"
-        resultados.mkdir(mode=0o700, exist_ok=True)
-        id_ejecucion = uuid.uuid4().hex
-        ruta_recibo = resultados / f"{args.unidad}-{id_ejecucion}.json"
-        plan = plan_de_ejecucion(args, datos)
-        recibo = recibo_inicial(
-            args,
-            id_ejecucion,
-            worktree,
-            manager.session_id,
-            {
-                scope: token
-                for autoridad in autoridades
-                for scope, token in autoridad.tokens.items()
-            },
-            evidencia_git(worktree),
-            plan=plan,
-            worktree_efimero=efimero,
-            worktree_origen=origen_worktree,
-            patch_id=patch_id_revisado,
-            ronda=ronda_actual if args.rol == "constructor" else ronda_revisada,
-            motivo_patch_id=motivo_patch_id,
-            motivo_ronda=motivo_ronda,
-        )
-        checkpoint(
-            recibo,
-            "lease",
-            "ok",
-            ", ".join(f"{scope}#{token}" for scope, token in recibo["lease"]["fencing"].items()),
-        )
-        checkpoint(recibo, "identidad", "ok", f"{worktree} · rama {args.unidad}")
-        checkpoint(
-            recibo, "modelo", "ok",
-            f"{recibo['modelo'] or 'el del harness'} · esfuerzo "
-            f"{recibo['esfuerzo'] or 'sin declarar'} · origen {recibo['modelo_origen']}"
-            + (f" ({recibo['motivo_modelo']})" if recibo["motivo_modelo"] else ""),
-        )
-        guardar_recibo(ruta_recibo, recibo)
-        vuelo.recibo = recibo
-        vuelo.ruta_recibo = ruta_recibo
-        tmp = Path(tempfile.mkdtemp(prefix=f"ejecucion-{args.unidad}-", dir=str(runtime))).resolve()
-        tmp.chmod(0o700)
-        try:
-            env = entorno_base(worktree, tmp, home_original)
-            if args.harness == "codex":
-                preparar_codex_home(env, tmp, home_original)
-            else:
-                preparar_claude_home(env, home_original)
-            # Unidad 108 · R1: el id de la sesión de Claude se FIJA aquí, antes de
-            # lanzar, y es lo que permite encontrar su transcript al cerrar el recibo.
-            sesion_harness = str(uuid.uuid4()) if args.harness == "claude" else None
-            argv = argv_harness(
-                args.harness, ejecutable, args.rol, worktree, texto, documentos=documentos,
-                # El contrato de la unidad manda leer bias, flujos y la síntesis de su
-                # petición: docs/ del meta-repo viaja como lectura de herramientas del
-                # harness claude (sin sandbox de SO, --add-dir sigue siendo la única vía
-                # explícita de lectura adicional; codex la ignora porque su --add-dir
-                # significa escribible).
-                lecturas=(RAIZ / "docs",),
-                modelo=recibo["modelo"],
-                esfuerzo=recibo["esfuerzo"],
-                session_id=sesion_harness,
-                temporal=tmp,
-            )
-            # Bug 152: bajo qué perfil corrió el revisor Codex queda ESCRITO, no supuesto.
-            # Es lo que permite leer después un `hallazgos.md` sin firma del agente y saber
-            # que no falta una firma: es que la plataforma no dejó al revisor escribirla.
-            if args.harness == "codex" and args.rol == "revisor":
-                nombre_perfil, escribibles_perfil = perfil_revisor_codex(
-                    sorted({str(ruta.parent) for ruta in documentos}), tmp)
-                recibo["perfil_revisor"] = {
-                    "nombre": nombre_perfil,
-                    "escribibles": [str(ruta) for ruta in escribibles_perfil],
-                    "so": os.name,
-                }
-                checkpoint(recibo, "perfil-revisor", "ok",
-                           f"{nombre_perfil} · {len(escribibles_perfil)} raíz(ces) escribible(s)")
-            contexto_ficha = (
-                _ficha_solo_lectura(ficha_bloqueada)
-                if ficha_bloqueada is not None
-                else contextlib.nullcontext()
-            )
-            modo_previo_ficha = (
-                stat.S_IMODE(ficha_bloqueada.stat().st_mode)
-                if ficha_bloqueada is not None else None
-            )
-
-            def _correr_harness():
-                for autoridad in autoridades:
-                    autoridad.assert_owner()
-                gestion_leases.failpoint("ejecucion_antes_harness")
-                # stdin CERRADO: el harness delegado corre sin nadie al otro lado — cualquier
-                # cosa que pregunte por stdin (git, ssh, un instalador) se quedaba esperando
-                # una respuesta que no puede llegar, y el padre lo veía como un cuelgue mudo
-                # de minutos (feedback de campo 06-08, ADR-026).
-                tope = getattr(args, "tope_minutos", 0) or 0
-                # argv como lista, cwd fijado por código, sin sandbox de SO ni shell
-                # intermedia (unidad 012: la garantía real, Aurora/ADR-022, era esto, no el
-                # aislamiento de SO). La ficha va en modo lectura durante todo este bloque
-                # cuando el rol es constructor (R3): es la única denegación real posible sin
-                # sandbox de SO, porque --add-dir concede el directorio entero.
-                with contexto_ficha:
-                    if ficha_bloqueada is not None:
-                        recibo["ficha_bloqueada"] = {
-                            "ruta": str(ficha_bloqueada),
-                            "modo_previo": modo_previo_ficha,
-                        }
-                    # Popen y no `run` (bug 077): hace falta el PID del hijo ANTES de
-                    # esperarlo, para poder matarlo desde el manejador de señal y para
-                    # dejarlo escrito en el recibo — es lo único que le permite a
-                    # `lease.py desbloquear` rematar a un huérfano de `kill -9`.
-                    proceso = subprocess.Popen(
-                        comando_subproceso(ejecutable, argv, env), cwd=str(worktree), env=env,
-                        stdin=subprocess.DEVNULL, **opciones_de_aislamiento(),
-                    )
-                    vuelo.hijo = proceso
-                    recibo["harness_proceso"] = {
-                        "pid": proceso.pid,
-                        "pgid": _grupo_de(proceso.pid),
-                        "process_started": gestion_leases.process_start_marker(proceso.pid),
-                    }
-                    guardar_recibo(ruta_recibo, recibo)
-                    try:
-                        proceso.wait(timeout=tope * 60 if tope else None)
-                    except subprocess.TimeoutExpired:
-                        matar_arbol(proceso.pid, proceso=proceso)
-                        raise
-                    finally:
-                        vuelo.hijo = None
-                    return tope, proceso
-
-            try:
-                tope, resultado = _correr_harness()
-            except subprocess.TimeoutExpired as exc:
-                checkpoint(recibo, "harness", "fail", f"tope de {args.tope_minutos} min superado")
-                recibo["error"] = f"el harness superó el tope de {args.tope_minutos} min y fue detenido"
-                recibo["git"]["final"] = evidencia_git(worktree)
-                guardar_recibo(ruta_recibo, recibo)
-                raise ErrorEjecucion(
-                    f"{args.harness} superó el tope de {args.tope_minutos} min; el trabajo "
-                    f"parcial queda en el worktree y el recibo en {ruta_recibo}") from exc
-            except OSError as exc:
-                checkpoint(recibo, "harness", "fail", str(exc))
-                recibo["error"] = str(exc)
-                recibo["git"]["final"] = evidencia_git(worktree)
-                guardar_recibo(ruta_recibo, recibo)
-                raise ErrorEjecucion(f"no pude lanzar {args.harness}: {exc}") from exc
-            for autoridad in autoridades:
-                autoridad.assert_owner()
-            recibo["exit_code"] = resultado.returncode
-            recibo["git"]["final"] = evidencia_git(worktree)
-            estado = "ok" if resultado.returncode == 0 else "fail"
-            checkpoint(recibo, "harness", estado, f"exit {resultado.returncode}")
-            # R2 (100) y R1 (108): se lee AQUÍ, con el temporal todavía vivo. La regla 10
-            # deja de creerse por estar escrita en los DOS harness: el recibo dice con qué
-            # corrió de verdad, o dice que no ha podido saberlo. Nunca se inventa.
-            acreditado, esfuerzo_real, fuente = acreditar(
-                args.harness, env, worktree, sesion_harness)
-            # H1 de la ronda 1 (bug 152): `modelo` NO distingue lo pedido de lo acreditado
-            # —cuando el rollout no se puede leer conserva lo que pidió la tabla—, así que
-            # nadie puede apoyarse en él para firmar. La distinción se guarda como DATO.
-            recibo["modelo_acreditado"] = acreditado or None
-            if acreditado:
-                recibo["model_slug"] = acreditado
-                recibo["modelo"] = acreditado
-                if esfuerzo_real:
-                    recibo["esfuerzo"] = esfuerzo_real
-                if recibo["modelo_origen"] == "tabla":
-                    recibo["modelo_origen"] = "harness-acreditado"
-                checkpoint(
-                    recibo, "modelo-acreditado", "ok",
-                    f"{acreditado} · esfuerzo {esfuerzo_real or 'sin declarar'} ({fuente})",
-                )
-            else:
-                checkpoint(
-                    recibo, "modelo-acreditado", "warn",
-                    f"el {fuente} no dice con qué modelo corrió; el recibo declara lo "
-                    "pedido, no lo acredita",
-                )
-            avisos_del_lanzador = []
-            if resultado.returncode == 0:
-                # R5/R6: el recibo distingue "el proceso terminó sin error" de "hubo trabajo
-                # acreditado" — una casilla nueva marcada o hallazgos.md (o la ficha del bug)
-                # cambiado desde el arranque. Sin eso, `ok` mentía (hallazgo del análisis de
-                # cajas negras del 18-08: "el recibo mide el proceso, no el trabajo").
-                huella_posterior = _huella_documentos(documentos)
-                trabajo_acreditado = huella_posterior != huella_previa
-                recibo["trabajo"] = {
-                    "acreditado": trabajo_acreditado,
-                    "detalle": (
-                        "hallazgos.md (o la ficha del bug) cambió durante el harness"
-                        if trabajo_acreditado else
-                        "proceso terminó sin error, pero no acreditó trabajo (sin casillas "
-                        "nuevas ni hallazgos.md actualizado)"
-                    ),
-                }
-                recibo["resultado"] = "ok" if trabajo_acreditado else "ok_sin_trabajo"
-                # Bug 152 · el perfil de UNA raíz (Windows) deja al revisor sin poder tocar
-                # `hallazgos.md`. Va DESPUÉS de `huella_posterior`, como `cerrar_la_ronda`:
-                # lo que escribe el lanzador no puede contar como trabajo del agente.
-                # H1: se firma con `modelo_acreditado`, JAMÁS con `modelo` —que conserva
-                # lo pedido cuando el rollout no se deja leer—. Sin acreditación no hay
-                # firma y se dice en voz alta: la revisión se repite, no se rellena.
-                perfil = recibo.get("perfil_revisor") or {}
-                firmar, modelo_firma, aviso_firma = firma_bajo_perfil_de_una_raiz(
-                    perfil, recibo.get("modelo_acreditado"))
-                if aviso_firma:
-                    avisos_del_lanzador.append(aviso_firma)
-                    recibo["firma_sellada_por_el_lanzador"] = False
-                if firmar and documentos:
-                    firmada = sellar_firma_del_revisor(
-                        documentos[0], modelo_firma, dt.date.today().isoformat())
-                    recibo["firma_sellada_por_el_lanzador"] = firmada
-                    if firmada:
-                        recibo["trabajo"] = {
-                            "acreditado": True,
-                            "detalle": (
-                                f"bajo el perfil {PERFIL_REVISOR_CODEX_UNA_RAIZ} el revisor "
-                                f"no puede escribir la carpeta de la unidad: la firma la "
-                                f"selló el lanzador desde el recibo"
-                            ),
-                        }
-                        recibo["resultado"] = "ok"
-            else:
-                recibo["resultado"] = "fail"
-            aviso_ronda = cerrar_la_ronda(
-                recibo, documentos, worktree, ronda_previa, ronda_actual
-            )
-            guardar_recibo(ruta_recibo, recibo)
-            avisos = [aviso_ronda] if aviso_ronda else []
-            avisos.extend(avisos_del_lanzador)
-            if recibo["resultado"] == "ok_sin_trabajo":
-                avisos.append("AVISO ok_sin_trabajo: " + recibo["trabajo"]["detalle"])
-            imprimir_resultado(ruta_recibo, recibo["resultado"], avisos)
-            # R1: una unidad `ejecucion: documental` (y una investigación «sin cambio»)
-            # sigue saliendo 0 aunque no acredite trabajo — la exención es por carril
-            # escrito en la ficha, y manda también sobre el rol revisor.
-            documental = (datos.get("ejecucion") or "").strip().lower() == "documental"
-            carril_exento = (datos.get("carril") or "normal").strip().lower() in {
-                "expres", "exprés", "directo", "documental"}
-            if documental or carril_exento:
-                espera_cambios = False
-                rol_efectivo = "constructor"
-            else:
-                espera_cambios = True
-                rol_efectivo = args.rol
-            return exit_de_resultado(recibo["resultado"], rol_efectivo, espera_cambios)
-        finally:
-            shutil.rmtree(tmp, ignore_errors=True)
+    raise ErrorEjecucion("Lanzamiento externo retirado. SALIDA: python3 docs/00-metodo/scripts/"
+                         "subagente.py preparar " + args.unidad + " --rol " + args.rol +
+                         "; usa la herramienta nativa de ESTA sesión y vincula su resultado; sin fallback")
 
 
 def cerrar_la_ronda(recibo, documentos, worktree, previa, actual):
@@ -2317,77 +1988,22 @@ def avisar_de_lanzamiento_interrumpido(manager, unidad):
 
 
 def lanzar(args):
-    if not RE_NOMBRE.fullmatch(args.unidad):
-        raise ErrorEjecucion("unidad inválida: se esperaba NNN-slug")
-    if args.rol == "revisor" and hay_arbol_que_revisar(args.unidad):
-        problemas, avisos = puerta_entrega_para_revisor(args.unidad)
-        for aviso in avisos:
-            print(f"AVISO {aviso}")
-        if problemas:
-            raise ErrorEjecucion("; ".join(problemas))
-    manager = gestion_leases.LeaseManager(RAIZ)
-    avisar_de_lanzamiento_interrumpido(manager, args.unidad)
-    try:
-        with manager.acquire(f"unit:{args.unidad}") as autoridad_unidad:
-            ficha, datos = ficha_unidad(args.unidad, rol=args.rol)
-            # Bug 152: qué harness sale de aquí lo decide la MÁQUINA, no quien teclea. Va
-            # DESPUÉS de la puerta de estado (R2 de la 034: «el binario del harness se busca
-            # mucho después de validar la ficha») y ANTES de la tabla de modelos, que ya es
-            # por harness. El porqué de la elección viaja al recibo, no se queda en el chat.
-            args.harness, args.harness_origen = elegir_harness(
-                getattr(args, "harness", None), args.rol, args.unidad)
-            print(f"harness: {args.harness_origen}")
-            recursos = recursos_de(datos)
-            scopes_recursos = [f"resource:{ruta}" for ruta in recursos]
-            contexto = (
-                manager.acquire(scopes_recursos)
-                if scopes_recursos
-                else contextlib.nullcontext(None)
-            )
-            with contexto as autoridad_recursos:
-                ficha_actual, datos_actuales = ficha_unidad(args.unidad, rol=args.rol)
-                if ficha_actual != ficha or recursos_de(datos_actuales) != recursos:
-                    raise ErrorEjecucion(
-                        "la ficha o sus recursos cambiaron mientras se adquiría autoridad"
-                    )
-                autoridades = [autoridad_unidad]
-                if autoridad_recursos is not None:
-                    autoridades.append(autoridad_recursos)
-                return _lanzar_bajo_lease(
-                    args, ficha_actual, datos_actuales, manager, autoridades
-                )
-    except gestion_leases.LeaseError as exc:
-        raise ErrorEjecucion(f"autoridad de ejecución ocupada o perdida: {exc}") from exc
+    raise ErrorEjecucion("Lanzamiento externo retirado. SALIDA: python3 docs/00-metodo/scripts/"
+                         "subagente.py preparar " + args.unidad + " --rol " + args.rol +
+                         "; usa la herramienta nativa de ESTA sesión y vincula su resultado; sin fallback")
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="comando", required=True)
-    p = sub.add_parser("lanzar", help="valida y lanza un agente en una unidad")
+    p = sub.add_parser("lanzar", help="RETIRADO: muestra migración nativa, nunca inicia IA",
+                       description="RETIRADO. Usa subagente.py preparar UNIDAD --rol ROL y la herramienta nativa de esta sesión; no se inicia ninguna IA externa.")
     p.add_argument("unidad")
-    p.add_argument("--harness", default="auto", choices=("claude", "codex", "auto"),
-                   help="qué agente lanzar. Por defecto `auto`: el que esté instalado en "
-                        "esta máquina, prefiriendo para el revisor el DISTINTO del que "
-                        "construyó (lo dicen los recibos). Nombrarlo a mano manda, pero "
-                        "tiene que existir")
-    p.add_argument("--rol", choices=("constructor", "revisor"), default="constructor")
-    p.add_argument("--skill-tecnica", action="append", default=[])
-    p.add_argument("--prompt", required=True)
-    p.add_argument("--modelo", default=None,
-                   help="EXCEPCIÓN a la tabla de la regla 10 (repo_config.plan_de_modelo): "
-                        "sin este flag el modelo se deriva del carril de la ficha y del rol. "
-                        "Exige --motivo-modelo y queda anotado en el recibo")
-    p.add_argument("--esfuerzo", default=None,
-                   help="EXCEPCIÓN al esfuerzo de la tabla (bajo | medio | alto). Viaja al "
-                        "recibo; ningún harness admite hoy un flag para él. Exige "
-                        "--motivo-modelo")
-    p.add_argument("--motivo-modelo", default="",
-                   help="por qué esta ejecución se sale de la tabla de la regla 10; "
-                        "obligatorio con --modelo o --esfuerzo")
-    p.add_argument("--tope-minutos", type=int, default=0,
-                   help="mata el harness si supera este tope (0 = sin tope); el recibo "
-                        "queda con el motivo en vez de un cuelgue mudo")
-    args = parser.parse_args()
+    p.add_argument("--rol", choices=("constructor", "revisor", "investigador", "auditor", "validador"), default="constructor")
+    for flag in ("harness", "prompt", "modelo", "esfuerzo", "motivo-modelo", "tope-minutos"):
+        p.add_argument("--" + flag, help=argparse.SUPPRESS)
+    p.add_argument("--skill-tecnica", action="append", help=argparse.SUPPRESS)
+    args = parser.parse_args(argv)
     try:
         return lanzar(args)
     except ErrorEjecucion as exc:

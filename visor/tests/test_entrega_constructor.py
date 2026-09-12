@@ -152,7 +152,7 @@ class ReciboDelSubagenteTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix="subagente-147-")
         self.addCleanup(self.tmp.cleanup)
-        self.raiz = Path(self.tmp.name)
+        self.raiz = Path(self.tmp.name).resolve()
         self.unidad = "147-demo"
         self.worktree = self.raiz / "worktrees" / self.unidad
         self.worktree.mkdir(parents=True)
@@ -162,10 +162,11 @@ class ReciboDelSubagenteTest(unittest.TestCase):
         (self.worktree / "base.txt").write_text("base\n", encoding="utf-8")
         self.git("add", "base.txt")
         self.git("commit", "-m", "base")
+        self.git("checkout", "-b", self.unidad)
         ficha = self.raiz / "docs/05-trabajo" / self.unidad
         ficha.mkdir(parents=True)
         (ficha / "especificacion.md").write_text(
-            "---\nunidad: 147-demo\ntipo: feature\ncarril: normal\n---\n"
+            "---\nunidad: 147-demo\ntipo: feature\ncarril: normal\nestado: en_obra\n---\n"
             "\n## Plan de trabajo\n- [ ] uno\n- [ ] dos\n",
             encoding="utf-8",
         )
@@ -184,7 +185,7 @@ class ReciboDelSubagenteTest(unittest.TestCase):
 
     def args(self, resultado=None, motivo=""):
         datos = {"unidad": self.unidad, "modelo": "modelo-prueba", "rol": "constructor",
-                 "esfuerzo": "medio", "pid": os.getpid()}
+                 "esfuerzo": "medio", "pid": os.getpid(), "plataforma": "codex"}
         if resultado is not None:
             datos.update(resultado=resultado, motivo=motivo)
         return argparse.Namespace(**datos)
@@ -197,9 +198,29 @@ class ReciboDelSubagenteTest(unittest.TestCase):
             LEASES=self.leases,
         )
 
+    def preparar(self):
+        result = subagente.cmd_preparar(self.args())
+        if result == 0:
+            r = json.loads(next(self.ejecuciones.glob("*.json")).read_text())
+            self.rid = r["id"]
+            source = self.raiz / "tool.json"
+            source.write_text(json.dumps({"tool": "collaboration.spawn_agent", "native_task_id": "hijo",
+                                          "parent_session_id": "padre", "contexto": "fresco"}))
+            subagente.cmd_vincular(argparse.Namespace(unidad=self.unidad, recibo_id=self.rid,
+                                  rol="constructor", native_task_id="hijo", evidencia=str(source)))
+        return result
+
+    def finalizar(self, args):
+        args.recibo_id = self.rid
+        args.native_task_id = "hijo"
+        try:
+            return subagente.cmd_finalizar(args)
+        except ValueError:
+            return 1
+
     def test_abrir_guarda_head_arbol_y_plan_inicial(self):
         with self.parchear_raiz():
-            self.assertEqual(subagente.cmd_abrir(self.args()), 0)
+            self.assertEqual(self.preparar(), 0)
         recibo = json.loads(next(self.ejecuciones.glob("*.json")).read_text(encoding="utf-8"))
         self.assertEqual(recibo["git"]["inicial"]["head"], self.git("rev-parse", "HEAD"))
         self.assertTrue(recibo["git"]["inicial"]["tree"])
@@ -207,12 +228,12 @@ class ReciboDelSubagenteTest(unittest.TestCase):
 
     def test_cerrar_ok_materializa_diff_sin_tocar_head(self):
         with self.parchear_raiz():
-            self.assertEqual(subagente.cmd_abrir(self.args()), 0)
+            self.assertEqual(self.preparar(), 0)
             head_antes = self.git("rev-parse", "HEAD")
             (self.worktree / "nuevo.txt").write_text("entrega\n", encoding="utf-8")
             hallazgos = self.raiz / "docs/05-trabajo" / self.unidad / "hallazgos.md"
             hallazgos.write_text("## Plan\n- [x] uno\n- [ ] dos\n", encoding="utf-8")
-            self.assertEqual(subagente.cmd_cerrar(self.args("ok")), 0)
+            self.assertEqual(self.finalizar(self.args("ok")), 0)
         recibo = json.loads(next(self.ejecuciones.glob("*.json")).read_text(encoding="utf-8"))
         self.assertEqual(self.git("rev-parse", "HEAD"), head_antes)
         self.assertEqual(recibo["resultado"], "ok")
@@ -222,9 +243,9 @@ class ReciboDelSubagenteTest(unittest.TestCase):
 
     def test_cerrar_parado_exige_motivo_y_no_exige_diff(self):
         with self.parchear_raiz():
-            self.assertEqual(subagente.cmd_abrir(self.args()), 0)
-            self.assertEqual(subagente.cmd_cerrar(self.args("parado")), 1)
-            self.assertEqual(subagente.cmd_cerrar(self.args("parado", "contrato ambiguo")), 0)
+            self.assertEqual(self.preparar(), 0)
+            self.assertEqual(self.finalizar(self.args("parado")), 1)
+            self.assertEqual(self.finalizar(self.args("parado", "contrato ambiguo")), 0)
         recibo = json.loads(next(self.ejecuciones.glob("*.json")).read_text(encoding="utf-8"))
         self.assertEqual(recibo["motivo"], "contrato ambiguo")
 
@@ -254,12 +275,12 @@ class DientesEntregaConstructorTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix="dientes-entrega-147-")
         self.addCleanup(self.tmp.cleanup)
-        self.raiz = Path(self.tmp.name)
+        self.raiz = Path(self.tmp.name).resolve()
         self.nombre = "147-demo"
         carpeta = self.raiz / "docs/05-trabajo" / self.nombre
         carpeta.mkdir(parents=True)
         (carpeta / "especificacion.md").write_text(
-            "---\nunidad: 147-demo\ntipo: feature\ncarril: normal\n---\n",
+            "---\nunidad: 147-demo\ntipo: feature\ncarril: normal\nestado: en_obra\n---\n",
             encoding="utf-8",
         )
         self.worktree = Worktree(self.raiz / "worktrees" / self.nombre, self.nombre)

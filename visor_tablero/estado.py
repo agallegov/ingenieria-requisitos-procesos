@@ -482,9 +482,9 @@ def agentes(workspace):
     if not raiz.is_dir():
         return {"estado": AUSENTE, "leido": _leido(),
                 "detalle": "no existe .runtime/ejecuciones/",
-                "vivos": [], "terminados_hoy": []}
+                "vivos": [], "terminados_hoy": [], "preparados": []}
     por_sesion = _cerrojos(workspace)
-    vivos, terminados = [], []
+    vivos, terminados, preparados = [], [], []
     for fichero in sorted(raiz.glob("*.json")):
         try:
             recibo = json.loads(fichero.read_text(encoding="utf-8"))
@@ -495,7 +495,7 @@ def agentes(workspace):
         sesion = (recibo.get("lease") or {}).get("session_id") or ""
         cerrojos = por_sesion.get(sesion, [])
         pid_vivo = any(_pid_vivo(c["pid"]) for c in cerrojos)
-        vivo = "resultado" not in recibo and pid_vivo
+        vivo = "resultado" not in recibo and pid_vivo and recibo.get("estado_nativo") != "preparado"
 
         arranque = min((c["creado"] for c in cerrojos if c["creado"]), default="")
         if arranque:
@@ -517,7 +517,10 @@ def agentes(workspace):
             "unidad": recibo.get("unidad", ""),
             "rol": rol,
             "avatar": rol if rol in ROLES else "otro",
-            "modelo": recibo.get("modelo") or "sin declarar",
+            "modelo": (recibo.get("modelo_observado") or "sin acreditar") if recibo.get("protocolo") == "nativo/v1" else recibo.get("modelo") or "sin declarar",
+            "modelo_solicitado": recibo.get("modelo_solicitado"),
+            "native_task_id": recibo.get("native_task_id"),
+            "estado_nativo": recibo.get("estado_nativo"),
             "harness": recibo.get("harness", ""),
             "minutos": minutos,
             "arranque": arranque,
@@ -534,12 +537,14 @@ def agentes(workspace):
             ficha["ficheros"] = tocados["lista"]
             ficha["ficheros_estado"] = tocados["estado"]
             vivos.append(ficha)
+        elif recibo.get("estado_nativo") == "preparado":
+            preparados.append(ficha)
         elif datetime.fromtimestamp(fichero.stat().st_mtime).date() == _hoy_local():
             terminados.append(ficha)
     vivos.sort(key=lambda a: (-(a["minutos"] or 0), a["unidad"]))
     terminados.sort(key=lambda a: a["unidad"])
     return {"estado": OK, "leido": _leido(),
-            "vivos": vivos, "terminados_hoy": terminados}
+            "vivos": vivos, "terminados_hoy": terminados, "preparados": preparados}
 
 
 # --------------------------------------------------------------------------- por hacer

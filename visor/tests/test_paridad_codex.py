@@ -223,226 +223,12 @@ if encontrado:
 """
 
 
-class BaseLanzadorCodex(unittest.TestCase):
-    """Workspace mínimo con el launcher real y dobles de `codex` (catálogo + exec)."""
-
-    carril = "normal"
-    escribe_rollout = True
-
-    def setUp(self):
-        self.temporal = tempfile.TemporaryDirectory(prefix="paridad-codex-e2e-")
-        self.addCleanup(self.temporal.cleanup)
-        self.base = Path(self.temporal.name)
-        self.ws = self.base / "demo-agents"
-        scripts = self.ws / "docs/00-metodo/scripts"
-        scripts.mkdir(parents=True)
-        for nombre in ("ejecucion.py", "control_plane.py", "entrega.py", "lease.py",
-                       "workspace_paths.py", "repo_config.py"):
-            (scripts / nombre).write_bytes((SCRIPTS / nombre).read_bytes())
-        self.launcher = scripts / "ejecucion.py"
-
-        self.unidad = "001-demo"
-        self.ficha = self.ws / "docs/05-trabajo" / self.unidad / "especificacion.md"
-        self.ficha.parent.mkdir(parents=True)
-        self.ficha.write_text(
-            "---\nnumero: 001\ntipo: feature\nestado: en_obra\n"
-            f"carril: {self.carril}\nficheros: [app/demo.py]\n---\n# Demo\n",
-            encoding="utf-8")
-        (self.ficha.parent / "hallazgos.md").write_text("# Hallazgos\n", encoding="utf-8")
-        (self.ws / ".runtime").mkdir()
-
-        self.main = self.ws / "main"
-        self.main.mkdir()
-        self.git("init", "-b", "main", cwd=self.main)
-        self.git("config", "user.name", "Test", cwd=self.main)
-        self.git("config", "user.email", "test@example.com", cwd=self.main)
-        (self.main / "README.md").write_text("# demo\n", encoding="utf-8")
-        self.git("add", "README.md", cwd=self.main)
-        self.git("commit", "-m", "base", cwd=self.main)
-        (self.main / "BASELINE.md").write_text("base de entrega\n", encoding="utf-8")
-        self.git("add", "BASELINE.md", cwd=self.main)
-        self.git("commit", "-m", "segunda base para entregas de fixture", cwd=self.main)
-        (self.ws / "worktrees").mkdir()
-        self.worktree = self.ws / "worktrees" / self.unidad
-        self.git("worktree", "add", str(self.worktree), "-b", self.unidad, "main",
-                 cwd=self.main)
-
-        self.bin = self.base / "bin"
-        self.bin.mkdir()
-        self.registro = self.base / "exec-record.json"
-        self.contador = self.base / "consultas.txt"
-        self.instalar_codex()
-
-        self.home = self.base / "home-real"
-        self.home.mkdir()
-        (self.home / ".gitconfig").write_text(
-            "[user]\n\tname = Tester\n\temail = t@example.com\n", encoding="utf-8")
-        self.env = dict(os.environ, PATH=str(self.bin) + os.pathsep
-                        + os.environ.get("PATH", ""), HOME=str(self.home))
-
-    def instalar_codex(self):
-        """Un solo `codex` que atiende `debug models` y `exec`, como el real."""
-        catalogo = CUERPO_CATALOGO % (json.dumps(CATALOGO), repr(str(self.contador)))
-        ejecutor = CUERPO_EXEC % (repr(str(self.registro)),
-                                  "True" if self.escribe_rollout else "False")
-        instalar_ejecutable(
-            self.bin, "codex",
-            "import sys\n"
-            "if sys.argv[1:3] == ['debug', 'models']:\n"
-            + "".join(f"    {l}\n" for l in catalogo.splitlines())
-            + "\n" + ejecutor)
-
-    def git(self, *args, cwd):
-        r = subprocess.run(["git", *args], cwd=str(cwd), text=True, encoding="utf-8",
-                           errors="replace", capture_output=True)
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        return r
-
-    def sembrar_entrega_constructor(self):
-        carpeta = self.ws / ".runtime/ejecuciones"
-        carpeta.mkdir(parents=True, exist_ok=True)
-        for ruta in carpeta.glob(f"{self.unidad}-*.json"):
-            with contextlib.suppress(OSError, ValueError):
-                if json.loads(ruta.read_text(encoding="utf-8")).get("rol") == "constructor":
-                    return
-        final = self.git("rev-parse", "HEAD", cwd=self.worktree).stdout.strip()
-        principal = self.git("rev-parse", "main", cwd=self.main).stdout.strip()
-        inicial = principal if final != principal else self.git(
-            "rev-parse", f"{final}^", cwd=self.main).stdout.strip()
-        arbol_inicial = self.git(
-            "rev-parse", f"{inicial}^{{tree}}", cwd=self.main).stdout.strip()
-        arbol_final = self.git(
-            "rev-parse", f"{final}^{{tree}}", cwd=self.main).stdout.strip()
-        plan = self.ficha.parent / "hallazgos.md"
-        previas = len(re.findall(r"(?m)^\s*-\s*\[[xX]\]", plan.read_text(encoding="utf-8")))
-        with open(plan, "a", encoding="utf-8") as salida:
-            salida.write("\n- [x] entrega de fixture lista para revisión\n")
-        recibo = {
-            "schema": "ejecucion/v1", "id": "entrega-fixture", "unidad": self.unidad,
-            "harness": "subagente-del-padre", "rol": "constructor", "resultado": "ok",
-            "git": {
-                "inicial": {"head": inicial, "tree": arbol_inicial,
-                            "plan": {"marcadas": previas, "totales": previas + 1}},
-                "final": {"head": final, "tree": arbol_final,
-                          "status_porcelain": [], "materializada": False},
-            },
-            "trabajo": {"acreditado": True,
-                        "plan": {"marcadas": previas + 1, "totales": previas + 1}},
-            "exit_code": 0,
-        }
-        (carpeta / f"{self.unidad}-entrega-fixture.json").write_text(
-            json.dumps(recibo), encoding="utf-8")
-
-    def ejecutar(self, *extra, rol="constructor"):
-        if rol == "revisor":
-            self.sembrar_entrega_constructor()
-        return subprocess.run(
-            [sys.executable, str(self.launcher), "lanzar", self.unidad,
-             "--harness", "codex", "--rol", rol, *extra, "--prompt", "Haz la tarea"],
-            cwd=str(self.main), env=self.env, text=True, encoding="utf-8",
-            errors="replace", capture_output=True)
-
-    def argv(self):
-        return json.loads(self.registro.read_text(encoding="utf-8"))["argv"]
-
-    def recibo(self):
-        recibos = sorted((self.ws / ".runtime/ejecuciones").glob(f"{self.unidad}-*.json"))
-        self.assertEqual(len(recibos), 1, f"se esperaba un único recibo: {recibos}")
-        return json.loads(recibos[0].read_text(encoding="utf-8"))
 
 
-class ArgvDeCodexTest(BaseLanzadorCodex):
-
-    def test_codex_recibe_el_modelo_y_el_esfuerzo_de_la_tabla(self):
-        resultado = self.ejecutar()
-
-        self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
-        argv = self.argv()
-        self.assertIn("-m", argv)
-        self.assertEqual(argv[argv.index("-m") + 1], "modelo-punta")
-        self.assertIn("model_reasoning_effort=medium", argv)
-        self.assertEqual(argv[argv.index("model_reasoning_effort=medium") - 1], "-c")
-
-    def test_el_revisor_codex_sale_en_un_modelo_distinto(self):
-        resultado = self.ejecutar(rol="revisor")
-
-        self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
-        argv = self.argv()
-        self.assertEqual(argv[argv.index("-m") + 1], "modelo-segundo")
-
-    def test_el_revisor_codex_no_usa_el_sandbox_read_only(self):
-        # Sigue siendo cierto lo que probó la 100: `-s read-only` es absoluto (ignora
-        # `--add-dir` y `writable_roots`) y dejaría al revisor sin poder firmar. Lo que
-        # cambia en la 108 es la SALIDA: ya no se cae a `workspace-write`, sino a un perfil
-        # de permisos que extiende `:read-only` y abre solo lo imprescindible. La exigencia
-        # se endurece, no se relaja — lo comprueba `PerfilDelRevisorCodexTest`.
-        resultado = self.ejecutar(rol="revisor")
-
-        self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
-        argv = self.argv()
-        self.assertNotIn("-s", argv)
-        self.assertNotIn("workspace-write", argv)
-
-    def test_codex_corre_con_json_y_sin_ephemeral_para_poder_acreditar(self):
-        # `--ephemeral` es justo lo que impide que se escriba el rollout de la sesión,
-        # que es de donde sale la acreditación de R2.
-        resultado = self.ejecutar()
-
-        self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
-        argv = self.argv()
-        self.assertIn("--json", argv)
-        self.assertNotIn("--ephemeral", argv)
-
-    def test_codex_abre_las_dos_puertas_de_los_hooks(self):
-        # R3, probado contra el binario real: `--ignore-user-config` apaga también el
-        # `.codex/` DEL REPO, y sin `--dangerously-bypass-hook-trust` el hook no corre y
-        # no se dice nada. Las dos fallan calladas, así que las fija el lanzador.
-        resultado = self.ejecutar()
-
-        self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
-        argv = self.argv()
-        self.assertNotIn("--ignore-user-config", argv)
-        self.assertIn("--dangerously-bypass-hook-trust", argv)
-
-    def test_el_aislamiento_sigue_siendo_el_home_efimero(self):
-        # Quitar `--ignore-user-config` no reabre la configuración del usuario: el
-        # aislamiento lo da `CODEX_HOME`, que apunta a un temporal con solo `auth.json`.
-        resultado = self.ejecutar()
-
-        self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
-        registro = json.loads(self.registro.read_text(encoding="utf-8"))
-        self.assertIsNotNone(registro["codex_home"])
-        self.assertNotEqual(registro["codex_home"], str(self.home / ".codex"))
 
 
-class ReciboAcreditadoTest(BaseLanzadorCodex):
-    carril = "completo"
-
-    def test_el_recibo_acredita_el_modelo_que_de_verdad_corrio(self):
-        resultado = self.ejecutar()
-
-        self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
-        recibo = self.recibo()
-        self.assertEqual(recibo["model_slug"], "modelo-punta")
-        self.assertEqual(recibo["requested_model"], "modelo-punta")
-        self.assertEqual(recibo["requested_reasoning_effort"], "high")
-        self.assertEqual(recibo["modelo_origen"], "harness-acreditado")
-        self.assertEqual(recibo["modelo"], "modelo-punta")
-        self.assertEqual(recibo["esfuerzo"], "high")
 
 
-class ReciboSinRolloutTest(BaseLanzadorCodex):
-    """Si el rollout no aparece, el recibo NO miente: declara, no acredita."""
-    escribe_rollout = False
-
-    def test_sin_rollout_el_recibo_no_se_declara_acreditado(self):
-        resultado = self.ejecutar()
-
-        self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
-        recibo = self.recibo()
-        self.assertIsNone(recibo["model_slug"])
-        self.assertEqual(recibo["modelo_origen"], "tabla")
-        self.assertEqual(recibo["requested_model"], "modelo-punta")
 
 
 # ================================================================ R3 · hooks para Codex
@@ -583,7 +369,7 @@ class DoctrinaAlDiaTest(unittest.TestCase):
     def test_roles_describe_la_tabla_por_harness(self):
         texto = ROLES.read_text(encoding="utf-8")
         self.assertIn("codex debug models", texto)
-        self.assertIn("harness", texto.lower())
+        self.assertIn("plataforma", texto.lower())
 
 
 # ============================== Unidad 108 · R3 · el revisor Codex es solo-lectura de verdad
@@ -597,63 +383,6 @@ class DoctrinaAlDiaTest(unittest.TestCase):
 PERFIL = "revisor-solo-lectura"
 
 
-class PerfilDelRevisorCodexTest(BaseLanzadorCodex):
-    """Sobre el argv que construye el lanzador, con el doble de `codex`."""
-
-    def config(self, argv):
-        return [argv[i + 1] for i, pieza in enumerate(argv[:-1]) if pieza == "-c"]
-
-    def test_el_revisor_corre_bajo_un_perfil_que_extiende_solo_lectura(self):
-        resultado = self.ejecutar(rol="revisor")
-
-        self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
-        argv = self.argv()
-        config = self.config(argv)
-        self.assertIn(f'default_permissions="{PERFIL}"', config)
-        self.assertIn(f'permissions.{PERFIL}.extends=":read-only"', config)
-        # `sandbox_mode` y `permission_profile` no pueden convivir: el binario lo rechaza.
-        self.assertNotIn("-s", argv)
-        self.assertNotIn("workspace-write", argv)
-
-    def test_el_perfil_deja_escribible_la_carpeta_de_la_unidad_y_el_temporal(self):
-        resultado = self.ejecutar(rol="revisor")
-
-        self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
-        filesystem = [c for c in self.config(self.argv())
-                      if c.startswith(f"permissions.{PERFIL}.filesystem=")]
-        self.assertEqual(len(filesystem), 1, self.argv())
-        mapa = filesystem[0]
-        # La única escritura obligatoria del revisor: su veredicto y su firma.
-        self.assertIn(str(self.ficha.parent), mapa)
-        # Y el temporal del lanzador (TMPDIR/CODEX_HOME): sin él, ni la sesión ni las
-        # herramientas del agente pueden escribir nada y el revisor se queda mudo.
-        registro = json.loads(self.registro.read_text(encoding="utf-8"))
-        self.assertIn(str(Path(registro["codex_home"]).parent), mapa)
-        self.assertIn('="write"', mapa.replace(" ", ""))
-
-    def test_el_worktree_no_viaja_como_escribible(self):
-        resultado = self.ejecutar(rol="revisor")
-
-        self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
-        argv = self.argv()
-        # `--add-dir` en codex significa "directorio escribible adicional": bajo el perfil
-        # las rutas escribibles las declara el propio perfil, no esta bandera.
-        self.assertNotIn("--add-dir", argv)
-        filesystem = next(c for c in self.config(argv)
-                          if c.startswith(f"permissions.{PERFIL}.filesystem="))
-        self.assertNotIn(str(self.worktree.resolve()), filesystem)
-        # El cwd sigue siendo el worktree (ADR-022): lo que cambia es qué puede escribir.
-        self.assertEqual(Path(argv[argv.index("-C") + 1]).resolve(),
-                         self.worktree.resolve())
-
-    def test_el_constructor_codex_no_cambia(self):
-        # Límite: el perfil es SOLO del revisor. El constructor escribe en su worktree.
-        resultado = self.ejecutar()
-
-        self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
-        argv = self.argv()
-        self.assertIn("workspace-write", argv)
-        self.assertNotIn(f'default_permissions="{PERFIL}"', self.config(argv))
 
 
 @unittest.skipUnless(shutil.which("codex"), "sin binario `codex` en esta máquina")
@@ -724,10 +453,10 @@ class ConfiarLosHooksEstaEscritoTest(unittest.TestCase):
                 self.assertIn("no los ejecuta", bajo)
                 self.assertIn("no te avisa", bajo)
 
-    def test_dicen_que_ejecucion_py_no_necesita_ese_paso(self):
+    def test_no_prescriben_bypass_de_hooks_para_una_ia_externa(self):
         for ruta, texto in self.papeles().items():
             with self.subTest(papel=ruta.name):
-                self.assertIn("--dangerously-bypass-hook-trust", texto)
+                self.assertNotIn("--dangerously-bypass-hook-trust", texto)
 
 
 if __name__ == "__main__":

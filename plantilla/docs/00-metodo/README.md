@@ -123,7 +123,7 @@ constructor con la especificación como punto de entrada · 7. actualizar ESTADO
 sea): el ritual completo, con sus dos caminos (con `gh` y sin él) y la frontera del revisor,
 vive en **`runbooks/cierre.md`**, que es por donde cierran TODOS los tipos. En corto:
 1. verificar con evidencia (checks + output) · 2. revisión por quien NO construyó — **siempre
-una sesión o subagente fresco de solo lectura**, en todo carril que revisa (ADR-017; el
+un subagente nativo fresco de solo lectura**, en todo carril que revisa (ADR-017; el
 exprés no revisa: solo el verde): diff contra especificación
 (requisitos, edge cases, alcance; **que los ficheros de test no se tocaron después del commit
 que los creó** y **que no se ha duplicado un módulo que ya existía en `main/`**) — veredicto a
@@ -173,10 +173,13 @@ fallo crítico permite una segunda ronda. Preparar hoy problemas que aún no exi
 - `auditoria-metodo.md`, `auditoria-calidad.md`, `auditoria-sanidad.md`, `auditoria-seguridad.md`,
   `seguridad-por-stack.md`, `sandbox.md` y `scripts/lint_deploy.py` — seguridad, aislamiento y
   gate de pre-despliegue.
-- `scripts/ejecucion.py` — **lanzador del revisor fresco** (y vía opcional del constructor,
-  ADR-033): deriva unidad/worktree/rama, fija cwd/PWD, sanea entorno y skills y deja
-  checkpoints en `.runtime/ejecuciones/` (ADR-022). El constructor de normal/completo es un
-  subagente del padre; exprés/directo no lanzan otro LLM.
+- `scripts/subagente.py` — prepara, vincula y finaliza recibos de TODOS los roles delegados
+  dentro de la sesión padre (ADR-038), tanto en Claude como en Codex. El padre usa la
+  herramienta nativa; el script no inicia IA. Identidad, modelo observado, contenido y
+  resultado quedan en `.runtime/ejecuciones/`.
+- `scripts/ejecucion.py` — conserva funciones comunes de evidencia y lectura histórica.
+  Sus órdenes de lanzamiento están retiradas y explican cómo migrar al protocolo nativo;
+  no ofrecen una vía opcional externa. Exprés/directo siguen construidos por el padre.
 - `scripts/unidad.py` — **el despachador**: `nnn` (siguiente número libre, mirando unidades,
   archivo, bugs y ramas) · `nueva <tipo> <slug> [--directo]` (crea la unidad desde su plantilla;
   con `--directo`, desde la ficha corta del carril directo) ·

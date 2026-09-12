@@ -10,6 +10,8 @@ REVISOR (su recibo es lo que acredita la firma) y una vía opcional para Codex o
 desatendidas.
 """
 import re
+import os
+from unittest import mock
 import sys
 import unittest
 from pathlib import Path
@@ -33,6 +35,9 @@ class DespachoEntregaSubagenteDelPadre(unittest.TestCase):
     """
 
     def setUp(self):
+        plataforma = mock.patch.dict(os.environ, {"METODO_PLATAFORMA": "claude"})
+        plataforma.start()
+        self.addCleanup(plataforma.stop)
         self.ws_test = base.PeticionUnidadTest("test_no_crea_unidad_sin_peticion_de_origen")
         self.ws_test.setUp()
         self.addCleanup(self.ws_test.tearDown)
@@ -50,12 +55,12 @@ class DespachoEntregaSubagenteDelPadre(unittest.TestCase):
 
     def test_despacho_normal_no_manda_lanzar_un_constructor_por_ejecucion(self):
         salida = self.despachar_normal()
-        self.assertNotIn("--rol constructor", salida)
+        self.assertIn("subagente.py preparar", salida)
         self.assertNotRegex(salida, r"ejecucion\.py lanzar \S+ --harness \S+ --rol constructor")
 
     def test_despacho_normal_entrega_el_encargo_del_subagente_del_padre(self):
         salida = self.despachar_normal()
-        plan = repo_config.plan_de_modelo("normal", "constructor")
+        plan = repo_config.plan_de_modelo("normal", "constructor", harness=repo_config.plataforma_sesion())
         self.assertIn("subagente del padre", salida.lower())
         self.assertIn("worktrees/001-lanzamiento", salida)
         self.assertIn(f"modelo {plan.modelo}", salida)
@@ -82,7 +87,7 @@ class LaProsaDelMetodoYaNoMandaClaudeP(unittest.TestCase):
         agents = self.texto("plantilla/AGENTS.md")
         regla_15 = re.search(r"^15\. \*\*Proceso nativo.*?(?=^16\. )", agents, re.S | re.M).group(0)
         self.assertNotIn("Todo agente delegado pasa por `ejecucion.py`", regla_15)
-        self.assertIn("ADR-033", regla_15)
+        self.assertIn("ADR-038", regla_15)
 
     def test_roles_y_runbooks_no_mandan_construir_por_ejecucion(self):
         for rel in ("plantilla/docs/00-metodo/roles.md",

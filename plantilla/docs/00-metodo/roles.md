@@ -39,16 +39,15 @@ desplegar ni saltarse el límite del rol; después se sigue `runbooks/peticiones
   suites completas a la vez.
 - **Paralelismo (ADR-036):** despacha en paralelo TODO contrato aprobado cuyos `ficheros:` no
   choquen con lo que ya está en vuelo, y lanza **un subagente por unidad** —cada uno con su
-  recibo (`subagente.py abrir`), que es lo que hace visible el trabajo en el tablero y en
+  recibo (`subagente.py preparar` → herramienta nativa → `vincular` → `finalizar`), que es lo que hace visible el trabajo en el tablero y en
   `unidad.py estado`—. Ir de uno en uno es la excepción y se pide con `--serie`.
-- **Ejecución delegada (ADR-033):** en normal/completo el constructor es un **subagente del
-  propio padre** —aislado en el worktree de la unidad, gestionado y visible—, con el encargo,
-  el modelo y el esfuerzo que imprime `unidad.py despachar` (tabla de abajo). Todo revisor
-  fresco se lanza con `docs/00-metodo/scripts/ejecucion.py` (su recibo acredita la firma);
-  ese lanzador queda como vía opcional para el constructor (Codex, sesión desatendida).
-  La notificación de fin del ayudante es diagnóstico, no evidencia: la entrega solo existe
-  cuando su recibo derivado de git acredita el árbol y el avance del plan.
-  El **modelo y el esfuerzo no se teclean**: los deriva la tabla de abajo.
+- **Ejecución delegada (ADR-038):** constructor, revisor, investigador, auditor y validador
+  son hijos nativos de la sesión padre. En Codex se usan las herramientas `collaboration`;
+  en Claude, `Agent` y `SendMessage`. El padre prepara el encargo mediante `subagente.py`,
+  invoca la herramienta nativa, vincula su resultado exacto y finaliza con evidencia por rol.
+  No hay lanzador IA externo, sesión desatendida aparte ni fallback entre plataformas.
+  La entrega del constructor acredita árbol y avance del plan; una revisión acredita agente
+  fresco, contenido, ronda y veredicto. Notificar que terminó no sustituye esas comprobaciones.
 - **Aprobación de un contrato:** pedirle el OK a un contrato (unidad o bug) exige abrir
   antes el apartado de contratos de la web en el mismo turno — `python3 main/web/abrir.py
   --workspace . --apartado contratos` — igual que ANALISTA DE FLUJOS abre el de flujos
@@ -65,102 +64,48 @@ desplegar ni saltarse el límite del rol; después se sigue `runbooks/peticiones
 - **Cadencia:** una sesión por unidad (o por fase de proyecto). Al arrancar: `ESTADO.md`.
   Al terminar algo relevante: actualizar `ESTADO.md` antes de cerrar sesión.
 
-### Modelo y esfuerzo del subagente (regla 10, con ejecutor)
+### Modelo y esfuerzo del subagente (regla 10)
 
-La regla 10 de `AGENTS.md` fijaba el modelo por carril y no tenía quien la ejecutara: el
-lanzador traía `--modelo` opcional y ningún `--esfuerzo`, así que sin flag **todo** subagente
-salía con el modelo por defecto del harness, el más caro, y el acierto dependía de que quien
-despachara se acordara. La tabla vive ahora en `scripts/repo_config.py`
-(`plan_de_modelo(carril, rol, harness)`); `unidad.py despachar` la imprime en el encargo del
-subagente y `ejecucion.py lanzar` la aplica sola al revisor, leyendo el carril de la ficha.
-Desde la unidad 100 es una tabla **por harness**: la regla es la misma en los dos, lo único
-que cambia es de dónde salen los nombres.
+La tabla vive en `scripts/repo_config.py` (`plan_de_modelo`). El encargo de
+`unidad.py despachar` y `subagente.py preparar` usan la plataforma de la sesión padre.
+`--plataforma claude|codex` permite indicarla cuando no puede derivarse del entorno; nunca
+selecciona otro ejecutable para arrancar un agente por fuera.
 
-**Harness `claude`** — los identificadores están escritos, porque son estables:
-
-| carril | constructor | revisor | esfuerzo |
+| carril | constructor Claude | revisor Claude | esfuerzo Claude / Codex |
 |---|---|---|---|
-| directo, exprés | `claude-opus-5` | `claude-fable-5` | bajo |
-| normal | `claude-opus-5` | `claude-fable-5` | medio |
-| completo, hotfix | `claude-opus-5` | `claude-fable-5` | alto |
-| unidad documental o lint (cualquier carril) | `claude-haiku-4-5` | `claude-haiku-4-5` | bajo |
+| directo, exprés | `claude-opus-5` | `claude-fable-5` | bajo / low |
+| normal | `claude-opus-5` | `claude-fable-5` | medio / medium |
+| completo, hotfix | `claude-opus-5` | `claude-fable-5` | alto / high |
+| documental o lint | `claude-haiku-4-5` | según independencia exigida | bajo / low |
 
-**Harness `codex`** — aquí NO hay identificadores escritos, y es a propósito: los de OpenAI
-cambian de nombre cada pocas semanas y una lista congelada envejece sin que nadie se entere.
-El método pregunta el catálogo al binario instalado con **`codex debug models`** (una vez por
-sesión, cacheado) y elige **por posición**, descartando los que el propio binario marca como
-no elegibles a mano:
+En Codex los nombres salen del catálogo del binario instalado (`codex debug models`, consulta
+sin ejecutar IA): primero para constructor, segundo para revisor y último para trabajo pequeño.
+El padre pasa modelo y esfuerzo a la herramienta nativa cuando esta los permita. En exprés y
+directo construye el propio padre. El revisor usa un modelo distinto del constructor; si la
+selección documental coincide, hay que elegir otro modelo disponible de esa misma plataforma.
+Una capacidad ausente se declara y deja la tarea pendiente, sin recurrir a otra sesión IA.
 
-| carril | constructor | revisor | esfuerzo |
-|---|---|---|---|
-| directo, exprés | el 1.º del catálogo | el 2.º del catálogo | `low` |
-| normal | el 1.º del catálogo | el 2.º del catálogo | `medium` |
-| completo, hotfix | el 1.º del catálogo | el 2.º del catálogo | `high` |
-| unidad documental o lint (cualquier carril) | el último del catálogo | el último del catálogo | `low` |
+`modelo_solicitado` expresa el encargo. `modelo_observado` y `modelo_acreditado` solo se rellenan
+al contrastar la fuente de la tarea concreta. Un campo escrito por el padre en un JSON no se
+convierte en modelo observado. Si se cambia la selección, el motivo se conserva en el encargo.
 
-Para verlo con los nombres de hoy: `python3 -c "import sys; sys.path.insert(0,
-'docs/00-metodo/scripts'); import repo_config; print(repo_config.catalogo_codex()[:3])"`.
+- Codex: `session_meta` identifica hijo y padre; `turn_context` aporta modelo y esfuerzo.
+  Se valida el rollout exacto del hijo; no se toma el más reciente de todas las sesiones.
+- Claude: el transcript del subagente identifica `agentId` y `sessionId`; los mensajes del
+  asistente aportan el modelo. Puede devolver su identidad al terminar una llamada síncrona:
+  se permite preparar → ejecutar con Agent → vincular el resultado → finalizar.
+- Fuente ausente, identidad incorrecta o modelo no observado: el recibo lo declara y no
+  satisface una puerta que exija acreditación. Nunca se estampa el modelo solicitado como real.
 
-- **El constructor va en Opus en todos los carriles** por decisión del usuario (25-08), aunque
-  la regla 10 admitiría bajar en directo y exprés: en esos dos carriles construye el padre, así
-  que la casilla casi nunca se usa.
-- **El revisor JAMÁS repite el modelo del constructor** (`claude-fable-5`; alternativa
-  `claude-sonnet-5`): dos instancias del mismo comparten puntos ciegos y la revisión fresca
-  existe justo para eso. `unidad.py cerrar` avisa si los recibos dicen lo contrario.
-- **El esfuerzo viaja al recibo siempre.** En `claude` va como dato (el CLI aún no tiene flag);
-  en `codex` va de verdad en el argv, con `-c model_reasoning_effort=…`. En los dos casos es lo
-  que permite comprobar la regla 10 a posteriori en vez de creérsela.
-- **Salirse de la tabla se declara:** `--modelo`/`--esfuerzo` exigen `--motivo-modelo` y quedan
-  en el recibo como `modelo_origen: excepcion` con su motivo. `unidad.py cerrar` los enseña.
-- **Con Codex el recibo ACREDITA en vez de declarar** (unidad 100). El lanzador lee el
-  `turn_context` del rollout de la sesión —dentro del `CODEX_HOME` efímero, antes de borrarlo—
-  y escribe en el recibo `model_slug` (lo que corrió de verdad) junto a `requested_model` y
-  `requested_reasoning_effort` (lo que se pidió), con `modelo_origen: harness-acreditado`. Ojo:
-  `codex exec --json` **no** sirve para esto, no emite el modelo; y por eso el argv de Codex no
-  lleva `--ephemeral`, que es justo lo que impediría escribir ese rollout. Si el rollout no
-  aparece, el recibo se queda declarando (`modelo_origen: tabla`) y lo dice: no se inventa nada.
-- **Con Claude el recibo también ACREDITA** (unidad 108). El lanzador fija el id de la sesión
-  (`--session-id`) y, al cerrar el recibo, lee el transcript de esa sesión
-  (`~/.claude/projects/<slug del cwd>/<id>.jsonl`): sus registros del asistente traen el modelo
-  efectivo y el esfuerzo del turno. Manda el ÚLTIMO. Por eso el argv de Claude ya no lleva
-  `--no-session-persistence`, que era justo lo que impedía escribir ese transcript (el mismo
-  caso que `--ephemeral` en Codex). Si el transcript no aparece o no dice el modelo, el recibo
-  se queda declarando (`modelo_origen: tabla`) y lo dice en su checkpoint `modelo-acreditado`.
-- **Los dos harness entregan unidades.** El despacho delegado —constructor y revisor— vale con
-  `--harness claude` y con `--harness codex`; el revisor sigue sin repetir el modelo del
-  constructor en ninguno de los dos.
-- **El harness no se teclea: se elige por lo que HAY instalado** (bug 152). `--harness` es
-  opcional y por defecto vale `auto`: el lanzador mira qué ejecutable existe en esta máquina y,
-  para revisar, prefiere el **distinto del que construyó** —lo leen los recibos de la unidad, no
-  la memoria de nadie—. Si solo hay uno instalado, revisa con ese: lo que hace fresca a una
-  revisión es que el agente sea nuevo y de solo lectura, no la marca del binario, y el modelo
-  distinto lo sigue garantizando esta tabla. Si no hay ninguno, el rechazo nombra cuál instalar.
-  El recibo guarda en `harness_origen` **por qué** salió ese y no el otro. Recetar `--harness
-  claude` en la prosa del cierre era justo lo que dejaba sin cerrar a un taller solo-Codex.
-- **El revisor Codex es solo-lectura DE VERDAD** (unidad 108). No por `-s read-only` —bajo ese
-  sandbox el binario ignora `--add-dir` y no deja ninguna ruta escribible, así que el revisor no
-  podría escribir su veredicto ni su firma—, sino por un **perfil de permisos propio** que
-  extiende el built-in `:read-only` y abre a escritura solo lo imprescindible: la carpeta de la
-  unidad (donde va la firma) y el temporal del lanzador. El cwd sigue siendo el worktree
-  (ADR-022): lo que cambia es que ahí ya no puede escribir ni queriendo. El revisor Claude
-  conserva su frontera de siempre (cwd correcto más disciplina del contrato).
-- **En Windows ese perfil tiene una sola raíz** (bug 152). El sandbox de Windows sin elevación
-  no garantiza varios conjuntos de rutas escribibles y `codex exec` moría con
-  `UnsupportedOperation` antes de arrancar: allí el perfil abre **una sola raíz**, el temporal
-  de la sesión (sin él no hay `CODEX_HOME` ni rollout, o sea, no hay sesión). La carpeta de la
-  unidad queda cerrada, así que la firma `revisor:`/`revisado:` la sella el **lanzador** desde
-  el recibo, por la misma puerta que `revisado_patch_id`, y el recibo escribe en
-  `perfil_revisor` bajo cuál corrió. El nombre sale del modelo **acreditado**
-  (`modelo_acreditado` del recibo, leído del rollout de esa sesión), nunca del que pidió la
-  tabla: si esa sesión no acreditó, el lanzador no firma y avisa de que hay que repetir la
-  revisión. Con todo, esto es una firma más débil que la del revisor que la escribe él: el
-  rollout vive en el temporal, que bajo este perfil es justo lo único escribible para el
-  agente. Vale como constancia de qué corrió, no como prueba anti-manipulación.
-- **Con Codex CLI, los hooks del método hay que confiarlos UNA vez.** Un hook de
-  `.codex/hooks.json` no corre hasta que alguien revisa y confía su huella: `/hooks` en la sesión
-  interactiva. Sin eso Codex **no los ejecuta y no te avisa**, y la sesión se queda sin canario y
-  sin aviso de fin de turno con la misma pinta de siempre. `ejecucion.py` no necesita ese paso:
-  ya pasa `--dangerously-bypass-hook-trust`, porque los hooks son los del propio método.
+El recibo nativo conserva los datos de la fuente y su hash, pero no promete autenticación
+criptográfica del fichero local. La revisión se encarga a un agente nuevo, con contexto fresco:
+no se reutiliza el constructor ni su conversación. El protocolo compara código antes y después;
+no crea un sandbox de SO que la herramienta nativa no ofrezca. La única escritura del revisor
+es su informe y firma, dentro de la unidad. Los límites de permisos quedan en el recibo.
+
+Con Codex CLI, los hooks del método se confían una vez mediante `/hooks` en la sesión.
+Sin confiarlos Codex no los ejecuta y no te avisa. No se arranca otro Codex con permisos
+o configuración distintos para evitar esa comprobación.
 
 ## OBSERVABILIDAD (solo lectura + informe)
 

@@ -7,20 +7,20 @@ revisor: no              # LO ESCRIBE EL REVISOR, en la MISMA escritura que su v
                          # es el padre— y que la firma se rellene DESPUÉS de memoria. Si llega
                          # vacía, la revisión se perdió y se repite (`cierre.md`, paso 2).
 revisado: no             # `no` | fecha YYYY-MM-DD de esa revisión. `unidad.py cerrar` la exige.
-revisado_patch_id: no    # LO ESCRIBE EL LANZADOR, no tú: `ejecucion.py lanzar … --rol revisor`
+revisado_patch_id: no    # LO MIDE EL PROTOCOLO NATIVO, no tú: `subagente.py preparar … --rol revisor`
                          # sella aquí la huella del contenido exacto que el revisor va a mirar
                          # (`git patch-id --stable` del diff contra la principal). Si la rama
                          # cambia después, `unidad.py cerrar` lo ve y manda repetir la revisión;
                          # un rebase limpio no la mueve y la firma sigue valiendo. Borrarla
                          # dejando la fecha lo caza `lint_cierre.py`: sin ancla no es una firma.
-ronda: 1                 # LO ESCRIBE EL LANZADOR, no tú: `ejecucion.py lanzar … --rol
+ronda: 1                 # LO REGISTRA EL PROTOCOLO NATIVO, no tú: `subagente.py preparar … --rol
                          # constructor` la sube en 1 cada vez que la última revisión dijo
                          # HUECOS DE CORRECCIÓN. El tope es 2: lanzar la tercera se RECHAZA y
                          # la decisión pasa al usuario (subir de carril, reabrir el contrato o
                          # cancelar). Una ejecución que acaba con el mismo commit y el mismo
                          # diff con los que empezó no gasta ronda. Un número tecleado que los
                          # recibos no acrediten lo caza `unidad.py cerrar`.
-correccion: no           # LO ESCRIBE EL LANZADOR desde la ronda 2: `+N/-M` de esta corrección
+correccion: no           # LO REGISTRA EL PROTOCOLO NATIVO desde la ronda 2: `+N/-M` de esta corrección
                          # frente al diff original de la rama. Informa, no bloquea — la queja
                          # que abrió la 069 era el gasto, no el tamaño.
 ---
@@ -137,7 +137,7 @@ que se puso un sello a sí mismo.>
 
 ## Revisión (la rellena EL REVISOR, en el momento de revisar)
 
-<Paso 2 del ritual de cierre: veredicto del revisor fresco (sesión/subagente nuevo, solo
+<Paso 2 del ritual de cierre: veredicto del revisor fresco (subagente nativo nuevo de la sesión padre, solo
 lectura) sobre el diff contra la especificación, en TODOS los carriles (ADR-017). Lo escribe él,
 de una sentada y antes de soltar la tarea: su veredicto aquí y su
 nombre y la fecha en el frontmatter (`revisor:`, `revisado:`), que es lo que `unidad.py cerrar`

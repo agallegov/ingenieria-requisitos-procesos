@@ -209,8 +209,9 @@ class LosTresTextosYaNoNombranWSL2Test(unittest.TestCase):
         documento SIGA recetando un mecanismo por plataforma como si aplicara hoy."""
         texto = (RAIZ / "plantilla/docs/00-metodo/sandbox.md").read_text(encoding="utf-8")
         self.assertNotIn("Mecanismos por plataforma", texto)
-        self.assertIn("no impone", texto.lower())
-        self.assertIn("cwd", texto)
+        self.assertIn("no", texto.lower())
+        self.assertIn("cuando la herramienta no lo expone", texto.lower())
+        self.assertIn("worktree", texto)
 
 
 if __name__ == "__main__":
