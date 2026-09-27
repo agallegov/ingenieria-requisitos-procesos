@@ -265,6 +265,102 @@ class NativoTest(unittest.TestCase):
         empty = entrega.recibos_de(self.name, self.receipts)[-1]
         self.assertEqual(entrega.validar_entrega(self.wt.ruta, self.name, [old, empty], self.wt.base())[0], [])
 
+    def test_relevo_terminal_vacio_conserva_obra_de_constructor_parado(self):
+        original = self.prepare()
+        self.assertEqual(self.bind(original, "constructor-original", "modelo-original"), 0)
+        self.wt.commitear("obra comprobada")
+        self.h.write_text(self.h.read_text().replace("[ ]", "[x]"))
+        self.assertEqual(self.finish(original, "constructor-original", "parado"), 0)
+        relevo = self.prepare()
+        self.assertEqual(self.bind(relevo, "relevo-fresco", "modelo-relevo"), 0)
+        self.assertEqual(self.finish(relevo, "relevo-fresco", "parado"), 0)
+        recibos = entrega.recibos_de(self.name, self.receipts)
+        self.assertTrue(recibos[-1]["ronda_vacia"])
+        self.assertEqual(recibos[-2]["git"]["final"]["tree"], recibos[-1]["git"]["final"]["tree"])
+        self.assertEqual(entrega.exigir_entrega_constructor(self.name)[0], [])
+        self.assertEqual(self.call("preparar", self.name, "--rol", "revisor",
+                                   "--plataforma", "codex", "--modelo", "modelo-revisor",
+                                   "--pid", str(os.getpid())), 0)
+
+    def _origen_parado(self, *, resultado="parado", cambia=True, modelo="modelo-original"):
+        original = self.prepare()
+        self.assertEqual(self.bind(original, "constructor-original", modelo), 0)
+        if cambia:
+            self.wt.commitear("obra comprobada")
+            self.h.write_text(self.h.read_text().replace("[ ]", "[x]"))
+        self.assertEqual(self.finish(original, "constructor-original", resultado), 0)
+        return original
+
+    def _relevo_parado(self, *, cambia=False, modelo="modelo-relevo"):
+        relevo = self.prepare()
+        self.assertEqual(self.bind(relevo, "relevo-fresco", modelo), 0)
+        if cambia:
+            self.wt.commitear("cambio del relevo")
+        self.assertEqual(self.finish(relevo, "relevo-fresco", "parado"), 0)
+        return relevo
+
+    def test_relevo_terminal_rechaza_origen_parado_sin_relevo(self):
+        self._origen_parado()
+        self.assertTrue(entrega.exigir_entrega_constructor(self.name)[0])
+
+    def test_relevo_terminal_rechaza_relevo_que_cambia_arbol(self):
+        self._origen_parado()
+        self._relevo_parado(cambia=True)
+        self.assertFalse(entrega.recibos_de(self.name, self.receipts)[-1]["ronda_vacia"])
+        self.assertTrue(entrega.exigir_entrega_constructor(self.name)[0])
+
+    def test_relevo_terminal_rechaza_origen_sin_obra(self):
+        self._origen_parado(cambia=False)
+        self._relevo_parado()
+        self.assertTrue(entrega.exigir_entrega_constructor(self.name)[0])
+
+    def test_relevo_terminal_rechaza_origen_fallido(self):
+        self._origen_parado(resultado="fallo")
+        self._relevo_parado()
+        self.assertTrue(entrega.exigir_entrega_constructor(self.name)[0])
+
+    def test_relevo_terminal_rechaza_plan_incompleto(self):
+        self._origen_parado()
+        self.h.write_text(self.h.read_text().replace("[x]", "[ ]"))
+        self._relevo_parado()
+        self.assertTrue(entrega.exigir_entrega_constructor(self.name)[0])
+
+    def test_relevo_terminal_admite_dos_relevos_vacios_consecutivos(self):
+        self._origen_parado()
+        self._relevo_parado()
+        tercero = self.prepare()
+        self.assertEqual(self.bind(tercero, "tercer-hijo", "tercer-modelo"), 0)
+        self.assertEqual(self.finish(tercero, "tercer-hijo", "cancelado"), 0)
+        self.assertEqual(entrega.exigir_entrega_constructor(self.name)[0], [])
+
+    def test_relevo_terminal_plan_de_obra_no_incluye_bitacora_de_cierre(self):
+        self._origen_parado()
+        self._relevo_parado()
+        self.h.write_text(self.h.read_text() + "\n## Bitácora del cierre\n- [ ] revisión del padre\n")
+        self.assertEqual(entrega.exigir_entrega_constructor(self.name)[0], [])
+
+    def test_relevo_terminal_rechaza_modelo_sin_acreditar(self):
+        self._origen_parado(modelo=None)
+        self._relevo_parado()
+        self.assertTrue(entrega.exigir_entrega_constructor(self.name)[0])
+
+    def test_relevo_terminal_rechaza_vinculo_alterado(self):
+        original = self._origen_parado()
+        self._relevo_parado()
+        self.assertEqual(entrega.exigir_entrega_constructor(self.name)[0], [])
+        receipt = json.loads(Path(original["_ruta"]).read_text())
+        Path(receipt["evidencia_nativa"]["ruta"]).write_text("{}")
+        self.assertTrue(entrega.exigir_entrega_constructor(self.name)[0])
+
+    def test_relevo_terminal_rechaza_continuidad_de_arbol_falsa(self):
+        self._origen_parado()
+        relevo = self._relevo_parado()
+        path = Path(relevo["_ruta"])
+        receipt = json.loads(path.read_text())
+        receipt["git"]["inicial"]["tree"] = "0" * 40
+        path.write_text(json.dumps(receipt))
+        self.assertTrue(entrega.exigir_entrega_constructor(self.name)[0])
+
     def test_R6_todos_roles_ambas_plataformas_y_claude_sincrono(self):
         for platform in ("codex", "claude"):
             for role in ("constructor", "revisor", "investigador", "auditor", "validador"):

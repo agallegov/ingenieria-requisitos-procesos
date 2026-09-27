@@ -94,6 +94,21 @@ def plan_en(ruta):
     }
 
 
+def plan_de_obra(ruta):
+    """Casillas del constructor, sin la bitácora de cierre que firma el padre."""
+    try:
+        texto = Path(ruta).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return {"marcadas": 0, "totales": 0}
+    seccion = re.search(
+        r"(?ms)^## Plan[^\n]*\n(.*?)(?=^## |\Z)", texto
+    ) or re.search(
+        r"(?ms)^### Plan de trabajo del subagente[^\n]*\n(.*?)(?=^## |^### |\Z)", texto
+    )
+    marcas = RE_CASILLA.findall(seccion.group(1)) if seccion else []
+    return {"marcadas": sum(m.lower() == "x" for m in marcas), "totales": len(marcas)}
+
+
 def ficha_y_plan(raiz, unidad):
     raiz = Path(raiz)
     carpeta = raiz / "docs/05-trabajo" / unidad
@@ -207,6 +222,50 @@ def validar_vinculo_nativo(recibo, exigir_terminado=True):
     return None
 
 
+def _componer_relevo_terminal(candidatos, raiz, unidad):
+    """Acredita obra parada seguida solo de relevos nativos vacíos sobre el mismo árbol."""
+    if len(candidatos) < 2:
+        return None
+    origen = candidatos[-2]
+    relevos = candidatos[-1:]
+    while origen.get("ronda_vacia") is True and len(candidatos) > len(relevos) + 1:
+        relevos.insert(0, origen)
+        origen = candidatos[-len(relevos) - 1]
+    if origen.get("resultado") != "parado" or not relevos:
+        return None
+    cadena = [origen, *relevos]
+    identidades = [r.get("native_task_id") for r in cadena]
+    if len(set(identidades)) != len(identidades):
+        return None
+    for r in cadena:
+        if (r.get("protocolo") != "nativo/v1"
+                or r.get("harness") != "subagente-del-padre"
+                or r.get("contexto") != "fresco"
+                or not r.get("modelo_acreditado")
+                or validar_vinculo_nativo(r, exigir_terminado=False)):
+            return None
+    inicial = (origen.get("git") or {}).get("inicial") or {}
+    anterior = (origen.get("git") or {}).get("final") or {}
+    if not inicial.get("tree") or not anterior.get("tree") or inicial["tree"] == anterior["tree"]:
+        return None
+    for relevo in relevos:
+        principio = (relevo.get("git") or {}).get("inicial") or {}
+        fin = (relevo.get("git") or {}).get("final") or {}
+        if (relevo.get("resultado") not in {"parado", "cancelado"}
+                or relevo.get("ronda_vacia") is not True
+                or principio.get("tree") != anterior["tree"]
+                or fin.get("tree") != principio["tree"]):
+            return None
+        anterior = fin
+    ficha, _ = ficha_y_plan(raiz, unidad)
+    plan = plan_de_obra(ficha if ficha.parent.name == "bugs" else ficha.with_name("hallazgos.md"))
+    plan_inicial = inicial.get("plan") or {}
+    if (not plan["totales"] or plan["marcadas"] != plan["totales"]
+            or plan["marcadas"] <= int(plan_inicial.get("marcadas", 0))):
+        return None
+    return origen, anterior, plan
+
+
 def validar_entrega(worktree, unidad, recibos, base):
     """Puerta pura usada por los fixtures y por los consumidores reales."""
     base = dict(base or {})
@@ -230,18 +289,20 @@ def validar_entrega(worktree, unidad, recibos, base):
         return [_problema(f"ningún recibo legible acredita al constructor de {unidad}")], []
 
     propios = [r for r in candidatos if r.get("harness") == "subagente-del-padre"]
-    recibo = (propios or candidatos)[-1]
-    if recibo.get("protocolo") == "nativo/v1":
+    candidatos = propios or candidatos
+    composicion = _componer_relevo_terminal(candidatos, Path(worktree).parent.parent, unidad)
+    recibo = composicion[0] if composicion else candidatos[-1]
+    if recibo.get("protocolo") == "nativo/v1" and not composicion:
         problema = validar_vinculo_nativo(recibo)
         if problema:
             return [_problema(problema)], []
     resultado = recibo.get("resultado")
-    if resultado != "ok":
+    if resultado != "ok" and not composicion:
         return [_problema(
             f"la entrega del ayudante de {unidad} terminó en {resultado or 'abierto'}"
         )], []
 
-    final = (recibo.get("git") or {}).get("final") or {}
+    final = composicion[1] if composicion else (recibo.get("git") or {}).get("final") or {}
     repo = Path(worktree) if Path(worktree).is_dir() else Path(worktree).parent.parent / "main"
     try:
         if Path(worktree).is_dir():
@@ -281,8 +342,8 @@ def validar_entrega(worktree, unidad, recibos, base):
     )
     if mismo_arbol or final.get("head") == inicial.get("head"):
         return [_problema(f"{unidad} no contiene cambios desde la base del despacho")], []
-    plan_inicial = (base.get("plan") or inicial.get("plan") or {})
-    plan_final = ((recibo.get("trabajo") or {}).get("plan") or {})
+    plan_inicial = (inicial.get("plan") or {}) if composicion else (base.get("plan") or inicial.get("plan") or {})
+    plan_final = composicion[2] if composicion else ((recibo.get("trabajo") or {}).get("plan") or {})
     if plan_final and int(plan_final.get("marcadas", 0)) <= int(
         plan_inicial.get("marcadas", 0)
     ):
