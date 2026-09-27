@@ -295,7 +295,7 @@ def _preparar(args, cleanup):
     }
     checkpoint(datos, "preparado", "Pendiente de herramienta nativa; no acredita ejecución")
     if args.rol == "constructor" and not documental:
-        if not entrega.validar_preparacion_sin_ejecucion(datos):
+        if not entrega.validar_preparacion_sin_ejecucion(datos, raiz=RAIZ):
             error("preparación sin hijo incoherente; revisa sus snapshots antes de repetir preparar")
     EJECUCIONES.mkdir(parents=True, exist_ok=True)
     try:
@@ -492,7 +492,7 @@ def cmd_finalizar(args):
 def cmd_cancelar(args):
     path, datos = exacto(args)
     if datos.get("rol") == "constructor" and not datos.get("documental"):
-        if not entrega.validar_preparacion_sin_ejecucion(datos):
+        if not entrega.validar_preparacion_sin_ejecucion(datos, raiz=RAIZ):
             error("recibo sin hijo incoherente; consulta su estado antes de cancelar")
     if datos.get("estado_nativo") == "cancelado" and not datos.get("native_task_id"):
         return 0
@@ -505,7 +505,7 @@ def cmd_cancelar(args):
                   "exit_code": None, "sin_ejecucion": True, "ronda": datos.get("ronda_previa")})
     checkpoint(datos, "cancelado", args.motivo)
     if datos.get("rol") == "constructor" and not datos.get("documental"):
-        if not entrega.validar_preparacion_sin_ejecucion(datos):
+        if not entrega.validar_preparacion_sin_ejecucion(datos, raiz=RAIZ):
             error("cancelación sin hijo incoherente; conserva el recibo preparado y revisa su estado")
     guardar_recibo(path, datos)
     group.release()

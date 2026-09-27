@@ -717,7 +717,7 @@ class NativoTest(unittest.TestCase):
             with mock.patch.object(entrega, "validar_preparacion_sin_ejecucion",
                                    return_value=False, create=True) as validar:
                 with self.subTest(paso="cancelar"):
-                    validar.side_effect = lambda datos: datos["estado_nativo"] == "preparado"
+                    validar.side_effect = lambda datos, **contexto: datos["estado_nativo"] == "preparado"
                     caso.assertNotEqual(caso.call("cancelar", caso.name, "--recibo-id", preparado["id"],
                                                  "--rol", "constructor", "--motivo", "sin hijo"), 0)
                     validar.assert_called()
@@ -728,6 +728,130 @@ class NativoTest(unittest.TestCase):
                     validar.side_effect = None
                     caso._rechaza_exencion_en_ambas_puertas()
                     validar.assert_called()
+
+    def _mutacion_canonica_rechazada(self, path, datos):
+        path.write_text(json.dumps(datos))
+        with self.subTest(puerta="autoridad"):
+            self.assertFalse(entrega.validar_preparacion_sin_ejecucion(datos))
+        try:
+            self._rechaza_exencion_en_ambas_puertas()
+        finally:
+            # En ROJO una revisión aceptada no debe bloquear la siguiente mutación
+            # por su lease: cada caso debe medir la puerta de entrega de nuevo.
+            for recibo in entrega.recibos_de(self.name, self.receipts):
+                if recibo.get("rol") == "revisor" and recibo.get("estado_nativo") == "preparado":
+                    self.call("cancelar", self.name, "--rol", "revisor",
+                              "--recibo-id", recibo["id"], "--motivo", "limpieza de prueba")
+
+    def test_canonico_rechaza_preparacion_anterior_al_lease(self):
+        path = self._preparacion_posterior_a_relevo_valido(cancelar=True)
+        datos = json.loads(path.read_text())
+        datos["checkpoints"][0]["cuando"] = "2000-01-01T00:00:00+00:00"
+        self._mutacion_canonica_rechazada(path, datos)
+
+    def test_canonico_rechaza_rutas_de_otra_unidad(self):
+        path = self._preparacion_posterior_a_relevo_valido(cancelar=True)
+        datos = json.loads(path.read_text())
+        datos.update(cwd="/tmp/otra-unidad", ficha="/tmp/otra-unidad/contrato.md",
+                     informe="/tmp/otra-unidad/hallazgos.md")
+        self._mutacion_canonica_rechazada(path, datos)
+
+    def test_canonico_preparado_comparte_relaciones_con_cancelado(self):
+        path = self._preparacion_posterior_a_relevo_valido()
+        original = json.loads(path.read_text())
+        self.assertEqual(self.call("cancelar", self.name, "--rol", "constructor",
+                                   "--recibo-id", original["id"], "--motivo", "liberar lease"), 0)
+        # La forma A procede del productor. Liberar su lease evita que un bloqueo
+        # lateral suplante la aserción de la puerta al contraprobar en ROJO.
+        for campo in ("cwd", "ficha", "informe", "cuando"):
+            with self.subTest(campo=campo):
+                datos = json.loads(json.dumps(original))
+                if campo == "cuando":
+                    datos["checkpoints"][0][campo] = "2000-01-01T00:00:00+00:00"
+                else:
+                    datos[campo] = str(self.root / "999-ajena" / campo)
+                self._mutacion_canonica_rechazada(path, datos)
+
+    def test_canonico_rechaza_incremento_de_ronda_sobre_tope_del_productor(self):
+        path = self._preparacion_posterior_a_relevo_valido()
+        datos = json.loads(path.read_text())
+        self.assertEqual(self.call("cancelar", self.name, "--rol", "constructor",
+                                   "--recibo-id", datos["id"], "--motivo", "liberar lease"), 0)
+        datos["ronda_previa"] = ejecucion.TOPE_DE_RONDAS
+        datos["ronda"] = ejecucion.TOPE_DE_RONDAS + 1
+        self._mutacion_canonica_rechazada(path, datos)
+
+    def test_canonico_admite_snapshots_sin_informe_y_ficha_de_bug(self):
+        self.h.unlink()
+        r = self.prepare()
+        original = json.loads(Path(r["_ruta"]).read_text())
+        self.assertTrue(entrega.validar_preparacion_sin_ejecucion(original))
+        self.assertIsNone(original["informe_inicial"])
+        self.assertEqual(self.call("cancelar", self.name, "--rol", "constructor",
+                                   "--recibo-id", r["id"], "--motivo", "sin informe"), 0)
+        ficha = self.docs / "especificacion.md"
+        bug = self.root / "docs/bugs" / (self.name + ".md")
+        bug.parent.mkdir(parents=True)
+        ficha.rename(bug)
+        self.assertEqual(self.call("preparar", self.name, "--rol", "constructor",
+                                   "--plataforma", "codex", "--pid", str(os.getpid())), 0)
+        r = entrega.recibos_de(self.name, self.receipts)[-1]
+        datos = json.loads(Path(r["_ruta"]).read_text())
+        self.assertEqual(datos["informe"], str(bug))
+        self.assertEqual(datos["documentos_inicial"], {})
+        self.assertTrue(entrega.validar_preparacion_sin_ejecucion(datos))
+        # El padre puede editar la ficha después: no se inventan snapshots nuevos.
+        bug.write_text(bug.read_text() + "\nNota posterior del padre\n")
+        self.assertTrue(entrega.validar_preparacion_sin_ejecucion(datos))
+        datos["documentos_inicial"] = {"otra.md": "a" * 64}
+        self.assertFalse(entrega.validar_preparacion_sin_ejecucion(datos))
+
+    def test_canonico_audita_relaciones_derivadas_y_temporales(self):
+        path = self._preparacion_posterior_a_relevo_valido(cancelar=True)
+        original = json.loads(path.read_text())
+        cambios = [
+            (("cwd",), str(self.root / "worktrees/999-ajena")),
+            (("ficha",), str(self.root / "docs/bugs" / (self.name + ".md"))),
+            (("informe",), str(self.docs / "especificacion.md")),
+            (("checkpoints", 1, "cuando"), "2000-01-01T00:00:00+00:00"),
+            (("checkpoints", 1, "cuando"), "2999-01-01T00:00:00+00:00"),
+            (("documentos_inicial",), {"../ajeno.md": "a" * 64}),
+            (("documentos_inicial",), {"hallazgos.md": "a" * 64}),
+            (("documentos_inicial",), {}),
+            (("informe_inicial",), None),
+            (("ancla_motivo",), None),
+            (("id",), "a" * 32),
+            (("git", "inicial", "status_porcelain"), [""]),
+            (("modelo",), "claude-otro"),
+        ]
+        # Cada mutación conserva el resto de un recibo real, no otra mutación.
+        for ruta, valor in cambios:
+            with self.subTest(ruta=ruta, valor=valor):
+                datos = json.loads(json.dumps(original))
+                destino = datos
+                for clave in ruta[:-1]:
+                    destino = destino[clave]
+                destino[ruta[-1]] = valor
+                if ruta == ("modelo",):
+                    datos["modelo_solicitado"] = valor
+                self._mutacion_canonica_rechazada(path, datos)
+        with self.subTest(relacion="casillas pendientes del subconjunto"):
+            datos = json.loads(json.dumps(original))
+            datos["git"]["inicial"]["plan_obra"] = {"marcadas": 0, "totales": 1}
+            self._mutacion_canonica_rechazada(path, datos)
+        for campo, valor in (("created", "2000-01-01"), ("created", "2999-01-01T00:00:00+00:00"),
+                             ("operation", "00000000-0000-0000-0000-000000000000"),
+                             ("session_id", "no-uuid")):
+            with self.subTest(lease=campo, valor=valor):
+                datos = json.loads(json.dumps(original))
+                record = datos["lease"]["records"][0]
+                if campo == "session_id":
+                    record["owner"][campo] = valor
+                    datos["lease"][campo] = valor
+                else:
+                    record[campo] = valor
+                record["integrity"] = subagente.gestion_leases.LeaseManager._record_integrity(record)
+                self._mutacion_canonica_rechazada(path, datos)
 
     def test_validador_canonico_rechaza_valores_imposibles_sin_hijo(self):
         recibo = self.prepare()

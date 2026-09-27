@@ -264,7 +264,7 @@ def _es_ancestro(repo, anterior, siguiente):
     return proceso.returncode == 0
 
 
-def validar_preparacion_sin_ejecucion(recibo):
+def validar_preparacion_sin_ejecucion(recibo, *, raiz=None):
     """Contrato canónico del constructor de código sin hijo en nativo/v1.
 
     Productor y consumidor usan esta misma validación sobre el JSON sin anotaciones.
@@ -274,6 +274,7 @@ def validar_preparacion_sin_ejecucion(recibo):
     """
     if not isinstance(recibo, dict):
         return False
+    raiz = Path(raiz if raiz is not None else RAIZ)
 
     def coincide(valor, forma):
         if isinstance(forma, type):
@@ -294,7 +295,7 @@ def validar_preparacion_sin_ejecucion(recibo):
                 and 0 <= contador["marcadas"] <= contador["totales"])
 
     def integridad_lease_valida(registro):
-        manager = gestion_leases.LeaseManager(RAIZ)
+        manager = gestion_leases.LeaseManager(raiz)
         try:
             manager._validate_record(manager._path(registro["scope"]), registro)
         except (gestion_leases.LeaseError, KeyError, TypeError):
@@ -310,6 +311,13 @@ def validar_preparacion_sin_ejecucion(recibo):
                                  time.strptime(valor, "%Y-%m-%dT%H:%M:%S+00:00")) == valor
         except ValueError:
             return False
+
+    def uuid4_valido(valor, *, hex=False):
+        try:
+            identidad = uuid.UUID(valor)
+        except ValueError:
+            return False
+        return identidad.version == 4 and valor == (identidad.hex if hex else str(identidad))
 
     cancelado = recibo.get("estado_nativo") == "cancelado"
     scope = "subagente:" + str(recibo.get("unidad"))
@@ -343,7 +351,8 @@ def validar_preparacion_sin_ejecucion(recibo):
     }
     if cancelado:
         forma.update(resultado="cancelado", motivo=str, sin_ejecucion=True)
-    if not coincide(recibo, forma):
+    if (not coincide(recibo, forma)
+            or re.fullmatch(r"\d{3}-[a-z0-9][a-z0-9-]*", recibo["unidad"]) is None):
         return False
     checkpoints = recibo["checkpoints"]
     esperados = [("preparado", "Pendiente de herramienta nativa; no acredita ejecución")]
@@ -359,37 +368,82 @@ def validar_preparacion_sin_ejecucion(recibo):
             return False
     elif previa < 1 or ronda not in ((previa,) if cancelado else (previa, previa + 1)):
         return False
+    if previa is not None and ronda > previa:
+        # Mismo límite que rondas_del_constructor, sin duplicar su constante.
+        from ejecucion import TOPE_DE_RONDAS
+        if ronda > TOPE_DE_RONDAS:
+            return False
     lease = recibo["lease"]
+    if len(lease["records"]) != 1:
+        return False
+    registro = lease["records"][0]
+    fechas = [registro["created"], *(c["cuando"] for c in checkpoints)]
+    if (not all(fecha_valida(fecha) for fecha in fechas)
+            or fechas != sorted(fechas)
+            or fechas[-1] > time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime())):
+        return False
+    # Derivar la identidad espacial del workspace, nunca de las rutas del recibo.
+    # Solo consultamos existencia/frontera; los hashes y planes son snapshots, no
+    # el contenido actual de documentos que el padre puede haber actualizado.
+    unidad = recibo["unidad"]
+    candidatas = (raiz / "docs/05-trabajo" / unidad / "especificacion.md",
+                  raiz / "docs/bugs" / f"{unidad}.md",
+                  raiz / "docs/05-trabajo/archivo" / unidad / "especificacion.md")
+    ficha = next((p for p in candidatas if p.exists() or p.is_symlink()), None)
+    worktree = raiz / "worktrees" / unidad
+    if (ficha is None or not ficha.is_file() or ficha.is_symlink()
+            or not worktree.is_dir() or worktree.is_symlink()):
+        return False
+    informe = ficha if ficha.parent.name == "bugs" else ficha.with_name("hallazgos.md")
+    if (recibo["cwd"] != str(worktree) or recibo["ficha"] != str(ficha.resolve())
+            or recibo["informe"] != str(informe.resolve()) or informe.is_symlink()):
+        return False
+    documentos = recibo["documentos_inicial"]
+    if ficha == informe:
+        if documentos or recibo["informe_inicial"] is None:
+            return False
+    elif ficha.name not in documentos or informe.name in documentos:
+        return False
+    for nombre, digest in documentos.items():
+        if (not isinstance(nombre, str) or not nombre or not huella(digest, 64)
+                or not Path(nombre).parts or Path(nombre).is_absolute() or ".." in Path(nombre).parts
+                or str(Path(nombre)) != nombre):
+            return False
     contadores = (recibo["git"]["inicial"]["plan"],
                   recibo["git"]["inicial"]["plan_obra"],
                   recibo["trabajo"]["plan"])
     plan, obra, _ = contadores
-    return (huella(recibo["id"], 32)
-            and re.fullmatch(r"\d{3}-[a-z0-9][a-z0-9-]*", recibo["unidad"]) is not None
-            and all(Path(recibo[campo]).is_absolute() for campo in ("cwd", "ficha", "informe"))
+    if recibo["informe_inicial"] is None and (any(c != {"marcadas": 0, "totales": 0}
+                                                for c in contadores) or previa is not None):
+        return False
+    return (uuid4_valido(recibo["id"], hex=True)
             and huella(recibo["contrato_inicial"], 64)
             and (recibo["informe_inicial"] is None or huella(recibo["informe_inicial"], 64))
             and all(huella(recibo["git"]["inicial"][campo], 40) for campo in ("head", "tree"))
-            and all(fecha_valida(c["cuando"]) for c in checkpoints)
+            and all(re.fullmatch(r"(?:[ MADRCUT?!]{2}|[MADRCUT?!]) .+", linea)
+                    for linea in recibo["git"]["inicial"]["status_porcelain"])
             and bool(recibo["modelo"])
             and recibo["modelo"] == recibo["modelo_solicitado"]
+            and not recibo["modelo"].startswith("claude-" if recibo["plataforma"] == "codex" else "gpt-")
+            and isinstance(recibo["ancla_motivo"], str) and bool(recibo["ancla_motivo"])
             and recibo["trabajo"]["plan"] == recibo["git"]["inicial"]["plan"]
             and all(contador_valido(contador) for contador in contadores)
             and obra["marcadas"] <= plan["marcadas"]
             and obra["totales"] <= plan["totales"]
+            and obra["totales"] - obra["marcadas"] <= plan["totales"] - plan["marcadas"]
             and lease["scopes"] == [scope] and len(lease["records"]) == 1
+            and uuid4_valido(lease["session_id"]) and uuid4_valido(registro["operation"])
             and lease["records"][0]["fencing"] == lease["fencing"][scope]
             and lease["records"][0]["owner"]["session_id"] == lease["session_id"]
             and integridad_lease_valida(lease["records"][0])
-            and all(isinstance(k, str) and bool(k) and huella(v, 64)
-                    for k, v in recibo["documentos_inicial"].items())
             and recibo["limites"] == ["Un modelo solicitado no es observado",
                                      "La herramienta no acredita aislamiento de SO"])
 
 
-def _preparacion_sin_ejecucion(recibo):
+def _preparacion_sin_ejecucion(recibo, *, raiz=None):
     # Adaptador del lector: recibos_de ya rechazó _ruta dentro del JSON crudo.
-    return validar_preparacion_sin_ejecucion({k: v for k, v in recibo.items() if k != "_ruta"})
+    return validar_preparacion_sin_ejecucion(
+        {k: v for k, v in recibo.items() if k != "_ruta"}, raiz=raiz)
 
 
 def _componer_relevo_terminal(candidatos, recibos, worktree, raiz, unidad):
@@ -414,7 +468,7 @@ def _componer_relevo_terminal(candidatos, recibos, worktree, raiz, unidad):
             return None
         tokens.add(token)
         # Solo preparación sin hijo: no basta una bandera que oculte ejecución.
-        if _preparacion_sin_ejecucion(r):
+        if _preparacion_sin_ejecucion(r, raiz=raiz):
             continue
         intentos.append((token, r))
     candidatos = [r for _, r in sorted(intentos, key=lambda intento: intento[0])]
