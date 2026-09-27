@@ -428,6 +428,141 @@ class NativoTest(unittest.TestCase):
         self._relevo_parado()
         self.assertEqual(entrega.exigir_entrega_constructor(self.name)[0], [])
 
+    def _rechaza_entrega_y_revisor(self):
+        self.assertTrue(entrega.exigir_entrega_constructor(self.name)[0])
+        self.assertNotEqual(self.call("preparar", self.name, "--rol", "revisor",
+                                     "--plataforma", "codex", "--pid", str(os.getpid())), 0)
+
+    def test_relevo_terminal_rechaza_tarea_pendiente_en_subseccion(self):
+        self._origen_parado()
+        self._relevo_parado()
+        self.h.write_text("## Plan\n- [x] construcción\n### Verificación\n- [ ] verificar\n")
+        self._rechaza_entrega_y_revisor()
+
+    def test_relevo_terminal_rechaza_plan_solo_en_ejemplo_vallado(self):
+        self._origen_parado()
+        self._relevo_parado()
+        for valla in ("```", "~~~~"):
+            with self.subTest(valla=valla):
+                self.h.write_text(valla + "markdown\n## Plan\n- [x] ejemplo\n" + valla + "\n")
+                self._rechaza_entrega_y_revisor()
+
+    def test_plan_obra_reconoce_ambito_y_excluye_ejemplos(self):
+        self.h.write_text("```md\n## Plan\n- [ ] ejemplo\n```\n"
+                          "## Plan\n- [x] construir\n### Verificación\n- [x] verificar\n"
+                          "~~~md\n## Otra sección de ejemplo\n- [ ] ejemplo\n~~~\n"
+                          "#### Detalle\n- [x] comprobar\n# Fuera\n- [ ] ajena\n")
+        self.assertEqual(entrega.plan_de_obra(self.h), {"marcadas": 3, "totales": 3})
+
+    def test_relevo_terminal_rechaza_intento_posterior_corrupto(self):
+        self._origen_parado()
+        self._relevo_parado()
+        ultimo = self.prepare()
+        self.assertEqual(self.bind(ultimo, "ultimo", "modelo-ultimo"), 0)
+        self.assertEqual(self.finish(ultimo, "ultimo", "fallo"), 0)
+        Path(ultimo["_ruta"]).write_text("{")
+        self._rechaza_entrega_y_revisor()
+
+    def test_relevo_terminal_rechaza_intento_posterior_no_nativo(self):
+        self._origen_parado()
+        self._relevo_parado()
+        ultimo = self.prepare()
+        self.assertEqual(self.bind(ultimo, "ultimo", "modelo-ultimo"), 0)
+        self.assertEqual(self.finish(ultimo, "ultimo", "fallo"), 0)
+        path = Path(ultimo["_ruta"])
+        datos = json.loads(path.read_text())
+        datos.update(protocolo="historico/v1", harness="externo")
+        path.write_text(json.dumps(datos))
+        self._rechaza_entrega_y_revisor()
+
+    def test_relevo_terminal_rechaza_corrupto_intermedio_reescrito_al_final(self):
+        self._origen_parado()
+        intermedio = self.prepare()
+        self.assertEqual(self.bind(intermedio, "intermedio", "modelo-intermedio"), 0)
+        self.assertEqual(self.finish(intermedio, "intermedio", "fallo"), 0)
+        self._relevo_parado()
+        Path(intermedio["_ruta"]).write_text("{")
+        self._rechaza_entrega_y_revisor()
+
+    def test_relevo_terminal_orden_no_depende_de_mtime(self):
+        original = self._origen_parado()
+        relevo = self._relevo_parado()
+        for orden in ((original, relevo), (relevo, original)):
+            for indice, recibo in enumerate(orden):
+                os.utime(recibo["_ruta"], ns=(1_000_000 + indice, 1_000_000 + indice))
+            with self.subTest(orden=[r["id"] for r in orden]):
+                self.assertEqual(entrega.exigir_entrega_constructor(self.name)[0], [])
+
+    def test_relevo_terminal_rechaza_historia_sin_contador_inicial_observado(self):
+        original = self._origen_parado()
+        self._relevo_parado()
+        path = Path(original["_ruta"])
+        datos = json.loads(path.read_text())
+        datos["git"]["inicial"].pop("plan_obra")
+        for contador in (None, {}, {"totales": 1}):
+            with self.subTest(contador=contador):
+                datos["git"]["inicial"]["plan"] = contador
+                tiempos = path.stat()
+                path.write_text(json.dumps(datos))
+                os.utime(path, ns=(tiempos.st_atime_ns, tiempos.st_mtime_ns))
+                self._rechaza_entrega_y_revisor()
+
+    def test_relevo_terminal_admite_preparaciones_sin_ejecucion(self):
+        self._origen_parado()
+        intermedio = self.prepare()
+        self.assertEqual(self.call("cancelar", self.name, "--recibo-id", intermedio["id"],
+                                   "--rol", "constructor", "--motivo", "sin hijo"), 0)
+        self._relevo_parado()
+        ultimo = self.prepare()
+        self.assertEqual(entrega.exigir_entrega_constructor(self.name)[0], [])
+        self.assertEqual(self.call("cancelar", self.name, "--recibo-id", ultimo["id"],
+                                   "--rol", "constructor", "--motivo", "sin hijo"), 0)
+        self.assertEqual(entrega.exigir_entrega_constructor(self.name)[0], [])
+
+    def test_relevo_terminal_rechaza_fallido_posterior_aunque_mtime_sea_anterior(self):
+        self._origen_parado()
+        self._relevo_parado()
+        ultimo = self.prepare()
+        self.assertEqual(self.bind(ultimo, "ultimo", "modelo-ultimo"), 0)
+        self.assertEqual(self.finish(ultimo, "ultimo", "fallo"), 0)
+        os.utime(ultimo["_ruta"], ns=(1, 1))
+        self._rechaza_entrega_y_revisor()
+
+    def test_relevo_terminal_rechaza_ejecucion_ocultada_como_preparacion(self):
+        self._origen_parado()
+        self._relevo_parado()
+        ultimo = self.prepare()
+        self.assertEqual(self.bind(ultimo, "ultimo", "modelo-ultimo"), 0)
+        self.assertEqual(self.finish(ultimo, "ultimo", "fallo"), 0)
+        path = Path(ultimo["_ruta"])
+        datos = json.loads(path.read_text())
+        for estado in ("preparado", "cancelado"):
+            with self.subTest(estado=estado):
+                datos.update(estado_nativo=estado, sin_ejecucion=True)
+                path.write_text(json.dumps(datos))
+                self._rechaza_entrega_y_revisor()
+
+    def test_relevo_terminal_rechaza_orden_sin_token_o_ambiguo(self):
+        original = self._origen_parado()
+        relevo = self._relevo_parado()
+        path = Path(relevo["_ruta"])
+        datos = json.loads(path.read_text())
+        for token in (None, original["lease"]["fencing"]["subagente:" + self.name]):
+            with self.subTest(token=token):
+                datos["lease"]["fencing"]["subagente:" + self.name] = token
+                path.write_text(json.dumps(datos))
+                self._rechaza_entrega_y_revisor()
+
+    def test_relevo_terminal_admite_historico_solo_con_cero_explicito(self):
+        original = self._origen_parado()
+        self._relevo_parado()
+        path = Path(original["_ruta"])
+        datos = json.loads(path.read_text())
+        datos["git"]["inicial"].pop("plan_obra")
+        datos["git"]["inicial"]["plan"] = {"marcadas": 0, "totales": 1}
+        path.write_text(json.dumps(datos))
+        self.assertEqual(entrega.exigir_entrega_constructor(self.name)[0], [])
+
     def test_R6_todos_roles_ambas_plataformas_y_claude_sincrono(self):
         for platform in ("codex", "claude"):
             for role in ("constructor", "revisor", "investigador", "auditor", "validador"):

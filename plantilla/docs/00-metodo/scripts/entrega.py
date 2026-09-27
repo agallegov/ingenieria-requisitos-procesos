@@ -100,12 +100,36 @@ def plan_de_obra(ruta):
         texto = Path(ruta).read_text(encoding="utf-8", errors="replace")
     except OSError:
         return {"marcadas": 0, "totales": 0}
-    cabecera = (r"## Plan[ \t]*" if Path(ruta).name == "hallazgos.md"
-                else r"### Plan de trabajo del subagente(?: \(esqueleto fijo; marcar \[x\] al completar\))?[ \t]*")
-    secciones = re.findall(r"(?ms)^" + cabecera + r"\n(.*?)(?=^## |^### |\Z)", texto)
+    nivel_plan = 2 if Path(ruta).name == "hallazgos.md" else 3
+    titulos = ({"Plan"} if nivel_plan == 2 else {
+        "Plan de trabajo del subagente",
+        "Plan de trabajo del subagente (esqueleto fijo; marcar [x] al completar)",
+    })
+    secciones, actual, valla = [], None, None
+    for linea in texto.splitlines():
+        if valla:
+            if re.fullmatch(r" {0,3}" + re.escape(valla[0]) +
+                            "{" + str(len(valla)) + r",}[ \t]*", linea):
+                valla = None
+            continue
+        apertura = re.match(r" {0,3}(`{3,}|~{3,})(.*)$", linea)
+        if apertura and not (apertura[1][0] == "`" and "`" in apertura[2]):
+            valla = apertura[1]
+            continue
+        cabecera = re.match(r" {0,3}(#{1,6})(?:[ \t]+(.*)|$)", linea)
+        if cabecera:
+            nivel = len(cabecera[1])
+            titulo = re.sub(r"[ \t]+#+[ \t]*$", "", cabecera[2] or "").strip()
+            if nivel <= nivel_plan:
+                actual = None
+            if nivel == nivel_plan and titulo in titulos:
+                actual = []
+                secciones.append(actual)
+        elif actual is not None:
+            actual.append(linea)
     if len(secciones) != 1:
         return {"marcadas": 0, "totales": 0}
-    marcas = RE_CASILLA.findall(secciones[0])
+    marcas = RE_CASILLA.findall("\n".join(secciones[0]))
     return {"marcadas": sum(m.lower() == "x" for m in marcas), "totales": len(marcas)}
 
 
@@ -239,6 +263,34 @@ def _componer_relevo_terminal(candidatos, recibos, worktree, raiz, unidad):
     """Acredita obra parada seguida solo de relevos nativos vacíos sobre el mismo árbol."""
     if len(candidatos) < 2:
         return None
+    # mtime cambia al finalizar o reparar un recibo. El lease ya conserva el orden
+    # monotónico de preparación de todos los roles para esta unidad, incluso históricos.
+    # Si un intento no permite acreditar su posición, no se presume anterior al origen.
+    intentos = []
+    tokens = set()
+    for r in recibos:
+        if (r.get("schema") != "ejecucion/v1" or r.get("unidad") != unidad
+                or r.get("rol") not in {"constructor", "revisor", "investigador", "auditor", "validador"}):
+            return None
+        if r.get("rol") != "constructor":
+            continue
+        token = ((r.get("lease") or {}).get("fencing") or {}).get(f"subagente:{unidad}")
+        if (r.get("protocolo") != "nativo/v1"
+                or r.get("harness") != "subagente-del-padre"
+                or type(token) is not int or token < 1 or token in tokens):
+            return None
+        tokens.add(token)
+        # Solo preparación sin hijo: no basta una bandera que oculte ejecución.
+        if (not r.get("native_task_id") and not r.get("evidencia_nativa")
+                and (r.get("estado_nativo") == "preparado"
+                     or (r.get("sin_ejecucion") is True
+                         and r.get("estado_nativo") == "cancelado"
+                         and r.get("resultado") == "cancelado"))):
+            continue
+        intentos.append((token, r))
+    candidatos = [r for _, r in sorted(intentos, key=lambda intento: intento[0])]
+    if len(candidatos) < 2:
+        return None
     origen = candidatos[-2]
     relevos = candidatos[-1:]
     while origen.get("ronda_vacia") is True and len(candidatos) > len(relevos) + 1:
@@ -247,17 +299,6 @@ def _componer_relevo_terminal(candidatos, recibos, worktree, raiz, unidad):
     if origen.get("resultado") != "parado" or not relevos:
         return None
     cadena = [origen, *relevos]
-    posiciones = [i for i, r in enumerate(recibos) if any(r is parte for parte in cadena)]
-    if len(posiciones) != len(cadena):
-        return None
-    for r in recibos[posiciones[0]:posiciones[-1] + 1]:
-        if any(r is parte for parte in cadena):
-            continue
-        # Una preparación nunca ejecutada no corta la cadena; cualquier otro intento sí.
-        if not (r.get("rol") == "constructor" and r.get("unidad") == unidad
-                and (r.get("estado_nativo") == "preparado"
-                     or (r.get("sin_ejecucion") is True and not r.get("native_task_id")))):
-            return None
     identidades = [r.get("native_task_id") for r in cadena]
     if len(set(identidades)) != len(identidades):
         return None
@@ -294,12 +335,18 @@ def _componer_relevo_terminal(candidatos, recibos, worktree, raiz, unidad):
     plan_inicial = inicial.get("plan_obra")
     if plan_inicial is None:
         # Históricos como 048 solo permiten inferir cero si el contador global era cero.
-        global_inicial = inicial.get("plan") or {}
-        if int(global_inicial.get("marcadas", 0)) != 0:
+        global_inicial = inicial.get("plan")
+        if (not isinstance(global_inicial, dict)
+                or type(global_inicial.get("marcadas")) is not int
+                or global_inicial["marcadas"] != 0):
             return None
         plan_inicial = {"marcadas": 0}
+    if (not isinstance(plan_inicial, dict)
+            or type(plan_inicial.get("marcadas")) is not int
+            or plan_inicial["marcadas"] < 0):
+        return None
     if (not plan["totales"] or plan["marcadas"] != plan["totales"]
-            or plan["marcadas"] <= int(plan_inicial.get("marcadas", 0))):
+            or plan["marcadas"] <= plan_inicial["marcadas"]):
         return None
     return origen, anterior, plan
 
