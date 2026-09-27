@@ -361,6 +361,73 @@ class NativoTest(unittest.TestCase):
         path.write_text(json.dumps(receipt))
         self.assertTrue(entrega.exigir_entrega_constructor(self.name)[0])
 
+    def test_relevo_terminal_rechaza_historia_huerfana_con_igual_arbol(self):
+        self._origen_parado()
+        arbol = git(self.wt.ruta, "rev-parse", "HEAD^{tree}")
+        huerfano = git(self.wt.ruta, "commit-tree", arbol, "-m", "historia ajena")
+        git(self.wt.ruta, "update-ref", "refs/heads/" + self.name, huerfano)
+        self._relevo_parado()
+        self.assertTrue(entrega.exigir_entrega_constructor(self.name)[0])
+
+    def test_relevo_terminal_rechaza_plan_ambiguo_o_prefijo(self):
+        for cabeceras, esperado in (
+            ("## Planificación auxiliar\n- [x] auxiliar\n\n## Plan\n- [ ] tarea\n", {"marcadas": 0, "totales": 1}),
+            ("## Plan\n- [x] tarea\n\n## Plan\n- [ ] pendiente\n", {"marcadas": 0, "totales": 0}),
+        ):
+            with self.subTest(cabeceras=cabeceras):
+                self.h.write_text(cabeceras)
+                self.assertEqual(entrega.plan_de_obra(self.h), esperado)
+
+    def test_relevo_terminal_rechaza_recibo_corrupto_intercalado(self):
+        self._origen_parado()
+        intermedio = self.prepare()
+        self.assertEqual(self.bind(intermedio, "intermedio", "modelo-intermedio"), 0)
+        self.assertEqual(self.finish(intermedio, "intermedio", "fallo"), 0)
+        Path(intermedio["_ruta"]).write_text("{")
+        self._relevo_parado()
+        self.assertTrue(entrega.exigir_entrega_constructor(self.name)[0])
+
+    def test_relevo_terminal_rechaza_intento_no_nativo_intercalado(self):
+        self._origen_parado()
+        intento = self.prepare()
+        self.assertEqual(self.call("cancelar", self.name, "--recibo-id", intento["id"],
+                                   "--rol", "constructor", "--motivo", "simulación"), 0)
+        path = Path(intento["_ruta"])
+        receipt = json.loads(path.read_text())
+        receipt.update(protocolo="historico/v1", resultado="fallo", estado_nativo="fallido",
+                       sin_ejecucion=False)
+        path.write_text(json.dumps(receipt))
+        self._relevo_parado()
+        self.assertTrue(entrega.exigir_entrega_constructor(self.name)[0])
+
+    def test_relevo_terminal_rechaza_estado_terminal_incoherente(self):
+        self._origen_parado()
+        relevo = self._relevo_parado()
+        path = Path(relevo["_ruta"])
+        receipt = json.loads(path.read_text())
+        receipt["estado_nativo"] = "fallido"
+        path.write_text(json.dumps(receipt))
+        self.assertTrue(entrega.exigir_entrega_constructor(self.name)[0])
+
+    def test_relevo_terminal_actualiza_modelo_efectivo_al_parar(self):
+        original = self.prepare()
+        self.assertEqual(self.bind(original, "constructor-original", "modelo-vinculo"), 0)
+        metadata = self.root / (original["id"] + "-metadata.jsonl")
+        metadata.write_text(metadata.read_text().replace("modelo-vinculo", "modelo-final"))
+        self.wt.commitear("obra")
+        self.h.write_text(self.h.read_text().replace("[ ]", "[x]"))
+        self.assertEqual(self.finish(original, "constructor-original", "parado"), 0)
+        self._relevo_parado()
+        self.assertEqual(entrega.exigir_entrega_constructor(self.name)[0], [])
+        revisor = self.prepare("revisor")
+        self.assertNotEqual(self.bind(revisor, "revisor-fresco", "modelo-final"), 0)
+
+    def test_relevo_terminal_compara_plan_inicial_de_obra(self):
+        self.h.write_text(self.h.read_text() + "\n## Bitácora del cierre\n- [x] casilla previa ajena\n")
+        self._origen_parado()
+        self._relevo_parado()
+        self.assertEqual(entrega.exigir_entrega_constructor(self.name)[0], [])
+
     def test_R6_todos_roles_ambas_plataformas_y_claude_sincrono(self):
         for platform in ("codex", "claude"):
             for role in ("constructor", "revisor", "investigador", "auditor", "validador"):

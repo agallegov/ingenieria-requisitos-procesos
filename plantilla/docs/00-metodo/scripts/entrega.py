@@ -100,12 +100,12 @@ def plan_de_obra(ruta):
         texto = Path(ruta).read_text(encoding="utf-8", errors="replace")
     except OSError:
         return {"marcadas": 0, "totales": 0}
-    seccion = re.search(
-        r"(?ms)^## Plan[^\n]*\n(.*?)(?=^## |\Z)", texto
-    ) or re.search(
-        r"(?ms)^### Plan de trabajo del subagente[^\n]*\n(.*?)(?=^## |^### |\Z)", texto
-    )
-    marcas = RE_CASILLA.findall(seccion.group(1)) if seccion else []
+    cabecera = (r"## Plan[ \t]*" if Path(ruta).name == "hallazgos.md"
+                else r"### Plan de trabajo del subagente(?: \(esqueleto fijo; marcar \[x\] al completar\))?[ \t]*")
+    secciones = re.findall(r"(?ms)^" + cabecera + r"\n(.*?)(?=^## |^### |\Z)", texto)
+    if len(secciones) != 1:
+        return {"marcadas": 0, "totales": 0}
+    marcas = RE_CASILLA.findall(secciones[0])
     return {"marcadas": sum(m.lower() == "x" for m in marcas), "totales": len(marcas)}
 
 
@@ -222,7 +222,20 @@ def validar_vinculo_nativo(recibo, exigir_terminado=True):
     return None
 
 
-def _componer_relevo_terminal(candidatos, raiz, unidad):
+def _es_ancestro(repo, anterior, siguiente):
+    if not anterior or not siguiente:
+        return False
+    try:
+        proceso = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", str(anterior), str(siguiente)],
+            cwd=str(repo), capture_output=True, check=False,
+        )
+    except OSError:
+        return False
+    return proceso.returncode == 0
+
+
+def _componer_relevo_terminal(candidatos, recibos, worktree, raiz, unidad):
     """Acredita obra parada seguida solo de relevos nativos vacíos sobre el mismo árbol."""
     if len(candidatos) < 2:
         return None
@@ -234,6 +247,17 @@ def _componer_relevo_terminal(candidatos, raiz, unidad):
     if origen.get("resultado") != "parado" or not relevos:
         return None
     cadena = [origen, *relevos]
+    posiciones = [i for i, r in enumerate(recibos) if any(r is parte for parte in cadena)]
+    if len(posiciones) != len(cadena):
+        return None
+    for r in recibos[posiciones[0]:posiciones[-1] + 1]:
+        if any(r is parte for parte in cadena):
+            continue
+        # Una preparación nunca ejecutada no corta la cadena; cualquier otro intento sí.
+        if not (r.get("rol") == "constructor" and r.get("unidad") == unidad
+                and (r.get("estado_nativo") == "preparado"
+                     or (r.get("sin_ejecucion") is True and not r.get("native_task_id")))):
+            return None
     identidades = [r.get("native_task_id") for r in cadena]
     if len(set(identidades)) != len(identidades):
         return None
@@ -246,20 +270,34 @@ def _componer_relevo_terminal(candidatos, raiz, unidad):
             return None
     inicial = (origen.get("git") or {}).get("inicial") or {}
     anterior = (origen.get("git") or {}).get("final") or {}
+    repo = Path(worktree) if Path(worktree).is_dir() else Path(raiz) / "main"
     if not inicial.get("tree") or not anterior.get("tree") or inicial["tree"] == anterior["tree"]:
+        return None
+    if (origen.get("estado_nativo") != "cancelado"
+            or not _es_ancestro(repo, origen.get("base"), inicial.get("head"))
+            or not _es_ancestro(repo, inicial.get("head"), anterior.get("head"))):
         return None
     for relevo in relevos:
         principio = (relevo.get("git") or {}).get("inicial") or {}
         fin = (relevo.get("git") or {}).get("final") or {}
         if (relevo.get("resultado") not in {"parado", "cancelado"}
+                or relevo.get("estado_nativo") != "cancelado"
                 or relevo.get("ronda_vacia") is not True
                 or principio.get("tree") != anterior["tree"]
-                or fin.get("tree") != principio["tree"]):
+                or fin.get("tree") != principio["tree"]
+                or not _es_ancestro(repo, anterior.get("head"), principio.get("head"))
+                or not _es_ancestro(repo, principio.get("head"), fin.get("head"))):
             return None
         anterior = fin
     ficha, _ = ficha_y_plan(raiz, unidad)
     plan = plan_de_obra(ficha if ficha.parent.name == "bugs" else ficha.with_name("hallazgos.md"))
-    plan_inicial = inicial.get("plan") or {}
+    plan_inicial = inicial.get("plan_obra")
+    if plan_inicial is None:
+        # Históricos como 048 solo permiten inferir cero si el contador global era cero.
+        global_inicial = inicial.get("plan") or {}
+        if int(global_inicial.get("marcadas", 0)) != 0:
+            return None
+        plan_inicial = {"marcadas": 0}
     if (not plan["totales"] or plan["marcadas"] != plan["totales"]
             or plan["marcadas"] <= int(plan_inicial.get("marcadas", 0))):
         return None
@@ -290,7 +328,9 @@ def validar_entrega(worktree, unidad, recibos, base):
 
     propios = [r for r in candidatos if r.get("harness") == "subagente-del-padre"]
     candidatos = propios or candidatos
-    composicion = _componer_relevo_terminal(candidatos, Path(worktree).parent.parent, unidad)
+    composicion = _componer_relevo_terminal(
+        candidatos, recibos, worktree, Path(worktree).parent.parent, unidad
+    )
     recibo = composicion[0] if composicion else candidatos[-1]
     if recibo.get("protocolo") == "nativo/v1" and not composicion:
         problema = validar_vinculo_nativo(recibo)
@@ -342,7 +382,8 @@ def validar_entrega(worktree, unidad, recibos, base):
     )
     if mismo_arbol or final.get("head") == inicial.get("head"):
         return [_problema(f"{unidad} no contiene cambios desde la base del despacho")], []
-    plan_inicial = (inicial.get("plan") or {}) if composicion else (base.get("plan") or inicial.get("plan") or {})
+    plan_inicial = ((inicial.get("plan_obra") or {"marcadas": 0}) if composicion
+                    else (base.get("plan") or inicial.get("plan") or {}))
     plan_final = composicion[2] if composicion else ((recibo.get("trabajo") or {}).get("plan") or {})
     if plan_final and int(plan_final.get("marcadas", 0)) <= int(
         plan_inicial.get("marcadas", 0)

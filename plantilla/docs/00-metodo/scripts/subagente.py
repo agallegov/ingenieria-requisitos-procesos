@@ -261,6 +261,7 @@ def _preparar(args, cleanup):
             error("; ".join(problemas))
     _, plan = entrega.ficha_y_plan(RAIZ, args.unidad)
     inicial["plan"] = plan
+    inicial["plan_obra"] = entrega.plan_de_obra(informe)
     base = fm.get("base_sha") or fm.get("base") or ejecucion.base_registrada_de_la_unidad(fm, args.unidad, ficha)
     patch_id, ancla_motivo = ejecucion.patch_id_y_motivo(worktree, base)
     previa, ronda = ejecucion.rondas_del_constructor(informe, args.unidad) if args.rol == "constructor" else (None, ejecucion.ronda_declarada(informe.read_text()) if informe.exists() else None)
@@ -418,10 +419,14 @@ def cmd_finalizar(args):
     if args.resultado != "ok" and not args.motivo.strip():
         error("cancelación o fallo exige --motivo")
     payload = json.loads(Path(datos["evidencia_nativa"]["ruta"]).read_bytes())
-    if args.resultado == "ok":
+    try:
         metadata = observar_metadata(payload, datos["plataforma"])
-        datos.update(modelo_observado=metadata.get("modelo"), modelo_acreditado=metadata.get("modelo"),
-                     metadata_observada=metadata)
+    except (OSError, ValueError):
+        if args.resultado == "ok":
+            raise
+        metadata = {"modelo": None, "motivo": "metadata terminal no disponible"}
+    datos.update(modelo_observado=metadata.get("modelo"), modelo_acreditado=metadata.get("modelo"),
+                 metadata_observada=metadata)
     worktree = Path(datos["cwd"])
     informe = Path(datos["informe"])
     try:
@@ -444,7 +449,7 @@ def cmd_finalizar(args):
             if not final.get("materializada"):
                 datos["entregado_patch_id"] = ejecucion.patch_id_de_la_rama(worktree, datos.get("base"))
         else:
-            if final != {k: v for k, v in inicial.items() if k != "plan"}:
+            if final != {k: v for k, v in inicial.items() if k not in ("plan", "plan_obra")}:
                 error("código modificado durante tarea de solo lectura; repite con contenido estable")
             if huella_contrato(datos["ficha"]) != datos["contrato_inicial"]:
                 error("contrato modificado durante revisión")
