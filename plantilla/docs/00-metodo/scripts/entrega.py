@@ -11,6 +11,8 @@ import time
 import uuid
 from pathlib import Path
 
+import lease as gestion_leases
+
 
 RAIZ = Path(__file__).resolve().parents[3]
 EJECUCIONES = RAIZ / ".runtime/ejecuciones"
@@ -158,6 +160,9 @@ def recibos_de(unidad, ejecuciones=None):
         if not isinstance(datos, dict):
             recibos.append({"_corrupto": str(ruta)})
             continue
+        if "_ruta" in datos:
+            recibos.append({"_corrupto": str(ruta)})
+            continue
         datos["_ruta"] = str(ruta)
         recibos.append(datos)
     return recibos
@@ -278,6 +283,19 @@ def _preparacion_sin_ejecucion(recibo):
                     (all(coincide(v, forma[0]) for v in valor) if forma else not valor))
         return type(valor) is type(forma) and valor == forma
 
+    def contador_valido(contador):
+        return (type(contador.get("marcadas")) is int
+                and type(contador.get("totales")) is int
+                and 0 <= contador["marcadas"] <= contador["totales"])
+
+    def integridad_lease_valida(registro):
+        manager = gestion_leases.LeaseManager(RAIZ)
+        try:
+            manager._validate_record(manager._path(registro["scope"]), registro)
+        except (gestion_leases.LeaseError, KeyError, TypeError):
+            return False
+        return True
+
     cancelado = recibo.get("estado_nativo") == "cancelado"
     scope = "subagente:" + str(recibo.get("unidad"))
     contador = {"marcadas": int, "totales": int}
@@ -322,11 +340,17 @@ def _preparacion_sin_ejecucion(recibo):
     if [(c["nombre"], c["detalle"]) for c in checkpoints] != esperados:
         return False
     lease = recibo["lease"]
-    return (recibo["modelo"] == recibo["modelo_solicitado"]
+    contadores = (recibo["git"]["inicial"]["plan"],
+                  recibo["git"]["inicial"]["plan_obra"],
+                  recibo["trabajo"]["plan"])
+    return (recibo["documental"] is False
+            and recibo["modelo"] == recibo["modelo_solicitado"]
             and recibo["trabajo"]["plan"] == recibo["git"]["inicial"]["plan"]
+            and all(contador_valido(contador) for contador in contadores)
             and lease["scopes"] == [scope] and len(lease["records"]) == 1
             and lease["records"][0]["fencing"] == lease["fencing"][scope]
             and lease["records"][0]["owner"]["session_id"] == lease["session_id"]
+            and integridad_lease_valida(lease["records"][0])
             and all(isinstance(k, str) and isinstance(v, str)
                     for k, v in recibo["documentos_inicial"].items())
             and recibo["limites"] == ["Un modelo solicitado no es observado",

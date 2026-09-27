@@ -648,6 +648,50 @@ class NativoTest(unittest.TestCase):
                     path.write_text(json.dumps({**base, "checkpoints": checkpoints}))
                     self._rechaza_entrega_y_revisor()
 
+    def _preparacion_posterior_a_relevo_valido(self, *, cancelar=False):
+        self._origen_parado()
+        self._relevo_parado()
+        ultimo = self.prepare()
+        if cancelar:
+            self.assertEqual(self.call("cancelar", self.name, "--recibo-id", ultimo["id"],
+                                       "--rol", "constructor", "--motivo", "sin hijo"), 0)
+        return Path(ultimo["_ruta"])
+
+    def _rechaza_exencion_en_ambas_puertas(self):
+        with self.subTest(puerta="entrega"):
+            self.assertTrue(entrega.exigir_entrega_constructor(self.name)[0])
+        with self.subTest(puerta="revisor"):
+            self.assertNotEqual(self.call("preparar", self.name, "--rol", "revisor",
+                                         "--plataforma", "codex", "--pid", str(os.getpid())), 0)
+
+    def test_relevo_terminal_rechaza_exencion_con_integridad_de_lease_invalida(self):
+        path = self._preparacion_posterior_a_relevo_valido()
+        datos = json.loads(path.read_text())
+        datos["lease"]["records"][0]["integrity"] = ""
+        path.write_text(json.dumps(datos))
+        self._rechaza_exencion_en_ambas_puertas()
+
+    def test_relevo_terminal_rechaza_exencion_documental_en_unidad_de_codigo(self):
+        path = self._preparacion_posterior_a_relevo_valido(cancelar=True)
+        datos = json.loads(path.read_text())
+        datos["documental"] = True
+        path.write_text(json.dumps(datos))
+        self._rechaza_exencion_en_ambas_puertas()
+
+    def test_relevo_terminal_rechaza_exencion_con_contadores_imposibles(self):
+        path = self._preparacion_posterior_a_relevo_valido()
+        datos = json.loads(path.read_text())
+        datos["git"]["inicial"]["plan_obra"]["marcadas"] = -1
+        path.write_text(json.dumps(datos))
+        self._rechaza_exencion_en_ambas_puertas()
+
+    def test_relevo_terminal_rechaza_ruta_almacenada_antes_de_anotarla(self):
+        path = self._preparacion_posterior_a_relevo_valido(cancelar=True)
+        datos = json.loads(path.read_text())
+        datos["_ruta"] = None
+        path.write_text(json.dumps(datos))
+        self._rechaza_exencion_en_ambas_puertas()
+
     def test_relevo_terminal_rechaza_orden_sin_token_o_ambiguo(self):
         original = self._origen_parado()
         relevo = self._relevo_parado()
