@@ -260,26 +260,77 @@ def _es_ancestro(repo, anterior, siguiente):
 
 
 def _preparacion_sin_ejecucion(recibo):
-    """La exención requiere un recibo coherente, no solo ausencia de vínculo."""
-    cancelado = (recibo.get("sin_ejecucion") is True
-                 and recibo.get("estado_nativo") == "cancelado"
-                 and recibo.get("resultado") == "cancelado")
-    preparado = (recibo.get("estado_nativo") == "preparado"
-                 and recibo.get("resultado") is None)
-    if not (preparado or cancelado):
+    """Solo las formas completas de preparar/cancelar sin hijo en nativo/v1.
+
+    Esquema positivo: una ampliación del productor requiere compatibilidad explícita.
+    Los mapas de documentos son snapshots (nombres de fichero → hash), no transiciones.
+    """
+    def coincide(valor, forma):
+        if isinstance(forma, type):
+            return type(valor) is forma
+        if isinstance(forma, tuple):
+            return any(coincide(valor, opcion) for opcion in forma)
+        if isinstance(forma, dict):
+            return (isinstance(valor, dict) and valor.keys() == forma.keys()
+                    and all(coincide(valor[k], v) for k, v in forma.items()))
+        if isinstance(forma, list):
+            return (isinstance(valor, list) and
+                    (all(coincide(v, forma[0]) for v in valor) if forma else not valor))
+        return type(valor) is type(forma) and valor == forma
+
+    cancelado = recibo.get("estado_nativo") == "cancelado"
+    scope = "subagente:" + str(recibo.get("unidad"))
+    contador = {"marcadas": int, "totales": int}
+    forma = {
+        "schema": "ejecucion/v1", "protocolo": "nativo/v1", "id": str, "unidad": str,
+        "harness": "subagente-del-padre", "plataforma": ("codex", "claude"),
+        "rol": "constructor", "estado_nativo": "cancelado" if cancelado else "preparado",
+        "modelo": str, "modelo_solicitado": str, "modelo_observado": None,
+        "modelo_acreditado": None, "modelo_origen": ("solicitud", "tabla"),
+        "esfuerzo": (str, None), "native_task_id": None, "native_parent_session_id": None,
+        "cwd": str, "rama": recibo.get("unidad"), "worktree_efimero": False,
+        "documental": bool,
+        "lease": {"session_id": str, "scopes": [scope], "fencing": {scope: int},
+                  "records": [{"format": 1, "scope": scope, "operation": str,
+                               "fencing": int, "created": str, "integrity": str,
+                               "owner": {"session_id": str, "host": str, "pid": int,
+                                         "process_started": (str, None)}}]},
+        "git": {"inicial": {"head": str, "tree": str, "status_porcelain": [str],
+                            "plan": contador, "plan_obra": contador}},
+        "trabajo": {"plan": contador}, "exit_code": None,
+        "ficha": str, "contrato_inicial": str, "informe": str,
+        "informe_inicial": (str, None), "documentos_inicial": dict,
+        "informe_revisor_inicial": None, "revisado_patch_id": None,
+        "ancla_motivo": (str, None), "base": (str, None),
+        "ronda_previa": (int, None), "ronda": (int, None), "senales": [],
+        "aislamiento": {"instruccion": "worktree y hallazgos", "so": "no acreditado",
+                        "control": "snapshots antes/después"},
+        "limites": [str],
+        "checkpoints": [{"nombre": str, "detalle": str, "cuando": str}],
+    }
+    if cancelado:
+        forma.update(resultado="cancelado", motivo=str, sin_ejecucion=True)
+    # recibos_de añade _ruta fuera del JSON; ninguna otra clave se descarta.
+    if not coincide({k: v for k, v in recibo.items() if k != "_ruta"}, forma):
         return False
-    if (any(recibo.get(campo) is not None for campo in (
-            "native_task_id", "native_parent_session_id", "evidencia_nativa",
-            "contexto", "modelo_observado", "modelo_acreditado", "metadata_observada",
-            "exit_code", "ronda_vacia", "entregado_patch_id"))
-            or "final" in (recibo.get("git") or {})
-            or "acreditado" in (recibo.get("trabajo") or {})):
+    checkpoints = recibo["checkpoints"]
+    esperados = [("preparado", "Pendiente de herramienta nativa; no acredita ejecución")]
+    if cancelado:
+        if not recibo["motivo"].strip() or recibo["ronda"] != recibo["ronda_previa"]:
+            return False
+        esperados.append(("cancelado", recibo["motivo"]))
+    if [(c["nombre"], c["detalle"]) for c in checkpoints] != esperados:
         return False
-    permitidos = {"preparado", "cancelado"} if cancelado else {"preparado"}
-    checkpoints = recibo.get("checkpoints")
-    return (isinstance(checkpoints, list) and bool(checkpoints)
-            and all(isinstance(c, dict) and c.get("nombre") in permitidos
-                    for c in checkpoints))
+    lease = recibo["lease"]
+    return (recibo["modelo"] == recibo["modelo_solicitado"]
+            and recibo["trabajo"]["plan"] == recibo["git"]["inicial"]["plan"]
+            and lease["scopes"] == [scope] and len(lease["records"]) == 1
+            and lease["records"][0]["fencing"] == lease["fencing"][scope]
+            and lease["records"][0]["owner"]["session_id"] == lease["session_id"]
+            and all(isinstance(k, str) and isinstance(v, str)
+                    for k, v in recibo["documentos_inicial"].items())
+            and recibo["limites"] == ["Un modelo solicitado no es observado",
+                                     "La herramienta no acredita aislamiento de SO"])
 
 
 def _componer_relevo_terminal(candidatos, recibos, worktree, raiz, unidad):

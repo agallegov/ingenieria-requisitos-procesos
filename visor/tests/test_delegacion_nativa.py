@@ -560,6 +560,22 @@ class NativoTest(unittest.TestCase):
             self.assertNotEqual(self.call("preparar", self.name, "--rol", "revisor",
                                          "--plataforma", "codex", "--pid", str(os.getpid())), 0)
 
+    def test_relevo_terminal_rechaza_cancelacion_sin_hijo_con_recuperacion(self):
+        self._origen_parado()
+        self._relevo_parado()
+        ultimo = self.prepare()
+        self.assertEqual(self.call("cancelar", self.name, "--recibo-id", ultimo["id"],
+                                   "--rol", "constructor", "--motivo", "sin hijo"), 0)
+        path = Path(ultimo["_ruta"])
+        datos = json.loads(path.read_text())
+        datos["recuperacion"] = "padre muerto; no acredita parada del hijo"
+        path.write_text(json.dumps(datos))
+        with self.subTest(puerta="entrega"):
+            self.assertTrue(entrega.exigir_entrega_constructor(self.name)[0])
+        with self.subTest(puerta="revisor"):
+            self.assertNotEqual(self.call("preparar", self.name, "--rol", "revisor",
+                                         "--plataforma", "codex", "--pid", str(os.getpid())), 0)
+
     def test_relevo_terminal_rechaza_rastros_aislados_en_exenciones(self):
         self._origen_parado()
         self._relevo_parado()
@@ -583,6 +599,53 @@ class NativoTest(unittest.TestCase):
             for rastro in rastros:
                 with self.subTest(estado=base["estado_nativo"], rastro=rastro):
                     path.write_text(json.dumps({**base, **rastro}))
+                    self._rechaza_entrega_y_revisor()
+
+    def test_relevo_terminal_formas_reales_sin_hijo(self):
+        self._origen_parado()
+        self._relevo_parado()
+        for plataforma in ("codex", "claude"):
+            with self.subTest(plataforma=plataforma):
+                ultimo = self.prepare(platform=plataforma)
+                self.assertTrue(entrega._preparacion_sin_ejecucion(ultimo))
+                self.assertEqual(entrega.exigir_entrega_constructor(self.name)[0], [])
+                self.assertEqual(self.call("cancelar", self.name, "--recibo-id", ultimo["id"],
+                                           "--rol", "constructor", "--motivo", "sin hijo"), 0)
+                cancelado = json.loads(Path(ultimo["_ruta"]).read_text())
+                self.assertTrue(entrega._preparacion_sin_ejecucion(cancelado))
+                self.assertEqual(entrega.exigir_entrega_constructor(self.name)[0], [])
+        self.assertEqual(self.call("preparar", self.name, "--rol", "revisor",
+                                   "--plataforma", "codex", "--pid", str(os.getpid())), 0)
+
+    def test_relevo_terminal_exenciones_rechazan_formas_desconocidas_o_incompletas(self):
+        self._origen_parado()
+        self._relevo_parado()
+        ultimo = self.prepare()
+        path = Path(ultimo["_ruta"])
+        preparado = json.loads(path.read_text())
+        self.assertEqual(self.call("cancelar", self.name, "--recibo-id", ultimo["id"],
+                                   "--rol", "constructor", "--motivo", "sin hijo"), 0)
+        cancelado = json.loads(path.read_text())
+        for base in (preparado, cancelado):
+            # Clave nueva, incluso null: no depende de conocer su significado terminal.
+            for ruta in ((), ("git",), ("git", "inicial"), ("trabajo",),
+                         ("lease",), ("lease", "records", 0), ("checkpoints", 0)):
+                with self.subTest(estado=base["estado_nativo"], ruta=ruta):
+                    datos = json.loads(json.dumps(base))
+                    destino = datos
+                    for clave in ruta:
+                        destino = destino[clave]
+                    destino["transicion_futura_desconocida"] = None
+                    path.write_text(json.dumps(datos))
+                    self._rechaza_entrega_y_revisor()
+            for clave in base:
+                with self.subTest(estado=base["estado_nativo"], ausente=clave):
+                    datos = {k: v for k, v in base.items() if k != clave}
+                    self.assertFalse(entrega._preparacion_sin_ejecucion(datos))
+            for checkpoints in ([], base["checkpoints"] * 2,
+                                list(reversed(cancelado["checkpoints"]))):
+                with self.subTest(estado=base["estado_nativo"], checkpoints=checkpoints):
+                    path.write_text(json.dumps({**base, "checkpoints": checkpoints}))
                     self._rechaza_entrega_y_revisor()
 
     def test_relevo_terminal_rechaza_orden_sin_token_o_ambiguo(self):
