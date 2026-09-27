@@ -685,6 +685,68 @@ class NativoTest(unittest.TestCase):
         path.write_text(json.dumps(datos))
         self._rechaza_exencion_en_ambas_puertas()
 
+    def test_relevo_terminal_rechaza_plan_obra_fuera_del_plan_total(self):
+        path = self._preparacion_posterior_a_relevo_valido(cancelar=True)
+        original = json.loads(path.read_text())
+        for plan, obra in (({"marcadas": 1, "totales": 1}, {"marcadas": 2, "totales": 2}),
+                           ({"marcadas": 1, "totales": 2}, {"marcadas": 2, "totales": 2}),
+                           ({"marcadas": 1, "totales": 1}, {"marcadas": 1, "totales": 2})):
+            with self.subTest(plan=plan, plan_obra=obra):
+                datos = json.loads(json.dumps(original))
+                datos["git"]["inicial"].update(plan=plan, plan_obra=obra)
+                datos["trabajo"]["plan"] = plan
+                path.write_text(json.dumps(datos))
+                self._rechaza_exencion_en_ambas_puertas()
+
+    def test_productor_y_consumidor_comparten_validador_sin_ejecucion(self):
+        # Sustituir la única autoridad debe impedir publicar y eximir el recibo.
+        with mock.patch.object(entrega, "validar_preparacion_sin_ejecucion",
+                               return_value=False, create=True) as validar:
+            with self.subTest(paso="preparar"):
+                self.assertNotEqual(self.call("preparar", self.name, "--rol", "constructor",
+                                             "--plataforma", "codex", "--pid", str(os.getpid())), 0)
+                validar.assert_called()
+                self.assertEqual(entrega.recibos_de(self.name, self.receipts), [])
+        # Un fixture nuevo evita que un fallo de preparación contamine los demás pasos.
+        caso = NativoTest("runTest")
+        caso.setUp()
+        self.addCleanup(caso.doCleanups)
+        with self.subTest(fixture="cadena nueva"):
+            path = caso._preparacion_posterior_a_relevo_valido()
+            preparado = json.loads(path.read_text())
+            with mock.patch.object(entrega, "validar_preparacion_sin_ejecucion",
+                                   return_value=False, create=True) as validar:
+                with self.subTest(paso="cancelar"):
+                    validar.side_effect = lambda datos: datos["estado_nativo"] == "preparado"
+                    caso.assertNotEqual(caso.call("cancelar", caso.name, "--recibo-id", preparado["id"],
+                                                 "--rol", "constructor", "--motivo", "sin hijo"), 0)
+                    validar.assert_called()
+                    caso.assertEqual(validar.call_args.args[0]["estado_nativo"], "cancelado")
+                    caso.assertEqual(json.loads(path.read_text()), preparado)
+                with self.subTest(paso="consumir"):
+                    validar.reset_mock()
+                    validar.side_effect = None
+                    caso._rechaza_exencion_en_ambas_puertas()
+                    validar.assert_called()
+
+    def test_validador_canonico_rechaza_valores_imposibles_sin_hijo(self):
+        recibo = self.prepare()
+        original = json.loads(Path(recibo["_ruta"]).read_text())
+        self.assertTrue(entrega.validar_preparacion_sin_ejecucion(original))
+        cambios = [(("id",), ""), (("unidad",), ""),
+                   (("git", "inicial", "head"), ""), (("git", "inicial", "tree"), ""),
+                   (("contrato_inicial",), ""), (("informe_inicial",), ""),
+                   (("cwd",), "relativo"), (("checkpoints", 0, "cuando"), "ayer"),
+                   (("ronda",), original["ronda_previa"] + 2), (("_ruta",), None)]
+        for ruta, valor in cambios:
+            with self.subTest(ruta=ruta):
+                datos = json.loads(json.dumps(original))
+                destino = datos
+                for clave in ruta[:-1]:
+                    destino = destino[clave]
+                destino[ruta[-1]] = valor
+                self.assertFalse(entrega.validar_preparacion_sin_ejecucion(datos))
+
     def test_relevo_terminal_rechaza_ruta_almacenada_antes_de_anotarla(self):
         path = self._preparacion_posterior_a_relevo_valido(cancelar=True)
         datos = json.loads(path.read_text())

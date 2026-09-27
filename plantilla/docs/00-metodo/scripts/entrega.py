@@ -264,12 +264,17 @@ def _es_ancestro(repo, anterior, siguiente):
     return proceso.returncode == 0
 
 
-def _preparacion_sin_ejecucion(recibo):
-    """Solo las formas completas de preparar/cancelar sin hijo en nativo/v1.
+def validar_preparacion_sin_ejecucion(recibo):
+    """Contrato canónico del constructor de código sin hijo en nativo/v1.
 
-    Esquema positivo: una ampliación del productor requiere compatibilidad explícita.
+    Productor y consumidor usan esta misma validación sobre el JSON sin anotaciones.
+    Solo admite preparación intacta o cancelación explícita sin ejecución.
+    Una ampliación del productor requiere compatibilidad explícita.
     Los mapas de documentos son snapshots (nombres de fichero → hash), no transiciones.
     """
+    if not isinstance(recibo, dict):
+        return False
+
     def coincide(valor, forma):
         if isinstance(forma, type):
             return type(valor) is forma
@@ -296,6 +301,16 @@ def _preparacion_sin_ejecucion(recibo):
             return False
         return True
 
+    def huella(valor, longitud):
+        return isinstance(valor, str) and re.fullmatch(r"[0-9a-f]{" + str(longitud) + "}", valor) is not None
+
+    def fecha_valida(valor):
+        try:
+            return time.strftime("%Y-%m-%dT%H:%M:%S+00:00",
+                                 time.strptime(valor, "%Y-%m-%dT%H:%M:%S+00:00")) == valor
+        except ValueError:
+            return False
+
     cancelado = recibo.get("estado_nativo") == "cancelado"
     scope = "subagente:" + str(recibo.get("unidad"))
     contador = {"marcadas": int, "totales": int}
@@ -307,7 +322,7 @@ def _preparacion_sin_ejecucion(recibo):
         "modelo_acreditado": None, "modelo_origen": ("solicitud", "tabla"),
         "esfuerzo": (str, None), "native_task_id": None, "native_parent_session_id": None,
         "cwd": str, "rama": recibo.get("unidad"), "worktree_efimero": False,
-        "documental": bool,
+        "documental": False,
         "lease": {"session_id": str, "scopes": [scope], "fencing": {scope: int},
                   "records": [{"format": 1, "scope": scope, "operation": str,
                                "fencing": int, "created": str, "integrity": str,
@@ -328,8 +343,7 @@ def _preparacion_sin_ejecucion(recibo):
     }
     if cancelado:
         forma.update(resultado="cancelado", motivo=str, sin_ejecucion=True)
-    # recibos_de añade _ruta fuera del JSON; ninguna otra clave se descarta.
-    if not coincide({k: v for k, v in recibo.items() if k != "_ruta"}, forma):
+    if not coincide(recibo, forma):
         return False
     checkpoints = recibo["checkpoints"]
     esperados = [("preparado", "Pendiente de herramienta nativa; no acredita ejecución")]
@@ -339,22 +353,43 @@ def _preparacion_sin_ejecucion(recibo):
         esperados.append(("cancelado", recibo["motivo"]))
     if [(c["nombre"], c["detalle"]) for c in checkpoints] != esperados:
         return False
+    previa, ronda = recibo["ronda_previa"], recibo["ronda"]
+    if previa is None:
+        if ronda is not None:
+            return False
+    elif previa < 1 or ronda not in ((previa,) if cancelado else (previa, previa + 1)):
+        return False
     lease = recibo["lease"]
     contadores = (recibo["git"]["inicial"]["plan"],
                   recibo["git"]["inicial"]["plan_obra"],
                   recibo["trabajo"]["plan"])
-    return (recibo["documental"] is False
+    plan, obra, _ = contadores
+    return (huella(recibo["id"], 32)
+            and re.fullmatch(r"\d{3}-[a-z0-9][a-z0-9-]*", recibo["unidad"]) is not None
+            and all(Path(recibo[campo]).is_absolute() for campo in ("cwd", "ficha", "informe"))
+            and huella(recibo["contrato_inicial"], 64)
+            and (recibo["informe_inicial"] is None or huella(recibo["informe_inicial"], 64))
+            and all(huella(recibo["git"]["inicial"][campo], 40) for campo in ("head", "tree"))
+            and all(fecha_valida(c["cuando"]) for c in checkpoints)
+            and bool(recibo["modelo"])
             and recibo["modelo"] == recibo["modelo_solicitado"]
             and recibo["trabajo"]["plan"] == recibo["git"]["inicial"]["plan"]
             and all(contador_valido(contador) for contador in contadores)
+            and obra["marcadas"] <= plan["marcadas"]
+            and obra["totales"] <= plan["totales"]
             and lease["scopes"] == [scope] and len(lease["records"]) == 1
             and lease["records"][0]["fencing"] == lease["fencing"][scope]
             and lease["records"][0]["owner"]["session_id"] == lease["session_id"]
             and integridad_lease_valida(lease["records"][0])
-            and all(isinstance(k, str) and isinstance(v, str)
+            and all(isinstance(k, str) and bool(k) and huella(v, 64)
                     for k, v in recibo["documentos_inicial"].items())
             and recibo["limites"] == ["Un modelo solicitado no es observado",
                                      "La herramienta no acredita aislamiento de SO"])
+
+
+def _preparacion_sin_ejecucion(recibo):
+    # Adaptador del lector: recibos_de ya rechazó _ruta dentro del JSON crudo.
+    return validar_preparacion_sin_ejecucion({k: v for k, v in recibo.items() if k != "_ruta"})
 
 
 def _componer_relevo_terminal(candidatos, recibos, worktree, raiz, unidad):

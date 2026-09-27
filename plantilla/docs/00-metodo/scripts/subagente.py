@@ -287,13 +287,16 @@ def _preparar(args, cleanup):
         "revisado_patch_id": patch_id if args.rol == "revisor" else None,
         "ancla_motivo": ancla_motivo, "base": base,
         "ronda_previa": previa, "ronda": ronda,
-        "senales": ejecucion.senales_para_el_revisor(worktree, args.rol),
+        "senales": list(ejecucion.senales_para_el_revisor(worktree, args.rol)),
         "aislamiento": {"instruccion": "solo lectura; única escritura: informe" if args.rol != "constructor" else "worktree y hallazgos",
                         "so": "no acreditado", "control": "snapshots antes/después"},
         "limites": ["Un modelo solicitado no es observado", "La herramienta no acredita aislamiento de SO"],
         "checkpoints": [],
     }
     checkpoint(datos, "preparado", "Pendiente de herramienta nativa; no acredita ejecución")
+    if args.rol == "constructor" and not documental:
+        if not entrega.validar_preparacion_sin_ejecucion(datos):
+            error("preparación sin hijo incoherente; revisa sus snapshots antes de repetir preparar")
     EJECUCIONES.mkdir(parents=True, exist_ok=True)
     try:
         guardar_recibo(EJECUCIONES / f"{args.unidad}-{rid}.json", datos)
@@ -488,6 +491,9 @@ def cmd_finalizar(args):
 
 def cmd_cancelar(args):
     path, datos = exacto(args)
+    if datos.get("rol") == "constructor" and not datos.get("documental"):
+        if not entrega.validar_preparacion_sin_ejecucion(datos):
+            error("recibo sin hijo incoherente; consulta su estado antes de cancelar")
     if datos.get("estado_nativo") == "cancelado" and not datos.get("native_task_id"):
         return 0
     if datos.get("estado_nativo") != "preparado":
@@ -498,6 +504,9 @@ def cmd_cancelar(args):
     datos.update({"estado_nativo": "cancelado", "resultado": "cancelado", "motivo": args.motivo,
                   "exit_code": None, "sin_ejecucion": True, "ronda": datos.get("ronda_previa")})
     checkpoint(datos, "cancelado", args.motivo)
+    if datos.get("rol") == "constructor" and not datos.get("documental"):
+        if not entrega.validar_preparacion_sin_ejecucion(datos):
+            error("cancelación sin hijo incoherente; conserva el recibo preparado y revisa su estado")
     guardar_recibo(path, datos)
     group.release()
     if datos.get("worktree_efimero"):
