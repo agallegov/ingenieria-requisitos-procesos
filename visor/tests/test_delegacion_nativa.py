@@ -542,6 +542,49 @@ class NativoTest(unittest.TestCase):
                 path.write_text(json.dumps(datos))
                 self._rechaza_entrega_y_revisor()
 
+    def test_relevo_terminal_rechaza_preparacion_con_rastros_de_ejecucion(self):
+        self._origen_parado()
+        self._relevo_parado()
+        ultimo = self.prepare()
+        self.assertEqual(self.bind(ultimo, "ultimo", "modelo-ultimo"), 0)
+        self.assertEqual(self.finish(ultimo, "ultimo", "fallo"), 0)
+        path = Path(ultimo["_ruta"])
+        datos = json.loads(path.read_text())
+        datos.pop("native_task_id")
+        datos.pop("evidencia_nativa")
+        datos["estado_nativo"] = "preparado"
+        path.write_text(json.dumps(datos))
+        with self.subTest(puerta="entrega"):
+            self.assertTrue(entrega.exigir_entrega_constructor(self.name)[0])
+        with self.subTest(puerta="revisor"):
+            self.assertNotEqual(self.call("preparar", self.name, "--rol", "revisor",
+                                         "--plataforma", "codex", "--pid", str(os.getpid())), 0)
+
+    def test_relevo_terminal_rechaza_rastros_aislados_en_exenciones(self):
+        self._origen_parado()
+        self._relevo_parado()
+        ultimo = self.prepare()
+        path = Path(ultimo["_ruta"])
+        preparado = json.loads(path.read_text())
+        self.assertEqual(self.call("cancelar", self.name, "--recibo-id", ultimo["id"],
+                                   "--rol", "constructor", "--motivo", "sin hijo"), 0)
+        cancelado = json.loads(path.read_text())
+        rastros = [
+            {"resultado": "fallo"}, {"git": {**preparado["git"], "final": {}}},
+            {"native_task_id": "hijo"}, {"native_parent_session_id": "padre"},
+            {"evidencia_nativa": {}}, {"contexto": "fresco"},
+            {"modelo_observado": "modelo"}, {"modelo_acreditado": "modelo"},
+            {"metadata_observada": {}}, {"exit_code": 0}, {"ronda_vacia": False},
+            {"entregado_patch_id": "huella"}, {"trabajo": {"acreditado": True}},
+            *({"checkpoints": preparado["checkpoints"] + [{"nombre": nombre}]}
+              for nombre in ("vinculado", "terminado", "recuperado")),
+        ]
+        for base in (preparado, cancelado):
+            for rastro in rastros:
+                with self.subTest(estado=base["estado_nativo"], rastro=rastro):
+                    path.write_text(json.dumps({**base, **rastro}))
+                    self._rechaza_entrega_y_revisor()
+
     def test_relevo_terminal_rechaza_orden_sin_token_o_ambiguo(self):
         original = self._origen_parado()
         relevo = self._relevo_parado()

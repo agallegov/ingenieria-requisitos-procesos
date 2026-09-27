@@ -259,6 +259,29 @@ def _es_ancestro(repo, anterior, siguiente):
     return proceso.returncode == 0
 
 
+def _preparacion_sin_ejecucion(recibo):
+    """La exención requiere un recibo coherente, no solo ausencia de vínculo."""
+    cancelado = (recibo.get("sin_ejecucion") is True
+                 and recibo.get("estado_nativo") == "cancelado"
+                 and recibo.get("resultado") == "cancelado")
+    preparado = (recibo.get("estado_nativo") == "preparado"
+                 and recibo.get("resultado") is None)
+    if not (preparado or cancelado):
+        return False
+    if (any(recibo.get(campo) is not None for campo in (
+            "native_task_id", "native_parent_session_id", "evidencia_nativa",
+            "contexto", "modelo_observado", "modelo_acreditado", "metadata_observada",
+            "exit_code", "ronda_vacia", "entregado_patch_id"))
+            or "final" in (recibo.get("git") or {})
+            or "acreditado" in (recibo.get("trabajo") or {})):
+        return False
+    permitidos = {"preparado", "cancelado"} if cancelado else {"preparado"}
+    checkpoints = recibo.get("checkpoints")
+    return (isinstance(checkpoints, list) and bool(checkpoints)
+            and all(isinstance(c, dict) and c.get("nombre") in permitidos
+                    for c in checkpoints))
+
+
 def _componer_relevo_terminal(candidatos, recibos, worktree, raiz, unidad):
     """Acredita obra parada seguida solo de relevos nativos vacíos sobre el mismo árbol."""
     if len(candidatos) < 2:
@@ -281,11 +304,7 @@ def _componer_relevo_terminal(candidatos, recibos, worktree, raiz, unidad):
             return None
         tokens.add(token)
         # Solo preparación sin hijo: no basta una bandera que oculte ejecución.
-        if (not r.get("native_task_id") and not r.get("evidencia_nativa")
-                and (r.get("estado_nativo") == "preparado"
-                     or (r.get("sin_ejecucion") is True
-                         and r.get("estado_nativo") == "cancelado"
-                         and r.get("resultado") == "cancelado"))):
+        if _preparacion_sin_ejecucion(r):
             continue
         intentos.append((token, r))
     candidatos = [r for _, r in sorted(intentos, key=lambda intento: intento[0])]
